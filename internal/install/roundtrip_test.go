@@ -241,11 +241,18 @@ func TestEveryWrittenFileIsMarkedManaged(t *testing.T) {
 	cfg := config.Default()
 	cfg.Extras = nil
 
+	cfg.Workspace.Watermark = true // include the binary asset in the sweep
+
 	res, err := Run(p, cfg, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, f := range res.Written {
+		// Binary assets are the one exception: a PNG with a comment glued to
+		// the front is not a PNG. Their ownership lives in the manifest.
+		if filepath.Ext(f) == ".png" {
+			continue
+		}
 		if !render.IsManaged(f) {
 			t.Errorf("%s has no managed-by header", f)
 		}
@@ -294,5 +301,50 @@ func TestXdgOpenShimOnlyInsideContainers(t *testing.T) {
 	}
 	if !found {
 		t.Error("the shim should be installed inside a container")
+	}
+}
+
+// The watermark art is a PNG copied verbatim. Prepending a managed-by header to
+// it, as every other generated file gets, would produce a file that is no
+// longer a PNG — so this asserts the bytes arrive intact.
+func TestWatermarkAssetIsCopiedIntact(t *testing.T) {
+	p := sandbox(t)
+	cfg := config.Default()
+	cfg.Extras = nil
+	cfg.Workspace.Watermark = true
+
+	if _, err := Run(p, cfg, Options{}); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	dest := filepath.Join(p.ConfigDir, "ghostty", "watermark.png")
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("watermark not written: %v", err)
+	}
+	if len(got) < 8 || string(got[1:4]) != "PNG" {
+		t.Fatalf("watermark is not a PNG — a header was prepended: %q", got[:min(16, len(got))])
+	}
+
+	want, err := assetBytes("templates/extras/watermark/tux.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Error("watermark bytes differ from the shipped asset")
+	}
+}
+
+// With the watermark off, no image should be left lying in the config
+// directory — and its absence is what the doctor check keys on.
+func TestWatermarkNotWrittenWhenOff(t *testing.T) {
+	p := sandbox(t)
+	cfg := config.Default()
+	cfg.Extras = nil
+
+	if _, err := Run(p, cfg, Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(p.ConfigDir, "ghostty", "watermark.png")); err == nil {
+		t.Error("watermark written despite being off")
 	}
 }

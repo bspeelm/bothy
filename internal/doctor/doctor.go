@@ -114,6 +114,7 @@ func Checks() []Check {
 		{ID: "yazi-config-keys", Run: checkYaziConfigKeys},
 		{ID: "image-previews", Run: checkImagePreviews},
 		{ID: "ghostty-config-name", Run: checkGhosttyConfigName},
+		{ID: "watermark-image", Run: checkWatermarkImage},
 		{ID: "zellij-config", Run: checkZellijConfig},
 		{ID: "terminfo", Run: checkTerminfo},
 		{ID: "editor-env", Run: checkEditorEnv},
@@ -300,6 +301,31 @@ func checkGhosttyConfigName(env Env) Result {
 			"run 'bothy install'")
 	}
 	return pass("ghostty config is at the filename ghostty reads")
+}
+
+// checkWatermarkImage catches a watermark that is switched on but pointing at
+// nothing. Ghostty does not complain about a missing background-image — it just
+// draws no image, which looks exactly like "the opacity is too low" and sends
+// people tuning a setting that was never the problem.
+func checkWatermarkImage(env Env) Result {
+	if !env.Config.Workspace.Watermark {
+		return skip("watermark is off")
+	}
+	if env.Config.Slots.Terminal != "ghostty" {
+		return skip("watermark needs ghostty")
+	}
+	path := filepath.Join(env.Platform.ConfigDir, "ghostty", "watermark.png")
+	fi, err := os.Stat(path)
+	if err != nil {
+		return fail("the watermark image is missing",
+			path+" does not exist; ghostty will silently draw nothing",
+			"run 'bothy install' to write it")
+	}
+	if fi.Size() == 0 {
+		return fail("the watermark image is empty", path+" is zero bytes",
+			"run 'bothy install' to rewrite it")
+	}
+	return pass("watermark image is in place")
 }
 
 func checkZellijConfig(env Env) Result {

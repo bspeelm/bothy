@@ -121,7 +121,11 @@ func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 type file struct {
 	Dest     string
 	Template string // path inside the embedded templates FS
-	Exec     bool
+	// Asset is copied byte-for-byte instead of being rendered. Binary marks
+	// content that must not have a text header prepended to it.
+	Asset  string
+	Binary bool
+	Exec   bool
 	// Literal replaces Template for content bothy generates in Go rather than
 	// from a template — the layout KDL, which the layout package renders.
 	Literal []byte
@@ -130,6 +134,12 @@ type file struct {
 func renderFile(w *render.Writer, f file, data Data) ([]byte, error) {
 	if f.Literal != nil {
 		return f.Literal, nil
+	}
+	if f.Asset != "" {
+		// No managed-by header: a PNG with a comment glued to the front is not
+		// a PNG. Ownership is tracked by the manifest instead, which is what
+		// uninstall consults anyway.
+		return bothy.Templates.ReadFile(f.Asset)
 	}
 	src, err := bothy.Templates.ReadFile(f.Template)
 	if err != nil {
@@ -204,6 +214,17 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 				Template: "templates/terminal/ghostty/theme.tmpl",
 			})
 		}
+	}
+
+	// The watermark art is a PNG, so it is copied rather than rendered. It is
+	// only written when the extra is on: an unused image sitting in the config
+	// directory is clutter, and its absence is what the doctor checks for.
+	if data.Watermark && cfg.Slots.Terminal == "ghostty" {
+		out = append(out, file{
+			Dest:   data.WatermarkPath,
+			Asset:  "templates/extras/watermark/tux.png",
+			Binary: true,
+		})
 	}
 
 	out = append(out, file{
@@ -411,3 +432,7 @@ func ApplyGitSettings(m *state.Manifest, dryRun bool) error {
 	}
 	return nil
 }
+
+// assetBytes reads one embedded asset. Used by tests to compare what was
+// written against what was shipped.
+func assetBytes(path string) ([]byte, error) { return bothy.Templates.ReadFile(path) }

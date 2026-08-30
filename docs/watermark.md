@@ -1,6 +1,26 @@
 # The watermark extra
 
-Off by default. `bothy config set workspace.watermark true` turns it on.
+Off by default:
+
+```sh
+bothy config set workspace.watermark true
+bothy install
+```
+
+bothy ships the art — the ASCII Tux from the original setup, in
+`templates/extras/watermark/tux.txt`, pre-composited to
+`templates/extras/watermark/tux.png` and copied to
+`~/.config/ghostty/watermark.png` when the extra is on. Its geometry is measured
+from that working setup: 232x324 at +1621+626 on a 1920x1080 canvas, which puts
+it inside the `cockpit` profile's shell pane.
+
+`bothy doctor` fails if the extra is on and the image is missing. Ghostty says
+nothing about a `background-image` that does not exist — it simply draws
+nothing, which looks identical to "the opacity is too low" and sends you tuning
+a setting that was never the problem.
+
+To use your own art, replace `~/.config/ghostty/watermark.png`; bothy backs up
+what was there and will not overwrite a file you have changed.
 
 A terminal cannot scope a background image to one pane — but with a fixed
 layout, the image can be made to *land* on one. Ghostty 1.3+ has
