@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      # `make check` runs lint, the tests, and the PLAN.md §0 budget assertions.
+      - run: make check
+
+  round-trip:
+    # Installing and then uninstalling must leave the filesystem as it was.
+    # That is the reversibility promise in PLAN.md §0, and it is only a promise
+    # if something checks it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - run: go test ./... -run RoundTrip -v

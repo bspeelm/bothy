@@ -1,0 +1,18 @@
+# editor — three columns, for driving the editor yourself with an agent beside it.
+#
+#   ┌──────────────┬──────────────┬──────────────┐  tab-bar
+#   │  editor 40%  │  agent  35%  │  side   25%  │
+#   ├──────────────┴──────────────┴──────────────┤  status-bar
+#
+# The editor slot is the main seat here; in `cockpit` the same editor is only
+# ever reached through $EDITOR from Yazi, git or the agent.
+
+name        = "editor"
+description = "Editor, agent and shell as three columns"
+
+[[rows]]
+panes = [
+    { slot = "editor", name = "editor", focus = true },
+    { slot = "agent",  name = "agent",  size = "35%" },
+    { name = "side",   size = "25%" },
+]

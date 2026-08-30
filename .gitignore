@@ -1,0 +1,7 @@
+# build output
+/dist/
+/bothy
+*.test
+
+# local scratch
+/.scratch/

@@ -1,0 +1,18 @@
+--- Placeholder previewer, used when image previews are turned off.
+---
+--- Stands in for the built-in `empty` previewer, whose "Empty file" text is
+--- actively misleading: the file is not empty, bothy just isn't drawing it.
+local M = {}
+
+function M:peek(job)
+	local hint = ui.Text({
+		ui.Line(""),
+		ui.Line("(press Enter to preview)"),
+	}):area(job.area):align(ui.Align.CENTER)
+
+	ya.preview_widget(job, hint)
+end
+
+function M:seek() end
+
+return M

@@ -1,0 +1,12 @@
+// Zellij's own `zellij setup --dump-config` writes ~400 lines of commented
+// defaults. bothy writes only what it actually sets, so that a later Zellij
+// release changing a default is picked up rather than frozen in place here.
+
+theme "{{ .ThemeName }}"
+default_mode "normal"
+
+// The scrollback editor is what Ctrl-s e opens. Left to itself Zellij uses
+// $EDITOR, which on Fedora is forced to nano by /etc/profile.d — bothy sets
+// $EDITOR too, but naming it here means the setting holds even in a shell that
+// never sourced the profile.
+scrollback_editor "{{ .EditorBin }}"

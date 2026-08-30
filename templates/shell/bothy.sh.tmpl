@@ -1,0 +1,37 @@
+# Sourced from ~/.bashrc.d/, which Fedora's stock ~/.bashrc already loops over.
+# Living in its own file rather than appended to ~/.bashrc means uninstall is a
+# single file removal with nothing to unpick.
+
+# Fedora ships nano-default-editor, which exports EDITOR=nano from
+# /etc/profile.d. That is what Yazi, lazygit and git shell out to, so it has to
+# be overridden here rather than assumed.
+if command -v {{ .EditorBin }} >/dev/null 2>&1; then
+    export EDITOR={{ .EditorBin }}
+elif command -v vi >/dev/null 2>&1; then
+    export EDITOR=vi
+fi
+export VISUAL="$EDITOR"
+
+# Compact prompt — a 40%-wide side pane cannot spare "user@host". This is a
+# surgical edit of whatever PS1 is already set rather than a fresh one, so the
+# toolbox ⬢ marker and any shell-integration wrappers survive:
+#   ⬢ [user@host dir]$   ->   ⬢ dir$
+if [ -n "$PS1" ]; then
+    PS1="${PS1//\\u@\\h /}"
+    PS1="${PS1//\[\\W\]/\\W}"
+fi
+
+# The launch verb.
+#
+# ~/.bashrc is shared between host and container, but the multiplexer is only
+# installed inside the container — so a plain alias gives "command not found" on
+# the host. This works from either side: run directly when already inside,
+# otherwise hop in first. Home is shared, so $PWD means the same thing on both.
+dev() {
+    local dir="${BOTHY_PROJECT_DIR:-{{ .ProjectDir }}}"
+    dir="${dir:-$PWD}"
+    command bothy dev --dir "$dir" "$@"
+}
+
+# `dev attach` reattaches after a disconnect; sessions survive a terminal or SSH
+# drop, but not a host reboot.

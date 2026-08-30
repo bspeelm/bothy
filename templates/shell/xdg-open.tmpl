@@ -1,0 +1,20 @@
+#!/bin/sh
+# A container has no desktop to open files with, but the host does. This shim
+# forwards to the host when it is running inside a container, and behaves
+# normally otherwise.
+#
+# The guard is not optional. Home is shared between host and container, so this
+# file is on the host's PATH too; without the check the host would exec itself
+# forever.
+if [ -f /run/.containerenv ] || [ -f /run/.dockerenv ]; then
+    exec flatpak-spawn --host xdg-open "$@"
+fi
+
+for candidate in /usr/bin/xdg-open /usr/local/bin/xdg-open; do
+    if [ -x "$candidate" ]; then
+        exec "$candidate" "$@"
+    fi
+done
+
+echo "xdg-open: no system xdg-open found" >&2
+exit 127

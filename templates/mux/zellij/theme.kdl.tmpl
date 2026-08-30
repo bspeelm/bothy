@@ -1,0 +1,20 @@
+// {{ .Theme.Name }} ({{ .Theme.Variant }}) for Zellij.
+//
+// Zellij's `bg` is the UI chrome colour, not the terminal background — the
+// terminal's own background shows through the panes. So `bg` takes the
+// selection colour and `black` takes the real background.
+themes {
+    {{ .ThemeName }} {
+        fg      "{{ .Theme.Fg }}"
+        bg      "{{ .Theme.Selection }}"
+        black   "{{ .Theme.Bg }}"
+        red     "{{ .Theme.Red }}"
+        green   "{{ .Theme.Green }}"
+        yellow  "{{ .Theme.Yellow }}"
+        blue    "{{ .Theme.Purple }}"
+        magenta "{{ .Theme.Pink }}"
+        cyan    "{{ .Theme.Cyan }}"
+        white   "{{ .Theme.Fg }}"
+        orange  "{{ .Theme.Orange }}"
+    }
+}

@@ -1,0 +1,10 @@
+-- Per-file git status in the listing. The fetcher is registered in yazi.toml;
+-- this half is also required, and git.yazi silently does nothing without it.
+require("git"):setup {
+	order = 1500,
+}
+
+-- Close the pane borders so the theme's border colour reads as a full frame.
+require("full-border"):setup {
+	type = ui.Border.ROUNDED,
+}

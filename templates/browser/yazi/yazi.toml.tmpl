@@ -1,0 +1,63 @@
+# Yazi 26.x — the section is [mgr]; it was renamed from [manager] in 25.4.
+[mgr]
+# parent | current | preview.  Yazi's default is [1, 4, 3], which lets the middle
+# column eat about half the pane. Making parent and current equal gives the
+# preview half the width, and the preview is the column doing the work.
+ratio = [2, 2, 4]
+# .gitignore, .env.example and .vscode are half the config in a repo.
+show_hidden = true
+{{ if .ImagePreviews }}
+# Image previews are ON: {{ .GraphicsReason }}
+{{- else }}
+# Image previews are OFF: {{ .GraphicsReason }}
+#
+# Drawing an image makes Yazi query the terminal for cell size and graphics
+# support. A multiplexer that cannot pass the Kitty graphics protocol through
+# also mangles that reply, and the stray bytes get parsed as keystrokes — which
+# is what fires a phantom "Find next" (n = find_arrow) on every image preview.
+# Routing image/* away from the image previewer stops the draw, so the query
+# never happens and the phantom keypress goes with it.
+#
+# `enter-hint` is a local plugin. The built-in `empty` previewer would work too,
+# but it labels the file "Empty file", which is a lie: the file has content, it
+# just isn't being drawn.
+[plugin]
+prepend_previewers = [
+    { mime = "image/*", run = "enter-hint" },
+]
+prepend_preloaders = [
+    { mime = "image/*", run = "empty" },
+]
+{{- end }}
+
+# git.yazi — per-file status in the listing. Needs Yazi >= 26.
+# 26.x renamed the `id` key in fetchers to `url` + `group`.
+[[plugin.prepend_fetchers]]
+url   = "*"
+run   = "git"
+group = "git"
+
+[[plugin.prepend_fetchers]]
+url   = "*/"
+run   = "git"
+group = "git"
+
+[preview]
+max_width  = 900
+max_height = 900
+{{ if .Container }}
+# Yazi's default opener is xdg-open, and this container has no desktop to hand a
+# file to: `gio mime image/png` here reports "No default applications", because
+# app databases are read from the filesystem and only the host has the viewers.
+# Installing xdg-utils gets a working binary with nothing behind it. Hand the
+# open to the host instead.
+[opener]
+open = [
+    { run = 'flatpak-spawn --host xdg-open "$@"', desc = "Open on host", orphan = true },
+]
+{{- else }}
+[opener]
+open = [
+    { run = 'xdg-open "$@"', desc = "Open", orphan = true },
+]
+{{- end }}

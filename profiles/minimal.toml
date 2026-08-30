@@ -1,0 +1,19 @@
+# minimal — agent and a shell, nothing else.
+#
+#   ┌────────────────────────┬───────────────────┐
+#   │       agent  65%       │     side  35%     │
+#   └────────────────────────┴───────────────────┘
+#
+# For small screens and SSH sessions, where a file browser costs more rows than
+# it earns. The tab bar is off for the same reason; the status bar stays because
+# it is the only on-screen reminder of Zellij's modal keys.
+
+name        = "minimal"
+description = "Agent and a shell — for small screens and SSH"
+tab_bar     = false
+
+[[rows]]
+panes = [
+    { slot = "agent", name = "agent", focus = true },
+    { name = "side", size = "35%" },
+]

@@ -1,0 +1,110 @@
+" {{ .Theme.Name }} ({{ .Theme.Variant }}) for vim, generated from the same
+" eleven-token palette every other tool in the workspace is themed from.
+"
+" Generating this rather than vendoring a colorscheme keeps the promise that a
+" theme provider is a palette plus templates: add a palette and every tool,
+" including this one, is themed. It also means bothy needs no network and
+" carries no third-party colorscheme.
+"
+" Colorschemes must live in ~/.vim/colors/. A colorscheme under
+" ~/.vim/pack/*/start is on 'runtimepath' only after .vimrc has been sourced,
+" so the `colorscheme` line in .vimrc would not find it — silently.
+
+hi clear
+if exists('syntax_on')
+    syntax reset
+endif
+let g:colors_name = '{{ .ThemeName }}'
+set background={{ if .Theme.Light }}light{{ else }}dark{{ end }}
+
+" gui* applies under 'termguicolors', which .vimrc enables when available.
+let s:fg     = '{{ .Theme.Fg }}'
+let s:bg     = '{{ .Theme.Bg }}'
+let s:cmt    = '{{ .Theme.Comment }}'
+let s:sel    = '{{ .Theme.Selection }}'
+let s:cyan   = '{{ .Theme.Cyan }}'
+let s:green  = '{{ .Theme.Green }}'
+let s:orange = '{{ .Theme.Orange }}'
+let s:pink   = '{{ .Theme.Pink }}'
+let s:purple = '{{ .Theme.Purple }}'
+let s:red    = '{{ .Theme.Red }}'
+let s:yellow = '{{ .Theme.Yellow }}'
+
+function! s:hi(group, fg, bg, attr) abort
+    let l:cmd = 'hi ' . a:group
+    if a:fg   !=# '' | let l:cmd .= ' guifg=' . a:fg | endif
+    if a:bg   !=# '' | let l:cmd .= ' guibg=' . a:bg | endif
+    if a:attr !=# '' | let l:cmd .= ' gui=' . a:attr . ' cterm=' . a:attr | endif
+    execute l:cmd
+endfunction
+
+" --- editor chrome ---------------------------------------------------------
+call s:hi('Normal',       s:fg,     s:bg,  '')
+call s:hi('LineNr',       s:cmt,    '',    '')
+call s:hi('CursorLineNr', s:yellow, '',    'bold')
+call s:hi('CursorLine',   '',       s:sel, 'NONE')
+call s:hi('Visual',       '',       s:sel, '')
+call s:hi('VertSplit',    s:cmt,    '',    'NONE')
+call s:hi('StatusLine',   s:fg,     s:sel, 'NONE')
+call s:hi('StatusLineNC', s:cmt,    s:sel, 'NONE')
+call s:hi('Pmenu',        s:fg,     s:sel, '')
+call s:hi('PmenuSel',     s:bg,     s:purple, '')
+call s:hi('Search',       s:bg,     s:yellow, '')
+call s:hi('IncSearch',    s:bg,     s:orange, '')
+call s:hi('MatchParen',   s:pink,   '',    'underline')
+call s:hi('ColorColumn',  '',       s:sel, '')
+call s:hi('SignColumn',   s:cmt,    '',    'NONE')
+call s:hi('Folded',       s:cmt,    s:sel, '')
+call s:hi('NonText',      s:cmt,    '',    '')
+call s:hi('SpecialKey',   s:cmt,    '',    '')
+call s:hi('Directory',    s:purple, '',    '')
+call s:hi('Title',        s:purple, '',    'bold')
+call s:hi('ErrorMsg',     s:red,    '',    '')
+call s:hi('WarningMsg',   s:orange, '',    '')
+call s:hi('MoreMsg',      s:cyan,   '',    '')
+call s:hi('Question',     s:cyan,   '',    '')
+call s:hi('WildMenu',     s:bg,     s:purple, '')
+call s:hi('TabLine',      s:cmt,    s:sel, 'NONE')
+call s:hi('TabLineSel',   s:fg,     s:bg,  'bold')
+call s:hi('TabLineFill',  '',       s:sel, 'NONE')
+
+" --- syntax ----------------------------------------------------------------
+call s:hi('Comment',    s:cmt,    '', 'italic')
+call s:hi('Constant',   s:purple, '', '')
+call s:hi('String',     s:yellow, '', '')
+call s:hi('Character',  s:yellow, '', '')
+call s:hi('Number',     s:purple, '', '')
+call s:hi('Boolean',    s:purple, '', '')
+call s:hi('Float',      s:purple, '', '')
+call s:hi('Identifier', s:cyan,   '', 'NONE')
+call s:hi('Function',   s:green,  '', '')
+call s:hi('Statement',  s:pink,   '', 'NONE')
+call s:hi('Conditional',s:pink,   '', '')
+call s:hi('Repeat',     s:pink,   '', '')
+call s:hi('Label',      s:pink,   '', '')
+call s:hi('Operator',   s:pink,   '', '')
+call s:hi('Keyword',    s:pink,   '', '')
+call s:hi('Exception',  s:pink,   '', '')
+call s:hi('PreProc',    s:pink,   '', '')
+call s:hi('Include',    s:pink,   '', '')
+call s:hi('Define',     s:pink,   '', '')
+call s:hi('Macro',      s:pink,   '', '')
+call s:hi('Type',       s:cyan,   '', 'italic')
+call s:hi('StorageClass', s:pink, '', '')
+call s:hi('Structure',  s:pink,   '', '')
+call s:hi('Typedef',    s:pink,   '', '')
+call s:hi('Special',    s:pink,   '', '')
+call s:hi('Delimiter',  s:fg,     '', '')
+call s:hi('Underlined', s:cyan,   '', 'underline')
+call s:hi('Todo',       s:orange, '', 'bold')
+call s:hi('Error',      s:red,    '', '')
+
+" --- diffs and git ---------------------------------------------------------
+call s:hi('DiffAdd',     s:green,  '', '')
+call s:hi('DiffChange',  s:orange, '', '')
+call s:hi('DiffDelete',  s:red,    '', '')
+call s:hi('DiffText',    s:yellow, '', 'bold')
+call s:hi('diffAdded',   s:green,  '', '')
+call s:hi('diffRemoved', s:red,    '', '')
+
+delfunction s:hi

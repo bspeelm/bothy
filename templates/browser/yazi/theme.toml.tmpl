@@ -1,0 +1,99 @@
+# {{ .Theme.Name }} ({{ .Theme.Variant }}) for Yazi.
+
+[mgr]
+cwd = { fg = "{{ .Theme.Cyan }}" }
+
+hovered         = { fg = "{{ .Theme.Bg }}", bg = "{{ .Theme.Purple }}" }
+preview_hovered = { underline = true }
+
+find_keyword  = { fg = "{{ .Theme.Yellow }}", italic = true }
+find_position = { fg = "{{ .Theme.Pink }}", bg = "reset", italic = true }
+
+marker_copied   = { fg = "{{ .Theme.Green }}", bg = "{{ .Theme.Green }}" }
+marker_cut      = { fg = "{{ .Theme.Red }}", bg = "{{ .Theme.Red }}" }
+marker_marked   = { fg = "{{ .Theme.Cyan }}", bg = "{{ .Theme.Cyan }}" }
+marker_selected = { fg = "{{ .Theme.Yellow }}", bg = "{{ .Theme.Yellow }}" }
+
+tab_active   = { fg = "{{ .Theme.Bg }}", bg = "{{ .Theme.Purple }}" }
+tab_inactive = { fg = "{{ .Theme.Fg }}", bg = "{{ .Theme.Selection }}" }
+tab_width    = 1
+
+border_symbol = "│"
+border_style  = { fg = "{{ .Theme.Comment }}" }
+
+[mode]
+normal_main = { fg = "{{ .Theme.Bg }}", bg = "{{ .Theme.Purple }}", bold = true }
+normal_alt  = { fg = "{{ .Theme.Purple }}", bg = "{{ .Theme.Selection }}" }
+select_main = { fg = "{{ .Theme.Bg }}", bg = "{{ .Theme.Green }}", bold = true }
+select_alt  = { fg = "{{ .Theme.Green }}", bg = "{{ .Theme.Selection }}" }
+unset_main  = { fg = "{{ .Theme.Bg }}", bg = "{{ .Theme.Pink }}", bold = true }
+unset_alt   = { fg = "{{ .Theme.Pink }}", bg = "{{ .Theme.Selection }}" }
+
+[status]
+progress_label  = { fg = "{{ .Theme.Fg }}", bold = true }
+progress_normal = { fg = "{{ .Theme.Purple }}", bg = "{{ .Theme.Selection }}" }
+progress_error  = { fg = "{{ .Theme.Red }}", bg = "{{ .Theme.Selection }}" }
+
+[input]
+border   = { fg = "{{ .Theme.Purple }}" }
+title    = {}
+value    = {}
+selected = { reversed = true }
+
+[pick]
+border   = { fg = "{{ .Theme.Purple }}" }
+active   = { fg = "{{ .Theme.Pink }}", bold = true }
+inactive = {}
+
+[confirm]
+border  = { fg = "{{ .Theme.Purple }}" }
+title   = { fg = "{{ .Theme.Purple }}" }
+content = {}
+list    = {}
+btn_yes = { reversed = true }
+btn_no  = {}
+
+[tasks]
+border  = { fg = "{{ .Theme.Purple }}" }
+title   = {}
+hovered = { fg = "{{ .Theme.Pink }}", underline = true }
+
+[which]
+mask            = { bg = "{{ .Theme.Selection }}" }
+cand            = { fg = "{{ .Theme.Cyan }}" }
+rest            = { fg = "{{ .Theme.Comment }}" }
+desc            = { fg = "{{ .Theme.Pink }}" }
+separator       = "  "
+separator_style = { fg = "{{ .Theme.Selection }}" }
+
+[help]
+on      = { fg = "{{ .Theme.Cyan }}" }
+run     = { fg = "{{ .Theme.Pink }}" }
+hovered = { reversed = true, bold = true }
+footer  = { fg = "{{ .Theme.Selection }}", bg = "{{ .Theme.Fg }}" }
+
+[notify]
+title_info  = { fg = "{{ .Theme.Green }}" }
+title_warn  = { fg = "{{ .Theme.Orange }}" }
+title_error = { fg = "{{ .Theme.Red }}" }
+
+# git.yazi status signs
+[git]
+untracked = { fg = "{{ .Theme.Comment }}" }
+ignored   = { fg = "{{ .Theme.Selection }}" }
+modified  = { fg = "{{ .Theme.Orange }}" }
+added     = { fg = "{{ .Theme.Green }}" }
+deleted   = { fg = "{{ .Theme.Red }}" }
+updated   = { fg = "{{ .Theme.Yellow }}" }
+
+[filetype]
+rules = [
+    { mime = "image/*", fg = "{{ .Theme.Orange }}" },
+    { mime = "{audio,video}/*", fg = "{{ .Theme.Pink }}" },
+    { mime = "application/{zip,gzip,x-tar,x-bzip*,x-7z*,x-rar,xz}", fg = "{{ .Theme.Pink }}" },
+    { mime = "application/{json,x-ndjson}", fg = "{{ .Theme.Yellow }}" },
+    { mime = "text/*", fg = "{{ .Theme.Yellow }}" },
+    # 26.x renamed the `name` key in filetype rules to `url`.
+    { url = "*/", fg = "{{ .Theme.Purple }}" },
+    { url = "*", fg = "{{ .Theme.Fg }}" },
+]

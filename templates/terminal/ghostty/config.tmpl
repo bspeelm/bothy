@@ -1,0 +1,28 @@
+# Ghostty reads exactly this file: ~/.config/ghostty/config, no extension.
+# A file named config.ghostty next to it is silently ignored — bothy doctor
+# checks for that, because it looks correct and does nothing.
+
+theme = {{ .ThemeName }}
+{{ if .Font }}
+font-family = {{ .Font }}
+{{- end }}
+
+# Make URLs clickable.
+link-url = true
+{{ if .Watermark }}
+# --- watermark -------------------------------------------------------------
+#
+# A terminal cannot scope a background image to one pane, but the image can be
+# made to *land* on one. Build a mostly-transparent canvas the shape of the
+# window, composite the art at the percentage where the pane sits, and stretch
+# it: `fit = stretch` maps the image onto the window, so those percentages hold
+# at any resolution.
+#
+# Do not use `fit = none` with a corner anchor — that positions in absolute
+# pixels and is correct on exactly one monitor. `position` is ignored under
+# stretch. See docs/watermark.md for the ImageMagick recipe.
+background-image = {{ .WatermarkPath }}
+background-image-opacity = {{ .WatermarkOpacity }}
+background-image-fit = stretch
+background-image-repeat = false
+{{- end }}

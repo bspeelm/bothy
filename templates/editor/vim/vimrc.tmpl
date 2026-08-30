@@ -1,0 +1,46 @@
+" ---------------------------------------------------------------------------
+" Colorschemes live in ~/.vim/colors/, NOT in a vim8 package under
+" pack/*/start. pack/*/start is appended to 'runtimepath' *after* .vimrc is
+" sourced, so a `colorscheme` call here would not find it — and `packadd!`
+" only searches opt/. It fails silently, which is why bothy doctor tests that
+" the colorscheme really loaded rather than that the file exists.
+" ---------------------------------------------------------------------------
+if has('termguicolors')
+    set termguicolors
+endif
+syntax enable
+{{ if .VimColorscheme -}}
+colorscheme {{ .VimColorscheme }}
+{{- end }}
+
+" --- sane minimums ---------------------------------------------------------
+set number relativenumber      " hybrid line numbers
+set ignorecase smartcase       " case-insensitive until you type a capital
+set incsearch hlsearch
+set expandtab shiftwidth=2 softtabstop=2
+set autoindent smartindent
+set scrolloff=4
+set hidden                     " switch buffers without saving
+set mouse=a
+set clipboard=unnamedplus      " share the system clipboard
+set wildmenu wildmode=longest:full,full
+set undofile undodir=~/.vim/undo
+set backupdir=~/.vim/backup directory=~/.vim/swap
+
+autocmd FileType python setlocal shiftwidth=4 softtabstop=4
+
+" --- plugins ---------------------------------------------------------------
+" vim-commentary : gcc toggles a line, gc a motion or selection
+" fzf.vim        : needs the base fzf vim plugin, which the fzf package already
+"                  installs system-wide — nothing extra to fetch
+" Both are native vim8 packages in ~/.vim/pack/plugins/start/. No manager.
+let mapleader = " "
+nnoremap <leader>f :Files<CR>
+nnoremap <leader>g :Rg<CR>
+nnoremap <leader>b :Buffers<CR>
+
+" Comment JSX with // rather than the HTML-ish default
+autocmd FileType javascriptreact,javascript setlocal commentstring=//\ %s
+
+" <Esc> clears the search highlight
+nnoremap <silent> <Esc> :nohlsearch<CR>

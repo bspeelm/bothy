@@ -1,0 +1,26 @@
+# cockpit — the default: supervising an agent working on a repo.
+#
+# This is the origin layout from docs/origin-cheatsheet.md:
+#
+#   ┌──────────────────────────────────────────────────┐  tab-bar
+#   │            browser — 100% w, 50% h               │
+#   ├─────────────────────────────┬────────────────────┤
+#   │        agent  60%           │     side  40%      │
+#   ├─────────────────────────────┴────────────────────┤  status-bar
+#
+# `rows` stack top to bottom; a row with several `panes` puts them side by side.
+# Zellij calls that a "vertical" split, which means the opposite of what it
+# sounds like — bothy's renderer owns that translation so this file doesn't.
+
+name        = "cockpit"
+description = "Supervising an agent on a repo: file browser on top, agent and a shell below"
+
+[[rows]]
+size  = "50%"
+panes = [ { slot = "browser" } ]
+
+[[rows]]
+panes = [
+    { slot = "agent", name = "agent", focus = true },
+    { name = "side", size = "40%" },
+]
