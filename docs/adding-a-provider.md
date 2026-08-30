@@ -74,9 +74,16 @@ has the pattern. If your provider fixes a bug, the test is the bug.
 ## Themes specifically
 
 A theme provider is a palette and nothing else — the per-tool templates are
-shared. Fill the eleven tokens in `internal/theme` and every tool, including the
-generated vim colorscheme, is themed.
+shared. Fill the eleven tokens and every tool, including the generated vim
+colorscheme, is themed.
 
-If the palette belongs to a paid product, it does not go in this repository.
-Read it from the user's own copy at install time, the way `pro.go` does for
-Dracula PRO, and add the values to the forbidden list in `licence_test.go`.
+There is exactly one palette in this repository, the open Dracula one in
+`internal/theme/theme.go`, and `TestOnlyOpenDraculaColoursAreShipped` fails the
+build if any other colour value appears in a shipped file. So a new palette does
+not go here at all: it goes in a file on the user's machine, and they point
+`theme.palette` at it. `bothy theme example` prints the blank form.
+
+That applies to a palette of any provenance, licensed or free. If you want to
+propose an additional *built-in* palette, it needs a licence that permits
+redistribution, and the guard's allowlist has to be widened deliberately — which
+is the review conversation, not an implementation detail.

@@ -125,7 +125,7 @@ func Checks() []Check {
 		{ID: "agent", Run: checkAgent},
 		{ID: "path-shadowing", Run: checkPathShadowing},
 		{ID: "local-bin-on-path", Run: checkLocalBinOnPath},
-		{ID: "theme-pro-pack", Run: checkThemeProPack},
+		{ID: "theme-palette", Run: checkThemePalette},
 	}
 }
 
@@ -539,24 +539,25 @@ func checkLocalBinOnPath(env Env) Result {
 		`add it: export PATH="$HOME/.local/bin:$PATH"`)
 }
 
-// checkThemeProPack verifies a PRO pack is still where the config says, since
-// the pack lives outside anything bothy manages and can move or be deleted.
-func checkThemeProPack(env Env) Result {
-	if !theme.IsProVariant(env.Config.Theme.Variant) {
-		return skip("theme variant is open Dracula; no pack needed")
+// checkThemePalette verifies a custom palette file still loads. It lives
+// outside anything bothy manages, so it can be moved or edited into an invalid
+// state long after the install that read it.
+func checkThemePalette(env Env) Result {
+	path := env.Config.PalettePath(env.Platform)
+	if path == "" {
+		return skip("using the built-in open Dracula palette")
 	}
-	pack := env.Config.ProPackPath(env.Platform)
-	if err := theme.ValidatePack(pack); err != nil {
-		return fail("the Dracula PRO pack is not usable",
-			err.Error(),
-			"point bothy at your copy: bothy config set theme.pro_pack <path>")
+	if _, err := os.Stat(path); err != nil {
+		return fail("the configured palette file is missing",
+			path+" does not exist",
+			"point bothy at it again: bothy config set theme.palette <path>")
 	}
-	if _, err := theme.LoadPro(pack, env.Config.Theme.Variant); err != nil {
-		return fail("the Dracula PRO pack could not be read",
-			err.Error(),
-			"check the pack is complete, or switch back: bothy config set theme.variant open")
+	pal, err := theme.Load(path)
+	if err != nil {
+		return fail("the palette file could not be read", err.Error(),
+			"fix the file, or fall back: bothy config set theme.palette \"\"")
 	}
-	return pass("Dracula PRO pack reads cleanly (" + env.Config.Theme.Variant + ")")
+	return pass("palette " + pal.Name + " reads cleanly")
 }
 
 // whichAll returns every copy of a binary on PATH, in order.

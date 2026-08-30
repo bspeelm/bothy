@@ -19,6 +19,7 @@ import (
 	"github.com/bothy-dev/bothy/internal/layout"
 	"github.com/bothy-dev/bothy/internal/platform"
 	"github.com/bothy-dev/bothy/internal/state"
+	"github.com/bothy-dev/bothy/internal/theme"
 )
 
 // Version is set at build time by the release process.
@@ -32,6 +33,7 @@ Usage:
   bothy dev     [--dir DIR]     launch the workspace  (usually run as: dev)
   bothy config  [get|set|edit|path]
   bothy layout  [--profile P]   print the layout that would be launched
+  bothy theme   example         print a blank palette file to fill in
   bothy uninstall [--dry-run]   put the machine back the way it was
   bothy version
 
@@ -58,6 +60,8 @@ func main() {
 		err = cmdConfig(args)
 	case "layout":
 		err = cmdLayout(args)
+	case "theme":
+		err = cmdTheme(args)
 	case "uninstall":
 		err = cmdUninstall(args)
 	case "version", "--version", "-v":
@@ -231,6 +235,18 @@ func cmdLayout(args []string) error {
 		return err
 	}
 	fmt.Print(kdl)
+	return nil
+}
+
+// cmdTheme prints a blank palette. This is the whole mechanism for using a
+// palette other than the built-in one: fill in eleven colours, point bothy at
+// the file. Nothing about any particular theme is built in, and a palette you
+// have licensed never leaves your machine.
+func cmdTheme(args []string) error {
+	if len(args) == 0 || args[0] != "example" {
+		return fmt.Errorf("usage: bothy theme example")
+	}
+	fmt.Print(theme.ExampleFile)
 	return nil
 }
 

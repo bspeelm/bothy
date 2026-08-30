@@ -5,21 +5,28 @@
 //
 // Two sources fill a Palette:
 //
-//   - Built-in open palettes (Dracula, MIT-licensed), baked into this package.
-//   - A user's own licensed Dracula PRO pack, parsed at install time. See pro.go
-//     and docs/decisions.md ADR-006: bothy ships no PRO colour of its own.
+//   - The built-in open Dracula palette (MIT), the only colour values in this
+//     repository.
+//   - A palette file the user points bothy at. See custom.go and
+//     docs/decisions.md ADR-006.
 package theme
 
 import (
 	"fmt"
-	"strings"
 )
+
+// paletteTokens is every colour a palette must define, and the canonical order
+// they are reported in.
+var paletteTokens = []string{
+	"fg", "bg", "comment", "selection",
+	"cyan", "green", "orange", "pink", "purple", "red", "yellow",
+}
 
 // Palette is the complete set of colours every template may reference.
 // Keep it at these eleven tokens: a template that needs a twelfth colour is a
 // sign the template is doing design work that belongs in the palette.
 type Palette struct {
-	Name    string // display name, e.g. "dracula" or "dracula-pro"
+	Name    string // display name, e.g. "dracula"; names the generated theme files
 	Variant string // "open", "pro", "blade", …
 	Light   bool   // true for light palettes (alucard); tools that need to know
 
@@ -93,10 +100,7 @@ func (p Palette) Color(token string) (string, error) {
 // loudly rather than write a half-themed config.
 func (p Palette) missing() []string {
 	var out []string
-	for _, tok := range []string{
-		"fg", "bg", "comment", "selection",
-		"cyan", "green", "orange", "pink", "purple", "red", "yellow",
-	} {
+	for _, tok := range paletteTokens {
 		if v, _ := p.Color(tok); v == "" {
 			out = append(out, tok)
 		}
@@ -104,19 +108,20 @@ func (p Palette) missing() []string {
 	return out
 }
 
-// Resolve returns the palette for a configured variant.
+// Resolve returns the palette to theme the workspace with.
 //
-// "open" (the default) is built in. Every other variant is a Dracula PRO one
-// and requires the user's own pack; there is deliberately no fallback that
-// quietly substitutes open Dracula, because silently themeing the workspace
-// differently from what was asked for is worse than refusing.
-func Resolve(variant, packDir string) (Palette, error) {
-	if variant == "" || variant == "open" || variant == "dracula" {
+// palettePath wins when set: it is the user's own file, and pointing bothy at
+// one is how any palette other than open Dracula gets in. Otherwise the named
+// built-in provider is used.
+func Resolve(provider, palettePath string) (Palette, error) {
+	if palettePath != "" {
+		return Load(palettePath)
+	}
+	switch provider {
+	case "", "dracula", "open":
 		return Open(), nil
 	}
-	if !IsProVariant(variant) {
-		return Palette{}, fmt.Errorf("theme: unknown variant %q (open, %s)",
-			variant, strings.Join(ProVariants, ", "))
-	}
-	return LoadPro(packDir, variant)
+	return Palette{}, fmt.Errorf("theme: unknown provider %q\n"+
+		"      built in: dracula\n"+
+		"      for anything else, write a palette file and set theme.palette", provider)
 }

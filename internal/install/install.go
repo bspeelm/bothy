@@ -101,15 +101,6 @@ func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 		}
 	}
 
-	// A Dracula PRO pack ships ready-made Ghostty themes and vim colorschemes.
-	// Copying them beats regenerating what already exists — and bothy has no
-	// PRO colours of its own to regenerate them from (ADR-006).
-	if theme.IsProVariant(cfg.Theme.Variant) {
-		if err := copyProAssets(w, p, cfg, res); err != nil {
-			return nil, err
-		}
-	}
-
 	res.Skipped = w.Skipped
 	if opts.DryRun {
 		return res, nil
@@ -190,9 +181,10 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 			Dest:     filepath.Join(p.Home, ".vimrc"),
 			Template: "templates/editor/vim/vimrc.tmpl",
 		})
-		// A PRO pack ships its own colorschemes, which are copied verbatim.
-		// For every other palette bothy generates one from the same tokens.
-		if !theme.IsProVariant(cfg.Theme.Variant) {
+		// Generated from the palette — unless theme.vim_colorscheme names one
+		// the user has already installed, in which case that is theirs to
+		// manage and bothy only references it.
+		if cfg.Theme.VimColorscheme == "" {
 			out = append(out, file{
 				Dest:     filepath.Join(p.Home, ".vim", "colors", data.ThemeName+".vim"),
 				Template: "templates/theme/vim-colorscheme.vim.tmpl",
@@ -206,14 +198,8 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 		gh := filepath.Join(cfgDir, "ghostty")
 		out = append(out,
 			file{Dest: filepath.Join(gh, "config"), Template: "templates/terminal/ghostty/config.tmpl"},
+			file{Dest: filepath.Join(gh, "themes", data.ThemeName), Template: "templates/terminal/ghostty/theme.tmpl"},
 		)
-		// For PRO variants the pack's own theme file is copied instead.
-		if !theme.IsProVariant(cfg.Theme.Variant) {
-			out = append(out, file{
-				Dest:     filepath.Join(gh, "themes", data.ThemeName),
-				Template: "templates/terminal/ghostty/theme.tmpl",
-			})
-		}
 	}
 
 	// The watermark art is a PNG, so it is copied rather than rendered. It is
@@ -247,11 +233,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 
 // buildData assembles the template data, running the graphics probe.
 func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
-	name := pal.Name
-	if pal.Variant != "" && pal.Variant != "open" {
-		name = "dracula-" + pal.Variant
-	}
-
+	name := slug(pal.Name)
 	g := probe.CheckGraphics(muxBinary(cfg), p.Terminal)
 
 	d := Data{
@@ -270,10 +252,8 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		WatermarkPath:    filepath.Join(p.ConfigDir, "ghostty", "watermark.png"),
 		WatermarkOpacity: "0.05",
 	}
-	if theme.IsProVariant(pal.Variant) {
-		// The pack's own colorschemes, whose names it decides.
-		d.VimColorscheme = theme.VimColorscheme(pal.Variant)
-	} else {
+	d.VimColorscheme = cfg.Theme.VimColorscheme
+	if d.VimColorscheme == "" {
 		d.VimColorscheme = name
 	}
 	return d
@@ -344,60 +324,6 @@ func LoadProfile(p platform.Info, name string) (layout.Profile, error) {
 	return layout.LoadProfile(tmp.Name())
 }
 
-// copyProAssets copies the ready-made files out of a user's Dracula PRO pack.
-func copyProAssets(w *render.Writer, p platform.Info, cfg config.Config, res *Result) error {
-	pack := cfg.ProPackPath(p)
-	variant := cfg.Theme.Variant
-
-	// Ghostty theme: the pack ships one per variant, already in Ghostty's format.
-	if cfg.Slots.Terminal == "ghostty" {
-		src := theme.GhosttyThemeFile(pack, variant)
-		body, err := os.ReadFile(src)
-		if err != nil {
-			return fmt.Errorf("install: reading %s from the pack: %w", src, err)
-		}
-		dest := filepath.Join(p.ConfigDir, "ghostty", "themes", "dracula-"+variant)
-		changed, err := w.Write(dest, body)
-		if err != nil {
-			return err
-		}
-		record(res, dest, changed)
-	}
-
-	// vim colorschemes: all of them, so switching variant later needs no reinstall.
-	if cfg.Slots.Editor == "vim" {
-		dir := filepath.Join(pack, theme.DefaultPackLayout.VimColors)
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return fmt.Errorf("install: reading %s from the pack: %w", dir, err)
-		}
-		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".vim") {
-				continue
-			}
-			body, err := os.ReadFile(filepath.Join(dir, e.Name()))
-			if err != nil {
-				return fmt.Errorf("install: %w", err)
-			}
-			dest := filepath.Join(p.Home, ".vim", "colors", e.Name())
-			changed, err := w.Write(dest, body)
-			if err != nil {
-				return err
-			}
-			record(res, dest, changed)
-		}
-	}
-	return nil
-}
-
-func record(res *Result, dest string, changed bool) {
-	if changed {
-		res.Written = append(res.Written, dest)
-	} else {
-		res.Unchanged = append(res.Unchanged, dest)
-	}
-}
-
 // GitSettings are the `git config --global` keys bothy sets for delta.
 // Previous values are recorded so uninstall can put them back.
 func GitSettings() []state.GitSetting {
@@ -436,3 +362,26 @@ func ApplyGitSettings(m *state.Manifest, dryRun bool) error {
 // assetBytes reads one embedded asset. Used by tests to compare what was
 // written against what was shipped.
 func assetBytes(path string) ([]byte, error) { return bothy.Templates.ReadFile(path) }
+
+// slug makes a palette name safe to use as a filename and as a Zellij theme
+// identifier, both of which dislike spaces.
+func slug(name string) string {
+	if name == "" {
+		return "bothy"
+	}
+	out := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		case r == ' ', r == '.':
+			return '-'
+		}
+		return -1
+	}, name)
+	if out == "" {
+		return "bothy"
+	}
+	return out
+}

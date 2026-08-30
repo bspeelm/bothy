@@ -82,6 +82,7 @@ Then open a new shell and run `dev`.
 | `dev` | Launch the workspace (`dev attach` to reattach) |
 | `bothy config set <key> <value>` | Change a slot, theme, or workspace setting |
 | `bothy layout` | Print the layout that would be launched |
+| `bothy theme example` | Print a blank palette file to fill in |
 | `bothy uninstall` | Put the machine back the way it was |
 
 ## Slots
@@ -95,7 +96,7 @@ Every component is a slot with interchangeable providers:
 | browser | yazi | none |
 | editor | vim | nano, helix |
 | agent | claude-code | any command |
-| theme | dracula (open) | dracula pro, via your own pack |
+| theme | dracula (open) | any palette, via a file of your own |
 
 ```sh
 bothy config set slots.editor helix
@@ -116,24 +117,35 @@ Zellij's KDL, which means you never meet Zellij's two layout traps:
 `split_direction="vertical"` produces *columns*, and a one-line `plugin` node
 needs a trailing semicolon. Drop your own in `~/.config/bothy/profiles/`.
 
-## Theming, and Dracula PRO
+## Theming
 
 bothy ships the **open Dracula** palette (MIT) and themes every tool from the
-same eleven colour tokens — including generating a vim colorscheme, so adding a
-palette themes everything at once.
+same eleven colour tokens — the multiplexer, the file browser, the terminal, and
+a vim colorscheme generated from those tokens. Add a palette and everything is
+themed at once.
 
-[Dracula PRO](https://draculatheme.com/pro) is a paid pack, so **bothy ships none
-of it**. Point bothy at the copy you bought and it reads the palette out of that:
+That one palette is the only set of colour values in this repository. Every
+other palette is a file on your machine:
 
 ```sh
-bothy config set theme.variant pro          # or blade, buffy, lincoln,
-bothy config set theme.pro_pack ~/Documents/Dracula_Theme   # morbius, van-helsing, alucard
+bothy theme example > ~/.config/bothy/my-palette.toml
+$EDITOR ~/.config/bothy/my-palette.toml     # eleven colours
+bothy config set theme.palette ~/.config/bothy/my-palette.toml
 bothy install
 ```
 
-bothy parses the pack's `design/palette.md` for its colours and copies the pack's
-own Ghostty theme and vim colorschemes verbatim. Nothing paid is redistributed,
-and a test in this repository fails the build if a PRO colour ever appears in it.
+This is also how you use a theme you have **licensed**. Copy its values into
+your own file; bothy neither ships nor parses any commercial theme's files, so
+what you have paid for stays on your machine and nothing is redistributed. A
+test fails the build if a colour that is not open Dracula's appears anywhere in
+this repository.
+
+Already have a colorscheme installed for your editor? Name it and bothy will
+reference it instead of generating one:
+
+```sh
+bothy config set theme.vim_colorscheme my_scheme
+```
 
 ## Nothing is written without a backup
 

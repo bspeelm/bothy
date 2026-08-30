@@ -234,7 +234,7 @@ Port every gotcha from the cheat sheet, generalised. Each check has `id`, `sever
 ## 6. Theming
 
 - Ship **Dracula (MIT, the open theme)** as the default and Catppuccin as the second provider. That's it — no paid-theme support paths, no theme importers.
-- A theme provider = one palette TOML + per-tool template. No theme engine. The origin cheat sheet's configs use PRO hex values (`#22212C` bg etc.) — when porting them, swap to the standard open Dracula palette (`#282A36` bg, `#BD93F9` purple, `#FF79C6` pink, `#8BE9FD` cyan, `#50FA7B` green, `#FFB86C` orange, `#FF5555` red, `#F1FA8C` yellow, `#6272A4` comment, `#44475A` selection, `#F8F8F2` fg) rather than copying the PRO values in.
+- A theme provider = one palette TOML + per-tool template. No theme engine. The origin cheat sheet's configs were themed with a licensed pack — when porting them, swap to the standard open Dracula palette (`#282A36` bg, `#BD93F9` purple, `#FF79C6` pink, `#8BE9FD` cyan, `#50FA7B` green, `#FFB86C` orange, `#FF5555` red, `#F1FA8C` yellow, `#6272A4` comment, `#44475A` selection, `#F8F8F2` fg) rather than copying the PRO values in.
 - The Ghostty background-image watermark trick from the cheat sheet is an *optional* extra (`extras/watermark.toml`), off by default, with the percentage-composite ImageMagick recipe and the `fit = stretch` rationale preserved in its doc.
 
 ---

@@ -43,17 +43,30 @@ templates. That is the entire extension surface. No runtime plugin loading, no
 marketplace, no extension API. If adding a provider requires touching Go code,
 the slot model is wrong and that is the bug to fix.
 
-## ADR-006 — Dracula PRO is supported by reference, never redistributed
+## ADR-006 — One palette ships; every other one is a file you supply
 
-Dracula PRO is a paid product. bothy ships the **open** Dracula palette (MIT) as
-its default and baked-in data. Selecting `theme.variant = "pro"` requires the
-user to point `theme.pro_pack` at their own licensed copy of the pack; bothy
-then parses `design/palette.md` out of that pack for the colours it needs, and
-copies the pack's own ready-made Ghostty theme and vim colorschemes into place
-verbatim. No PRO hex value, colorscheme, or font is stored in this repository,
-and a test asserts that (`git grep` for the PRO background must return nothing
-outside test fixtures). The same rule applies to any future paid theme: bothy
-can *use* what a user already owns, and ships none of it.
+bothy carries exactly one palette: the freely-licensed open Dracula one, in
+`internal/theme/theme.go`. Any other palette — a commercial one you have
+licensed, or Catppuccin, or your own — arrives as a small TOML file of eleven
+colours that you point `theme.palette` at. bothy reads it at install time and
+themes the whole workspace from it, including generating a vim colorscheme.
+
+An earlier design went further: it parsed a particular vendor's pack, extracted
+their palette, and copied their theme files into place. That worked, and it was
+the wrong shape. It put knowledge of one commercial product into the core, it
+generated config files full of that product's values, and — most tellingly — the
+test written to forbid those values had to list them, so the guard against
+copying the palette *was* a copy of the palette.
+
+The rule now is simply: **the only colour values in this repository are open
+Dracula's**, and `TestOnlyOpenDraculaColoursAreShipped` enforces it by inverting
+the check. It scans every shipped file and fails on any colour that is not part
+of the built-in palette, so it needs to name nothing it forbids and catches any
+stray palette rather than one vendor's.
+
+The side effect is the good kind: a palette you have licensed stays entirely on
+your machine, and the way in for it is the same route every other theme uses.
+`bothy theme example` prints the blank file to fill in.
 
 ## ADR-007 — Version-gated workarounds, not permanent ones
 

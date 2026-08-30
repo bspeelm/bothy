@@ -37,14 +37,20 @@ type Slots struct {
 	Agent    string `toml:"agent"`
 }
 
-// Theme selects the palette. Variant "open" needs nothing else; any Dracula
-// PRO variant needs ProPack pointing at the user's own licensed copy.
+// Theme selects the palette.
+//
+// Provider names a built-in palette; only open Dracula is built in, because it
+// is the only palette whose values this project may carry. Palette points at a
+// file of your own and wins when set — that is the way in for any other
+// palette, licensed or not, and it keeps that palette on your machine.
 type Theme struct {
 	Provider string `toml:"provider"`
-	Variant  string `toml:"variant"`
-	ProPack  string `toml:"pro_pack"`
-	// Font is a font directory name inside the PRO pack's fonts/ (e.g.
-	// "fira-code"). Empty means bothy does not touch the terminal's font.
+	Palette  string `toml:"palette"`
+	// VimColorscheme uses a colorscheme you already have installed instead of
+	// the one bothy generates from the palette. Give the name vim knows it by.
+	VimColorscheme string `toml:"vim_colorscheme"`
+	// Font is a font family for the terminal, e.g. "Fira Code". Empty leaves
+	// the terminal's own font setting alone.
 	Font string `toml:"font"`
 }
 
@@ -79,7 +85,6 @@ func Default() Config {
 		},
 		Theme: Theme{
 			Provider: "dracula",
-			Variant:  "open",
 		},
 		Extras: append([]string(nil), DefaultExtras...),
 	}
@@ -126,25 +131,18 @@ func Save(p platform.Info, cfg Config) error {
 		return fmt.Errorf("config: %w", err)
 	}
 	header := "# bothy configuration\n" +
-		"# Slots pick a provider per component; theme.variant \"open\" is the\n" +
-		"# freely-licensed Dracula palette. To use Dracula PRO, set variant to one\n" +
-		"# of pro/blade/buffy/lincoln/morbius/van-helsing/alucard and point\n" +
-		"# theme.pro_pack at your own copy of the pack.\n\n"
+		"# Slots pick a provider per component. The built-in theme is open\n" +
+		"# Dracula; for any other palette, including one you have licensed,\n" +
+		"# write the eleven colours into a file of your own and set\n" +
+		"# theme.palette to it (bothy theme example prints a blank one).\n\n"
 	return os.WriteFile(path, append([]byte(header), out...), 0o644)
 }
 
 // Validate catches the configuration mistakes that would otherwise surface as
 // a broken workspace rather than an error message.
 func (c Config) Validate() error {
-	if c.Theme.Variant != "" && c.Theme.Variant != "open" {
-		if !theme.IsProVariant(c.Theme.Variant) {
-			return fmt.Errorf("config: theme.variant %q is not open or a Dracula PRO variant (%s)",
-				c.Theme.Variant, strings.Join(theme.ProVariants, ", "))
-		}
-		if c.Theme.ProPack == "" {
-			return fmt.Errorf("config: theme.variant = %q needs theme.pro_pack set to your own copy\n"+
-				"        of the Dracula PRO pack — bothy ships no PRO colours of its own", c.Theme.Variant)
-		}
+	if c.Profile == "" {
+		return fmt.Errorf("config: profile is empty")
 	}
 	return nil
 }
@@ -152,12 +150,12 @@ func (c Config) Validate() error {
 // Palette resolves the configured theme, expanding ~ in the pack path so that
 // a hand-edited config.toml behaves the way its author expected.
 func (c Config) Palette(p platform.Info) (theme.Palette, error) {
-	return theme.Resolve(c.Theme.Variant, expand(c.Theme.ProPack, p.Home))
+	return theme.Resolve(c.Theme.Provider, c.PalettePath(p))
 }
 
-// ProPackPath is the expanded pack directory, or "" when none is configured.
-func (c Config) ProPackPath(p platform.Info) string {
-	return expand(c.Theme.ProPack, p.Home)
+// PalettePath is the expanded custom palette file, or "" when none is set.
+func (c Config) PalettePath(p platform.Info) string {
+	return expand(c.Theme.Palette, p.Home)
 }
 
 // ContainerFor returns the container `dev` should enter, preferring an explicit
@@ -186,14 +184,10 @@ func (c *Config) Set(key, value string) error {
 		c.Slots.Agent = value
 	case "theme.provider":
 		c.Theme.Provider = value
-	case "theme.variant":
-		if value != "" && value != "open" && !theme.IsProVariant(value) {
-			return fmt.Errorf("config: theme.variant %q is not open or a Dracula PRO variant (%s)",
-				value, strings.Join(theme.ProVariants, ", "))
-		}
-		c.Theme.Variant = value
-	case "theme.pro_pack":
-		c.Theme.ProPack = value
+	case "theme.palette":
+		c.Theme.Palette = value
+	case "theme.vim_colorscheme":
+		c.Theme.VimColorscheme = value
 	case "theme.font":
 		c.Theme.Font = value
 	case "workspace.container":
