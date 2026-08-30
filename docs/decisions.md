@@ -106,3 +106,50 @@ So: bare `bothy` launches the workspace, `bothy attach` reattaches, and
 `bothy dev` is retained as an alias for anyone who has it in muscle memory. The
 shell fragment still sets `EDITOR` and trims the prompt, because those are
 environment, not a launcher.
+
+## ADR-009 — bothy is isolated: it brings its own config tree
+
+This reverses the largest assumption in PLAN.md revision 1, that bothy installs
+tools and writes configs onto your machine. It now writes only into
+`~/.local/share/bothy/`, and launches each tool pointed there.
+
+The original design was defensible and is implemented: every generated file
+carried a header, every pre-existing file was backed up and recorded, and
+`uninstall` restored them. It passed a round-trip test asserting an empty
+filesystem diff. The problem was never that it did not work.
+
+The problem was that "let me rewrite your dotfiles, I promise I backed them up"
+is a large ask of someone evaluating a tool, and that several hundred lines of
+manifest, hashing and restore logic existed for no reason other than that bothy
+touched files it did not own. Isolation replaces a *promise* about your files
+with a *property*: bothy cannot damage a config it never opens.
+
+It also removes the writes that were hardest to justify — `~/.vimrc` and six
+`git config --global` keys. A workspace tool replacing your editor config is
+overreach. Nobody has a pre-existing opinion about the Zellij layout bothy
+launches; plenty of people have one about their editor.
+
+Revision 1 assumed the terminal made full isolation impossible, because Ghostty
+is launched by the desktop rather than by bothy. Two things resolved that.
+Ghostty honours `--config-file=`, so bothy can hand it a config of its own; and
+because a named `theme =` is looked up in paths that are *not* relocatable, the
+palette is written into that file directly rather than referenced. Verified:
+`ghostty +validate-config --config-file=<inlined>` exits 0. Once bothy launches
+the terminal it owns the whole process tree, so `PATH`, `EDITOR`,
+`ZELLIJ_CONFIG_DIR` and `YAZI_CONFIG_HOME` are set for that session alone, and
+the `~/.bashrc.d` fragment — the last write outside bothy's tree — goes too.
+
+Binaries are treated as a separate axis, deliberately. Isolating configs costs
+nothing; duplicating binaries costs disk. So bothy fills gaps rather than
+duplicating: a tool already on `PATH` that meets the minimum version is used
+as-is, and only a missing or too-old one is fetched, into bothy's own `bin/`
+which is prepended to `PATH` for its session only. A filled-in tool never
+shadows your everyday one. Filling in the entire toolset costs 48 MB of static
+binaries, measured from current releases.
+
+The cost is that bothy does less. It no longer carries your `.vimrc` or your
+delta wiring to a new machine — but revision 1's own rule already said those
+belong to the underlying tool, not to bothy. What it does carry is
+`~/.config/bothy/`: slot choices, a palette, and overrides. One directory to put
+in git, which is better portability than a manifest of files scattered across a
+home directory.
