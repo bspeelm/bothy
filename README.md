@@ -1,11 +1,23 @@
-# bothy
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/bothy-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/bothy-light.png">
+    <img alt="bothy — a stone shelter in a landscape, drawn in ASCII" src="docs/images/bothy-light.png" width="820">
+  </picture>
+</p>
+
+<h1 align="center">bothy</h1>
+
+<p align="center">
+  <em>a turn-key terminal workspace built from tools you already trust</em>
+</p>
 
 > **bothy** *(n., Scottish)* — a small unlocked mountain shelter, free for anyone
 > to use, kept by two customs: leave it as you found it, and leave fuel for the
 > next visitor.
 
-A turn-key terminal workspace built from tools you already trust. One command
-opens a persistent layout with a file browser, an agent, and a shell:
+One command opens a persistent layout with a file browser, an agent, and a
+shell:
 
 ```
 ┌──────────────────────────────────────────────────┐  tab bar
