@@ -82,3 +82,27 @@ and why. Deleting the workaround outright would have thrown away the knowledge;
 keeping it unconditionally would have shipped a permanent regression. This
 pattern — gate, probe, explain — is how every workaround inherited from the
 cheat sheet should age.
+
+## ADR-008 — The launch verb is `bothy`, not `dev`
+
+This reverses PLAN.md's original position, which held that `dev` was the brand
+moment and must never change. Three things argued against it.
+
+`dev` is a very common name to claim in someone's shell. It is plausibly already
+a script, an alias, or a function in the dotfiles of exactly the people most
+likely to want this — and silently shadowing it is the kind of surprise bothy
+exists to avoid.
+
+It also required a shell function to exist, which meant the launcher behaved
+differently depending on whether your shell had been reloaded, and had its own
+host-versus-container branch that duplicated logic the binary already had. The
+binary can hop into a container; a shell function that has to decide whether it
+is inside one is a second implementation of the same decision, free to drift.
+
+And a workspace launched by `dev` gives no clue what launched it. `bothy` names
+itself, which matters when the thing you are debugging is your own setup.
+
+So: bare `bothy` launches the workspace, `bothy attach` reattaches, and
+`bothy dev` is retained as an alias for anyone who has it in muscle memory. The
+shell fragment still sets `EDITOR` and trims the prompt, because those are
+environment, not a launcher.

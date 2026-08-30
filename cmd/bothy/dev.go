@@ -40,7 +40,7 @@ func cmdDev(args []string) error {
 	// prose because nothing enforced it.
 	if agent, nested := nestedAgent(); nested {
 		return fmt.Errorf("already inside %s, and the layout would start another one\n"+
-			"      exit this session first, then run dev", agent)
+			"      exit this session first, then run bothy", agent)
 	}
 
 	target := *dir

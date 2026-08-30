@@ -29,7 +29,7 @@ shell:
 
 ```sh
 cd ~/some-project
-dev
+bothy
 ```
 
 bothy installs the tools, writes their configs, lays out the panes, and then
@@ -71,7 +71,7 @@ make install-local
 bothy install
 ```
 
-Then open a new shell and run `dev`.
+Then run `bothy`.
 
 ## Commands
 
@@ -79,7 +79,8 @@ Then open a new shell and run `dev`.
 |---|---|
 | `bothy install` | Write every config, then run the doctor |
 | `bothy doctor` | Report what is broken and how to fix it (`--json` for CI) |
-| `dev` | Launch the workspace (`dev attach` to reattach) |
+| `bothy` | Launch the workspace |
+| `bothy attach` | Reattach to a running session |
 | `bothy config set <key> <value>` | Change a slot, theme, or workspace setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file to fill in |
@@ -163,7 +164,7 @@ bothy config set theme.vim_colorscheme my_scheme
 The default install is user-space only: binaries into `~/.local/bin`, configs
 into XDG paths. No root, nothing layered onto the host image.
 
-Inside Toolbx or Distrobox, bothy detects the container by name, so `dev` run on
+Inside Toolbx or Distrobox, bothy detects the container by name, so `bothy` run on
 the host hops into the right one — no hardcoded container name in your shell
 config. It also installs a *guarded* `xdg-open` shim that forwards to the host,
 guarded because your home directory is shared and an unguarded one makes the

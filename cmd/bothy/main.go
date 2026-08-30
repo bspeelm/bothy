@@ -28,9 +28,10 @@ var Version = "dev"
 const usage = `bothy — a small, unlocked terminal workspace
 
 Usage:
-  bothy install [--dry-run]     install tools, write configs, then check them
+  bothy                         launch the workspace
+  bothy attach                  reattach to a running session
+  bothy install [--dry-run]     write the configs, then check them
   bothy doctor  [--json]        report what is broken and how to fix it
-  bothy dev     [--dir DIR]     launch the workspace  (usually run as: dev)
   bothy config  [get|set|edit|path]
   bothy layout  [--profile P]   print the layout that would be launched
   bothy theme   example         print a blank palette file to fill in
@@ -42,9 +43,15 @@ changes. Nothing is written without first backing up what was there.
 `
 
 func main() {
+	// Bare `bothy` launches the workspace. That is the command people type
+	// every day, so it is the one that costs nothing to type; `bothy help`
+	// is there for everything else.
 	if len(os.Args) < 2 {
-		fmt.Print(usage)
-		os.Exit(2)
+		if err := cmdDev(nil); err != nil {
+			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	cmd, args := os.Args[1], os.Args[2:]
@@ -55,7 +62,10 @@ func main() {
 	case "doctor":
 		err = cmdDoctor(args)
 	case "dev":
+		// Retained so `bothy dev` keeps working; bare `bothy` is the same thing.
 		err = cmdDev(args)
+	case "attach":
+		err = cmdAttach(args)
 	case "config":
 		err = cmdConfig(args)
 	case "layout":

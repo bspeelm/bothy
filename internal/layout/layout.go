@@ -131,7 +131,7 @@ func (p Profile) PaneCount() int {
 
 const managedHeader = `// managed by bothy — this file is generated at launch.
 // Edit the profile instead (bothy config edit, or ~/.config/bothy/profiles/),
-// then run 'dev' again: Zellij applies layout changes at launch only.
+// then run 'bothy' again: Zellij applies layout changes at launch only.
 `
 
 // Render produces the Zellij KDL for a profile.

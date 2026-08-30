@@ -21,17 +21,9 @@ if [ -n "$PS1" ]; then
     PS1="${PS1//\[\\W\]/\\W}"
 fi
 
-# The launch verb.
+# `bothy` launches the workspace and `bothy attach` reattaches. Both are the
+# binary itself — there is no shell function here to go stale, and nothing that
+# behaves differently on the host than it does inside a container.
 #
-# ~/.bashrc is shared between host and container, but the multiplexer is only
-# installed inside the container — so a plain alias gives "command not found" on
-# the host. This works from either side: run directly when already inside,
-# otherwise hop in first. Home is shared, so $PWD means the same thing on both.
-dev() {
-    local dir="${BOTHY_PROJECT_DIR:-{{ .ProjectDir }}}"
-    dir="${dir:-$PWD}"
-    command bothy dev --dir "$dir" "$@"
-}
-
-# `dev attach` reattaches after a disconnect; sessions survive a terminal or SSH
-# drop, but not a host reboot.
+# BOTHY_PROJECT_DIR pins it to one directory, if you would rather it did not
+# follow $PWD.
