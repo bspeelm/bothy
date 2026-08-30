@@ -15,7 +15,8 @@ func envWithConfigDir(t *testing.T) (Env, string) {
 	dir := t.TempDir()
 	return Env{
 		Platform: platform.Info{
-			ConfigDir: dir,
+			ConfigDir: filepath.Join(dir, ".config"),
+			DataDir:   filepath.Join(dir, ".local", "share"),
 			Home:      dir,
 			LocalBin:  filepath.Join(dir, ".local", "bin"),
 		},
@@ -23,12 +24,13 @@ func envWithConfigDir(t *testing.T) (Env, string) {
 	}, dir
 }
 
-func writeYazi(t *testing.T, dir, body string) {
+func writeYazi(t *testing.T, env Env, body string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Join(dir, "yazi"), 0o755); err != nil {
+	dir := filepath.Join(env.Platform.ConfigRoot(), "yazi")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "yazi", "yazi.toml"), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "yazi.toml"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -38,8 +40,8 @@ func writeYazi(t *testing.T, dir, body string) {
 // install it performs — which is precisely what happened the first time this
 // check ran against a real machine.
 func TestYaziKeyCheckIgnoresComments(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	writeYazi(t, dir, `# Yazi 26.x — the section is [mgr]; it was renamed from [manager] in 25.4.
+	env, _ := envWithConfigDir(t)
+	writeYazi(t, env, `# Yazi 26.x — the section is [mgr]; it was renamed from [manager] in 25.4.
 [mgr]
 ratio = [2, 2, 4]
 `)
@@ -50,8 +52,8 @@ ratio = [2, 2, 4]
 }
 
 func TestYaziKeyCheckCatchesRealStaleTable(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	writeYazi(t, dir, "[manager]\nratio = [1, 4, 3]\n")
+	env, _ := envWithConfigDir(t)
+	writeYazi(t, env, "[manager]\nratio = [1, 4, 3]\n")
 	got := checkYaziConfigKeys(env)
 	if got.Severity != Fail {
 		t.Errorf("severity = %s, want fail for a real [manager] table", got.Severity)
@@ -63,54 +65,18 @@ func TestYaziKeyCheckCatchesRealStaleTable(t *testing.T) {
 
 // 26.x renamed `name` to `url` in filetype rules. Same anchoring rule.
 func TestYaziKeyCheckCatchesStaleFiletypeRule(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	writeYazi(t, dir, "[mgr]\n[filetype]\nrules = [\n  name = \"*/\"\n]\n")
+	env, _ := envWithConfigDir(t)
+	writeYazi(t, env, "[mgr]\n[filetype]\nrules = [\n  name = \"*/\"\n]\n")
 	if got := checkYaziConfigKeys(env); got.Severity != Fail {
 		t.Errorf("severity = %s, want fail for a `name =` filetype rule", got.Severity)
 	}
 }
 
 func TestYaziKeyCheckIgnoresUrlForm(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	writeYazi(t, dir, "[mgr]\n[filetype]\nrules = [\n  { url = \"*/\", fg = \"#BD93F9\" },\n]\n")
+	env, _ := envWithConfigDir(t)
+	writeYazi(t, env, "[mgr]\n[filetype]\nrules = [\n  { url = \"*/\", fg = \"#BD93F9\" },\n]\n")
 	if got := checkYaziConfigKeys(env); got.Severity != Pass {
 		t.Errorf("severity = %s (%s), want pass for the current `url =` form", got.Severity, got.Detail)
-	}
-}
-
-// A file that looks like a Ghostty config but is not named `config` is ignored
-// by Ghostty without a word. That silence is the whole reason for the check.
-func TestGhosttyNearMissFilenameIsReported(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	gh := filepath.Join(dir, "ghostty")
-	if err := os.MkdirAll(gh, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"config", "config.ghostty"} {
-		if err := os.WriteFile(filepath.Join(gh, name), []byte("theme = dracula\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	got := checkGhosttyConfigName(env)
-	if got.Severity != Warn {
-		t.Errorf("severity = %s, want warn", got.Severity)
-	}
-	if got.Detail == "" || got.Fix == "" {
-		t.Error("the report should name the ignored file and say what to do")
-	}
-}
-
-func TestGhosttyCorrectFilenamePasses(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	gh := filepath.Join(dir, "ghostty")
-	if err := os.MkdirAll(gh, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(gh, "config"), []byte("theme = dracula\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if got := checkGhosttyConfigName(env); got.Severity != Pass {
-		t.Errorf("severity = %s (%s)", got.Severity, got.Detail)
 	}
 }
 
@@ -118,8 +84,8 @@ func TestGhosttyCorrectFilenamePasses(t *testing.T) {
 // its guard the host would exec itself forever. An unguarded shim is a failure,
 // not a warning.
 func TestXdgOpenShimWithoutGuardFails(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	bin := filepath.Join(dir, ".local", "bin")
+	env, _ := envWithConfigDir(t)
+	bin := env.Platform.BinDir()
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -134,8 +100,8 @@ func TestXdgOpenShimWithoutGuardFails(t *testing.T) {
 }
 
 func TestXdgOpenShimWithGuardPasses(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	bin := filepath.Join(dir, ".local", "bin")
+	env, _ := envWithConfigDir(t)
+	bin := env.Platform.BinDir()
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -150,8 +116,8 @@ func TestXdgOpenShimWithGuardPasses(t *testing.T) {
 
 // A shim someone else put there is not bothy's to judge.
 func TestXdgOpenForeignShimIsSkipped(t *testing.T) {
-	env, dir := envWithConfigDir(t)
-	bin := filepath.Join(dir, ".local", "bin")
+	env, _ := envWithConfigDir(t)
+	bin := env.Platform.BinDir()
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}

@@ -18,7 +18,6 @@ import (
 	"github.com/bothy-dev/bothy/internal/install"
 	"github.com/bothy-dev/bothy/internal/layout"
 	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/state"
 	"github.com/bothy-dev/bothy/internal/theme"
 )
 
@@ -117,37 +116,14 @@ func cmdInstall(args []string) error {
 	if *dryRun {
 		verb = "would write"
 	}
-	fmt.Printf("%s %d file(s), %d already current\n", verb, len(res.Written), len(res.Unchanged))
+	fmt.Printf("%s %d file(s), %d already current, under %s\n",
+		verb, len(res.Written), len(res.Unchanged), tilde(res.Root, p.Home))
 	for _, f := range res.Written {
 		fmt.Printf("  + %s\n", tilde(f, p.Home))
 	}
-	if len(res.Skipped) > 0 {
-		fmt.Printf("\nleft alone (edited by hand since bothy wrote them):\n")
-		for _, f := range res.Skipped {
-			fmt.Printf("  ! %s\n", tilde(f, p.Home))
-		}
-		fmt.Println("  move your changes into ~/.config/bothy/overrides/ to keep them across installs")
-	}
-
-	// delta as git's pager is part of the setup being ported. Previous values
-	// are recorded first so uninstall can put them back — including putting a
-	// key back to unset, which is not the same as putting it back to empty.
-	if contains(cfg.Extras, "delta") {
-		m, err := state.Load(p.StateDir)
-		if err != nil {
-			return err
-		}
-		if err := install.ApplyGitSettings(m, *dryRun); err != nil {
-			return err
-		}
-		if !*dryRun {
-			if err := m.Save(p.StateDir); err != nil {
-				return err
-			}
-		}
-	}
 
 	fmt.Printf("\nimage previews: %v — %s\n", res.Data.ImagePreviews, res.Data.GraphicsReason)
+	fmt.Println("nothing outside that directory was touched.")
 
 	if *dryRun {
 		return nil
@@ -170,7 +146,11 @@ func cmdDoctor(args []string) error {
 }
 
 func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
-	env := doctor.Env{Platform: p, Config: cfg, ProfileName: cfg.Profile}
+	env := doctor.Env{
+		Platform: p, Config: cfg, ProfileName: cfg.Profile,
+		// Check the tools the way bothy will actually run them.
+		ToolEnv: install.SessionEnv(p, cfg),
+	}
 	if prof, err := install.LoadProfile(p, cfg.Profile); err == nil {
 		env.PaneCount = prof.PaneCount()
 	}
@@ -319,16 +299,8 @@ func cmdUninstall(args []string) error {
 	if err != nil {
 		return err
 	}
-	m, err := state.Load(p.StateDir)
-	if err != nil {
-		return err
-	}
-	if len(m.Files) == 0 && len(m.Binaries) == 0 {
-		fmt.Println("nothing recorded — bothy has not installed anything here")
-		return nil
-	}
 
-	rep, err := install.Uninstall(p, m, *dryRun)
+	rep, err := install.Uninstall(p, *dryRun)
 	if err != nil {
 		return err
 	}
@@ -336,18 +308,14 @@ func cmdUninstall(args []string) error {
 	if *dryRun {
 		verb = "would remove"
 	}
-	fmt.Printf("%s %d file(s), restored %d backup(s)\n", verb, len(rep.Removed), len(rep.Restored))
 	for _, f := range rep.Removed {
-		fmt.Printf("  - %s\n", tilde(f, p.Home))
+		fmt.Printf("%s %s\n", verb, tilde(f, p.Home))
 	}
-	for _, f := range rep.Restored {
-		fmt.Printf("  ↩ %s\n", tilde(f, p.Home))
+	if len(rep.Removed) == 0 {
+		fmt.Println("nothing to remove")
 	}
-	if len(rep.Kept) > 0 {
-		fmt.Println("\nkept (edited since bothy wrote them):")
-		for _, f := range rep.Kept {
-			fmt.Printf("  ! %s\n", tilde(f, p.Home))
-		}
+	for _, f := range rep.Kept {
+		fmt.Printf("  kept %s\n", tilde(f, p.Home))
 	}
 	return nil
 }
@@ -376,14 +344,4 @@ func expandDir(dir, home string) string {
 // newFlagSet keeps flag handling uniform across subcommands.
 func newFlagSet(name string) *flag.FlagSet {
 	return flag.NewFlagSet(name, flag.ExitOnError)
-}
-
-// contains reports whether a slice holds a value.
-func contains(hay []string, needle string) bool {
-	for _, v := range hay {
-		if v == needle {
-			return true
-		}
-	}
-	return false
 }

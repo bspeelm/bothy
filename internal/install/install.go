@@ -1,14 +1,14 @@
-// Package install turns a configuration into files on disk.
+// Package install renders bothy's config tree.
 //
-// It is the only package that knows which template goes where. Everything it
-// writes goes through render.Writer, so every file is backed up, recorded in
-// the manifest, and removable by `bothy uninstall`.
+// Everything it writes lands under <bothy>/config (ADR-009). It never touches
+// ~/.config/yazi, ~/.vimrc, ~/.bashrc.d or your global git config; the tools
+// are launched pointed at bothy's tree instead. See cmd/bothy/dev.go for the
+// environment that does the pointing.
 package install
 
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -18,7 +18,6 @@ import (
 	"github.com/bothy-dev/bothy/internal/platform"
 	"github.com/bothy-dev/bothy/internal/probe"
 	"github.com/bothy-dev/bothy/internal/render"
-	"github.com/bothy-dev/bothy/internal/state"
 	"github.com/bothy-dev/bothy/internal/theme"
 )
 
@@ -48,12 +47,11 @@ type Data struct {
 	WatermarkOpacity string
 }
 
-// Result reports what an install did, for a human-readable summary.
+// Result reports what an install did.
 type Result struct {
 	Written   []string
 	Unchanged []string
-	Skipped   []string
-	BackupDir string
+	Root      string
 	Data      Data
 }
 
@@ -62,23 +60,18 @@ type Options struct {
 	DryRun bool
 }
 
-// Run writes every config file the configuration calls for.
+// Run renders bothy's config tree.
 func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 	pal, err := cfg.Palette(p)
 	if err != nil {
 		return nil, err
 	}
 
-	m, err := state.Load(p.StateDir)
-	if err != nil {
-		return nil, err
-	}
-
-	w := render.NewWriter(m, p.StateDir, p.Home, filepath.Join(p.ConfigDir, "bothy", "overrides"))
+	w := render.NewWriter(p.BothyDir(), filepath.Join(p.UserConfigDir(), "overrides"))
 	w.DryRun = opts.DryRun
 
 	data := buildData(p, cfg, pal)
-	res := &Result{BackupDir: w.BackupDir(), Data: data}
+	res := &Result{Root: p.BothyDir(), Data: data}
 
 	for _, f := range plan(p, cfg, data) {
 		body, err := renderFile(w, f, data)
@@ -100,129 +93,117 @@ func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 			res.Unchanged = append(res.Unchanged, f.Dest)
 		}
 	}
-
-	res.Skipped = w.Skipped
-	if opts.DryRun {
-		return res, nil
-	}
-	return res, m.Save(p.StateDir)
+	return res, nil
 }
 
 // file is one destination and the template that fills it.
 type file struct {
 	Dest     string
+	Tool     string // names the ~/.config/bothy/overrides/<tool>/ directory
 	Template string // path inside the embedded templates FS
-	// Asset is copied byte-for-byte instead of being rendered. Binary marks
-	// content that must not have a text header prepended to it.
-	Asset  string
-	Binary bool
-	Exec   bool
-	// Literal replaces Template for content bothy generates in Go rather than
-	// from a template — the layout KDL, which the layout package renders.
-	Literal []byte
+	// Asset is copied byte-for-byte instead of rendered, for content a text
+	// header would corrupt.
+	Asset string
+	Exec  bool
 }
 
 func renderFile(w *render.Writer, f file, data Data) ([]byte, error) {
-	if f.Literal != nil {
-		return f.Literal, nil
-	}
 	if f.Asset != "" {
-		// No managed-by header: a PNG with a comment glued to the front is not
-		// a PNG. Ownership is tracked by the manifest instead, which is what
-		// uninstall consults anyway.
+		// No header: a PNG with a comment glued to the front is not a PNG.
 		return bothy.Templates.ReadFile(f.Asset)
 	}
 	src, err := bothy.Templates.ReadFile(f.Template)
 	if err != nil {
 		return nil, fmt.Errorf("install: %w", err)
 	}
-	return w.Render(f.Dest, filepath.Base(f.Template), string(src), data)
+	return w.Render(f.Dest, f.Tool, filepath.Base(f.Template), string(src), data)
 }
 
-// plan lists every file to write for a configuration. Adding a provider should
-// mean adding entries here and templates beside them — never new logic.
+// Destinations inside bothy's config root. The launcher points each tool at
+// these, so they are named once and used from both places.
+
+func ZellijDir(p platform.Info) string { return filepath.Join(p.ConfigRoot(), "zellij") }
+func YaziDir(p platform.Info) string   { return filepath.Join(p.ConfigRoot(), "yazi") }
+func VimDir(p platform.Info) string    { return filepath.Join(p.ConfigRoot(), "vim") }
+func VimRC(p platform.Info) string     { return filepath.Join(VimDir(p), "vimrc") }
+func GhosttyConf(p platform.Info) string {
+	return filepath.Join(p.ConfigRoot(), "ghostty.conf")
+}
+
+// plan lists every file to write. Adding a provider should mean adding entries
+// here and templates beside them — never new logic.
 func plan(p platform.Info, cfg config.Config, data Data) []file {
-	cfgDir := p.ConfigDir
 	var out []file
 
 	if cfg.Slots.Mux == "zellij" {
+		z := ZellijDir(p)
 		out = append(out,
-			file{
-				Dest:     filepath.Join(cfgDir, "zellij", "config.kdl"),
-				Template: "templates/mux/zellij/config.kdl.tmpl",
-			},
-			file{
-				Dest:     filepath.Join(cfgDir, "zellij", "themes", data.ThemeName+".kdl"),
-				Template: "templates/mux/zellij/theme.kdl.tmpl",
-			},
+			file{Dest: filepath.Join(z, "config.kdl"), Tool: "zellij",
+				Template: "templates/mux/zellij/config.kdl.tmpl"},
+			file{Dest: filepath.Join(z, "themes", data.ThemeName+".kdl"), Tool: "zellij",
+				Template: "templates/mux/zellij/theme.kdl.tmpl"},
 		)
 	}
 
 	if cfg.Slots.Browser == "yazi" {
-		yazi := filepath.Join(cfgDir, "yazi")
+		y := YaziDir(p)
 		out = append(out,
-			file{Dest: filepath.Join(yazi, "yazi.toml"), Template: "templates/browser/yazi/yazi.toml.tmpl"},
-			file{Dest: filepath.Join(yazi, "keymap.toml"), Template: "templates/browser/yazi/keymap.toml.tmpl"},
-			file{Dest: filepath.Join(yazi, "init.lua"), Template: "templates/browser/yazi/init.lua.tmpl"},
-			file{Dest: filepath.Join(yazi, "theme.toml"), Template: "templates/browser/yazi/theme.toml.tmpl"},
+			file{Dest: filepath.Join(y, "yazi.toml"), Tool: "yazi",
+				Template: "templates/browser/yazi/yazi.toml.tmpl"},
+			file{Dest: filepath.Join(y, "keymap.toml"), Tool: "yazi",
+				Template: "templates/browser/yazi/keymap.toml.tmpl"},
+			file{Dest: filepath.Join(y, "init.lua"), Tool: "yazi",
+				Template: "templates/browser/yazi/init.lua.tmpl"},
+			file{Dest: filepath.Join(y, "theme.toml"), Tool: "yazi",
+				Template: "templates/browser/yazi/theme.toml.tmpl"},
 		)
-		// The placeholder previewer only exists to stand in for images, so it
-		// is only written when images are actually turned off.
+		// The placeholder previewer only stands in for images, so it is only
+		// written when images are actually turned off.
 		if !data.ImagePreviews {
 			out = append(out, file{
-				Dest:     filepath.Join(yazi, "plugins", "enter-hint.yazi", "main.lua"),
+				Dest: filepath.Join(y, "plugins", "enter-hint.yazi", "main.lua"), Tool: "yazi",
 				Template: "templates/browser/yazi/enter-hint.lua.tmpl",
 			})
 		}
 	}
 
-	if cfg.Slots.Editor == "vim" {
+	// The editor is yours. bothy sets $EDITOR for its own session and stops
+	// there — unless you have no config and want one, which is the same
+	// gap-filling rule the binaries follow.
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig {
+		out = append(out,
+			file{Dest: VimRC(p), Tool: "vim",
+				Template: "templates/editor/vim/vimrc.tmpl"},
+			file{Dest: filepath.Join(VimDir(p), "colors", data.ThemeName+".vim"), Tool: "vim",
+				Template: "templates/theme/vim-colorscheme.vim.tmpl"},
+		)
+	}
+
+	// Ghostty's config carries the palette inline rather than naming a theme:
+	// theme *lookup* paths are not relocatable, so a `theme = x` reference
+	// would send it hunting in ~/.config/ghostty/themes and defeat the point.
+	if cfg.Slots.Terminal == "ghostty" {
 		out = append(out, file{
-			Dest:     filepath.Join(p.Home, ".vimrc"),
-			Template: "templates/editor/vim/vimrc.tmpl",
+			Dest: GhosttyConf(p), Tool: "ghostty",
+			Template: "templates/terminal/ghostty/config.tmpl",
 		})
-		// Generated from the palette — unless theme.vim_colorscheme names one
-		// the user has already installed, in which case that is theirs to
-		// manage and bothy only references it.
-		if cfg.Theme.VimColorscheme == "" {
+		if data.Watermark {
 			out = append(out, file{
-				Dest:     filepath.Join(p.Home, ".vim", "colors", data.ThemeName+".vim"),
-				Template: "templates/theme/vim-colorscheme.vim.tmpl",
+				Dest:  data.WatermarkPath,
+				Asset: "templates/extras/watermark/tux.png",
 			})
 		}
 	}
 
-	// The terminal is never installed, only configured — it lives on the host,
-	// outside anything bothy is willing to touch.
-	if cfg.Slots.Terminal == "ghostty" {
-		gh := filepath.Join(cfgDir, "ghostty")
-		out = append(out,
-			file{Dest: filepath.Join(gh, "config"), Template: "templates/terminal/ghostty/config.tmpl"},
-			file{Dest: filepath.Join(gh, "themes", data.ThemeName), Template: "templates/terminal/ghostty/theme.tmpl"},
-		)
-	}
-
-	// The watermark art is a PNG, so it is copied rather than rendered. It is
-	// only written when the extra is on: an unused image sitting in the config
-	// directory is clutter, and its absence is what the doctor checks for.
-	if data.Watermark && cfg.Slots.Terminal == "ghostty" {
-		out = append(out, file{
-			Dest:   data.WatermarkPath,
-			Asset:  "templates/extras/watermark/tux.png",
-			Binary: true,
-		})
-	}
-
-	out = append(out, file{
-		Dest:     filepath.Join(p.Home, ".bashrc.d", "bothy.sh"),
-		Template: "templates/shell/bothy.sh.tmpl",
-	})
-
-	// Only inside a container: on the host this shim would shadow the real
-	// xdg-open for every application, which is not bothy's business.
+	// Inside a container there is no desktop to open a file with, so the
+	// opener forwards to the host. The shim lives in bothy's own bin/, which
+	// is on PATH for bothy's session only — revision 1 put it in ~/.local/bin,
+	// where it was on the host's PATH too and needed a guard against the host
+	// executing it and recursing into itself. Scoping removes that hazard; the
+	// guard stays anyway, because it is three lines and PATH is fickle.
 	if p.InContainer() {
 		out = append(out, file{
-			Dest:     filepath.Join(p.LocalBin, "xdg-open"),
+			Dest: filepath.Join(p.BinDir(), "xdg-open"), Tool: "shell",
 			Template: "templates/shell/xdg-open.tmpl",
 			Exec:     true,
 		})
@@ -249,7 +230,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		Font:             cfg.Theme.Font,
 		ProjectDir:       cfg.Workspace.ProjectDir,
 		Watermark:        cfg.Workspace.Watermark,
-		WatermarkPath:    filepath.Join(p.ConfigDir, "ghostty", "watermark.png"),
+		WatermarkPath:    filepath.Join(p.ConfigRoot(), "watermark.png"),
 		WatermarkOpacity: "0.05",
 	}
 	d.VimColorscheme = cfg.Theme.VimColorscheme
@@ -303,7 +284,7 @@ func Commands(cfg config.Config) layout.Commands {
 // LoadProfile reads a profile by name, preferring the user's own copy in
 // ~/.config/bothy/profiles over the shipped one.
 func LoadProfile(p platform.Info, name string) (layout.Profile, error) {
-	user := filepath.Join(p.ConfigDir, "bothy", "profiles", name+".toml")
+	user := filepath.Join(p.UserConfigDir(), "profiles", name+".toml")
 	if _, err := os.Stat(user); err == nil {
 		return layout.LoadProfile(user)
 	}
@@ -324,46 +305,7 @@ func LoadProfile(p platform.Info, name string) (layout.Profile, error) {
 	return layout.LoadProfile(tmp.Name())
 }
 
-// GitSettings are the `git config --global` keys bothy sets for delta.
-// Previous values are recorded so uninstall can put them back.
-func GitSettings() []state.GitSetting {
-	return []state.GitSetting{
-		{Key: "core.pager", Value: "delta"},
-		{Key: "interactive.diffFilter", Value: "delta --color-only"},
-		{Key: "delta.navigate", Value: "true"},
-		{Key: "delta.line-numbers", Value: "true"},
-		{Key: "delta.syntax-theme", Value: "Dracula"},
-		{Key: "merge.conflictstyle", Value: "zdiff3"},
-	}
-}
-
-// ApplyGitSettings wires delta up as git's pager, remembering what was there.
-func ApplyGitSettings(m *state.Manifest, dryRun bool) error {
-	for _, g := range GitSettings() {
-		out, err := exec.Command("git", "config", "--global", "--get", g.Key).Output()
-		if err == nil {
-			g.Previous = strings.TrimSpace(string(out))
-			g.HadPrevious = true
-		}
-		if g.Previous == g.Value {
-			m.RecordGitSetting(g)
-			continue
-		}
-		if !dryRun {
-			if err := exec.Command("git", "config", "--global", g.Key, g.Value).Run(); err != nil {
-				return fmt.Errorf("install: git config %s: %w", g.Key, err)
-			}
-		}
-		m.RecordGitSetting(g)
-	}
-	return nil
-}
-
-// assetBytes reads one embedded asset. Used by tests to compare what was
-// written against what was shipped.
-func assetBytes(path string) ([]byte, error) { return bothy.Templates.ReadFile(path) }
-
-// slug makes a palette name safe to use as a filename and as a Zellij theme
+// slug makes a palette name safe as a filename and as a Zellij theme
 // identifier, both of which dislike spaces.
 func slug(name string) string {
 	if name == "" {
@@ -384,4 +326,50 @@ func slug(name string) string {
 		return "bothy"
 	}
 	return out
+}
+
+// assetBytes reads one embedded asset. Used by tests to compare what was
+// written against what was shipped.
+func assetBytes(path string) ([]byte, error) { return bothy.Templates.ReadFile(path) }
+
+// SessionEnv builds the environment for bothy's process tree.
+//
+// This is where isolation actually takes effect: the configs were written into
+// bothy's directory, and nothing reads them unless the tools are told to.
+// Telling them is a handful of environment variables scoped to one process
+// tree, so the user's shell keeps its own PATH and EDITOR.
+//
+// The doctor uses this too, deliberately. A check that runs a tool with a
+// different config than the launcher will is worse than no check, because it
+// reports confidently about the wrong file.
+func SessionEnv(p platform.Info, cfg config.Config) []string {
+	env := os.Environ()
+	set := func(k, v string) { env = append(env, k+"="+v) }
+
+	// bothy's own bin first, so a tool it had to supply is used here and only
+	// here. Nothing it installs changes what a command means in your shell.
+	set("PATH", p.BinDir()+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
+		set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
+	}
+	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+		set("YAZI_CONFIG_HOME", YaziDir(p))
+	}
+
+	// Fedora's nano-default-editor exports EDITOR=nano from /etc/profile.d,
+	// and that is what yazi, lazygit and git shell out to. Setting it here
+	// covers bothy's panes without touching the user's shell config.
+	editor := editorBinary(cfg.Slots.Editor)
+	set("EDITOR", editor)
+	set("VISUAL", editor)
+
+	// VIMINIT takes precedence over ~/.vimrc, so it is only set when bothy is
+	// providing a vim config. Otherwise vim is yours and loads yours.
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
+		set("VIMINIT", "source "+VimRC(p))
+	}
+
+	set("BOTHY_SESSION", "1")
+	return env
 }

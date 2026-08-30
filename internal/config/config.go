@@ -23,8 +23,22 @@ type Config struct {
 	Profile   string    `toml:"profile"`
 	Slots     Slots     `toml:"slots"`
 	Theme     Theme     `toml:"theme"`
+	Editor    Editor    `toml:"editor"`
 	Workspace Workspace `toml:"workspace"`
 	Extras    []string  `toml:"extras"`
+	// Passthrough names slots that should use your own config directory
+	// instead of bothy's. It is one environment variable per slot at launch,
+	// not a second code path. See PLAN.md §5.
+	Passthrough []string `toml:"passthrough"`
+}
+
+// Editor holds the one editor setting bothy has an opinion about.
+type Editor struct {
+	// ProvideConfig generates a vimrc and colorscheme inside bothy's tree and
+	// launches vim against them. Off by default: your editor config is yours,
+	// and a workspace tool replacing it is overreach. Worth turning on for a
+	// fresh machine with no vim config at all.
+	ProvideConfig bool `toml:"provide_config"`
 }
 
 // Slots names the provider chosen for each slot. A slot with an empty value
@@ -153,6 +167,16 @@ func (c Config) Palette(p platform.Info) (theme.Palette, error) {
 	return theme.Resolve(c.Theme.Provider, c.PalettePath(p))
 }
 
+// PassesThrough reports whether a slot uses the user's own config directory.
+func (c Config) PassesThrough(slot string) bool {
+	for _, s := range c.Passthrough {
+		if s == slot {
+			return true
+		}
+	}
+	return false
+}
+
 // PalettePath is the expanded custom palette file, or "" when none is set.
 func (c Config) PalettePath(p platform.Info) string {
 	return expand(c.Theme.Palette, p.Home)
@@ -194,6 +218,8 @@ func (c *Config) Set(key, value string) error {
 		c.Workspace.Container = value
 	case "workspace.project_dir":
 		c.Workspace.ProjectDir = value
+	case "editor.provide_config":
+		c.Editor.ProvideConfig = value == "true" || value == "1" || value == "yes"
 	case "workspace.watermark":
 		c.Workspace.Watermark = value == "true" || value == "1" || value == "yes"
 	default:

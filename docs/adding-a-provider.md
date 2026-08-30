@@ -32,15 +32,22 @@ In `internal/install/install.go`, `plan()` maps a configuration to files:
 ```go
 if cfg.Slots.Editor == "helix" {
     out = append(out, file{
-        Dest:     filepath.Join(cfgDir, "helix", "config.toml"),
+        Dest:     filepath.Join(p.ConfigRoot(), "helix", "config.toml"),
+        Tool:     "helix",   // names the overrides/<tool>/ directory
         Template: "templates/editor/helix/config.toml.tmpl",
     })
 }
 ```
 
 That is the one place core code learns a provider exists. Everything after —
-the managed header, the backup, the manifest entry, the override merge, the
-uninstall — happens for free.
+the generated-by header, the override merge, and uninstall — happens for free.
+
+Destinations must be under `p.ConfigRoot()`; the writer refuses anything else,
+which is ADR-009 enforced rather than merely intended. If your tool needs to be
+told where its config lives, add the environment variable to
+`install.SessionEnv` — that is what makes the isolation take effect at launch,
+and the doctor uses the same environment so it checks the file the tool will
+actually read.
 
 ## 3. Add its doctor checks
 

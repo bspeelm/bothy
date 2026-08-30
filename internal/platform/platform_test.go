@@ -3,6 +3,7 @@ package platform
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -32,8 +33,21 @@ func TestDetectFillsPaths(t *testing.T) {
 	if i.LocalBin != filepath.Join(i.Home, ".local", "bin") {
 		t.Errorf("LocalBin = %q", i.LocalBin)
 	}
-	if i.ConfigDir == "" || i.StateDir == "" {
-		t.Errorf("ConfigDir=%q StateDir=%q", i.ConfigDir, i.StateDir)
+	if i.ConfigDir == "" || i.DataDir == "" {
+		t.Errorf("ConfigDir=%q DataDir=%q", i.ConfigDir, i.DataDir)
+	}
+	// Everything bothy generates must sit under one directory — that is the
+	// property `uninstall` relies on (ADR-009).
+	for name, dir := range map[string]string{
+		"ConfigRoot": i.ConfigRoot(), "BinDir": i.BinDir(), "StateDir": i.StateDir(),
+	} {
+		if !strings.HasPrefix(dir, i.BothyDir()) {
+			t.Errorf("%s() = %q, which is outside BothyDir() %q", name, dir, i.BothyDir())
+		}
+	}
+	// The user's own settings live outside that tree, so uninstall keeps them.
+	if strings.HasPrefix(i.UserConfigDir(), i.BothyDir()) {
+		t.Error("UserConfigDir() is inside BothyDir(); uninstall would delete the user's settings")
 	}
 }
 

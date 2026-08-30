@@ -84,7 +84,7 @@ Then run `bothy`.
 | `bothy config set <key> <value>` | Change a slot, theme, or workspace setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file to fill in |
-| `bothy uninstall` | Put the machine back the way it was |
+| `bothy uninstall` | Remove bothy's directory |
 
 ## Slots
 
@@ -148,27 +148,66 @@ reference it instead of generating one:
 bothy config set theme.vim_colorscheme my_scheme
 ```
 
-## Nothing is written without a backup
+## What bothy touches
 
-- Every generated file starts with `# managed by bothy` and names where to put
-  your own changes (`~/.config/bothy/overrides/<tool>/`, appended after the
-  template so it wins).
-- A file that was already there is copied to `~/.local/state/bothy/backup/`
-  and recorded before it is replaced.
-- A managed file you have since edited by hand is **left alone** and reported.
-- `bothy uninstall` works only from that record. A file bothy did not write down
-  is not bothy's to delete.
+Two directories. That is the whole footprint.
+
+```
+~/.local/share/bothy/     bothy's own tree — configs, and any tool it had to supply
+~/.config/bothy/          yours — config.toml, palette, overrides/  (worth putting in git)
+```
+
+**Your dotfiles are neither read nor written.** Not `~/.config/yazi`, not
+`~/.vimrc`, not `~/.bashrc`, not your global git config. bothy renders its
+configs into its own tree and launches each tool pointed there —
+`ZELLIJ_CONFIG_DIR`, `YAZI_CONFIG_HOME`, and a Ghostty config handed over with
+`--config-file`. Those variables are set for bothy's process tree only, so your
+shell keeps its own `PATH` and `EDITOR`.
+
+`bothy uninstall` removes one directory. It is exact by construction rather than
+by careful bookkeeping, and a test asserts that installing writes nothing
+outside that tree in any configuration.
+
+It also means **your setup is portable in one folder**: put `~/.config/bothy/`
+in git, clone it on a new machine, run `bothy install`.
+
+### Using your own config instead
+
+If you have a Yazi setup you like, keep it:
+
+```toml
+# ~/.config/bothy/config.toml
+passthrough = ["yazi"]
+```
+
+That points `YAZI_CONFIG_HOME` at your directory rather than bothy's. The doctor
+reports which slots are passed through and what it turns off — bothy's
+image-preview handling lives in its `yazi.toml`, so passing Yazi through means
+that does not apply.
+
+To adjust bothy's config rather than replace it, drop a file in
+`~/.config/bothy/overrides/<tool>/<file>`. It is appended after the template, so
+your setting wins.
+
+### Tools
+
+bothy fills gaps rather than duplicating. A tool already on your `PATH` that
+meets the minimum version is used as-is; a missing or too-old one is fetched
+into bothy's own `bin/`, which is on `PATH` for bothy's session only. Installing
+a newer zellij never changes what `zellij` means in your shell, and no package
+manager is ever invoked.
 
 ## Containers and immutable distros
 
-The default install is user-space only: binaries into `~/.local/bin`, configs
-into XDG paths. No root, nothing layered onto the host image.
+The install is user-space only: no root, nothing layered onto the host image, so
+it works unchanged on Silverblue, Kinoite and Bazzite.
 
-Inside Toolbx or Distrobox, bothy detects the container by name, so `bothy` run on
-the host hops into the right one — no hardcoded container name in your shell
-config. It also installs a *guarded* `xdg-open` shim that forwards to the host,
-guarded because your home directory is shared and an unguarded one makes the
-host exec itself forever.
+Inside Toolbx or Distrobox, bothy detects the container by name, so `bothy` run
+on the host hops into the right one — no container name hardcoded in a shell
+config. It also supplies a *guarded* `xdg-open` that forwards to the host, since
+a container has no desktop to open a file with. That shim lives in bothy's own
+`bin/`, on `PATH` only for bothy's session — which is why it cannot be picked up
+by the host and made to execute itself forever through your shared home.
 
 ## What bothy is not
 

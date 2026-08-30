@@ -72,7 +72,14 @@ func cmdDev(args []string) error {
 	return launch(p, cfg, target, name)
 }
 
-// launch renders the profile and hands off to the multiplexer.
+// launch renders the profile and hands off to the multiplexer, with an
+// environment that points every tool at bothy's tree.
+//
+// This is where isolation actually happens. The configs were written into
+// bothy's directory by install; nothing reads them unless the tools are told
+// to, and telling them is a handful of environment variables scoped to this
+// one process tree. Your shell keeps its own PATH and EDITOR, and your
+// ~/.config is neither read nor written.
 func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	prof, err := install.LoadProfile(p, profileName)
 	if err != nil {
@@ -83,14 +90,14 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 		return err
 	}
 
-	// Zellij reads layouts from disk, so the rendered profile is written to its
-	// layout directory under a bothy- prefix. It is regenerated every launch,
-	// which is also why editing it by hand does nothing.
-	layoutDir := filepath.Join(p.ConfigDir, "zellij", "layouts")
+	// Zellij reads layouts from disk, so the rendered profile goes into
+	// bothy's own layout directory. It is regenerated every launch, which is
+	// also why editing it by hand does nothing.
+	layoutDir := filepath.Join(install.ZellijDir(p), "layouts")
 	if err := os.MkdirAll(layoutDir, 0o755); err != nil {
 		return err
 	}
-	layoutFile := filepath.Join(layoutDir, "bothy-"+profileName+".kdl")
+	layoutFile := filepath.Join(layoutDir, profileName+".kdl")
 	if err := os.WriteFile(layoutFile, []byte(kdl), 0o644); err != nil {
 		return err
 	}
@@ -99,7 +106,7 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	if mux == "" {
 		mux = "zellij"
 	}
-	bin, err := exec.LookPath(mux)
+	bin, err := lookPathIn(mux, p.BinDir())
 	if err != nil {
 		return fmt.Errorf("%s is not installed — run 'bothy install'", mux)
 	}
@@ -107,7 +114,16 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	if err := os.Chdir(dir); err != nil {
 		return err
 	}
-	return runInteractive(bin, "--layout", layoutFile)
+	return runWithEnv(install.SessionEnv(p, cfg), bin, "--layout", layoutFile)
+}
+
+// lookPathIn prefers bothy's own bin, then falls back to the system PATH.
+func lookPathIn(name, binDir string) (string, error) {
+	own := filepath.Join(binDir, name)
+	if fi, err := os.Stat(own); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+		return own, nil
+	}
+	return exec.LookPath(name)
 }
 
 // hopIntoContainer runs `bothy dev` again, inside the container.
@@ -170,7 +186,14 @@ func nestedAgent() (string, bool) {
 // runInteractive replaces this process's stdio with the child's, so the
 // multiplexer owns the terminal rather than talking through a pipe.
 func runInteractive(name string, args ...string) error {
+	return runWithEnv(nil, name, args...)
+}
+
+// runWithEnv is runInteractive with an explicit environment. A nil env
+// inherits this process's, which is what the container hop wants.
+func runWithEnv(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
+	cmd.Env = env
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

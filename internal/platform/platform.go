@@ -45,10 +45,33 @@ type Info struct {
 	Terminal string // best guess at the emulator: "ghostty", "wezterm", …
 
 	Home      string
-	LocalBin  string // ~/.local/bin
+	LocalBin  string // ~/.local/bin — where the bothy binary itself lives
 	ConfigDir string // $XDG_CONFIG_HOME or ~/.config
-	StateDir  string // $XDG_STATE_HOME or ~/.local/state
+	DataDir   string // $XDG_DATA_HOME or ~/.local/share
 }
+
+// bothy's own tree. Everything bothy generates lives under BothyDir and
+// nothing outside it, which is what makes `uninstall` a directory removal
+// rather than a manifest replay. See PLAN.md §2.
+
+// BothyDir is the root of everything bothy owns.
+func (i Info) BothyDir() string { return filepath.Join(i.DataDir, "bothy") }
+
+// ConfigRoot holds the generated configs the tools are launched against.
+// Note this is *not* the user's ~/.config — bothy never writes there.
+func (i Info) ConfigRoot() string { return filepath.Join(i.BothyDir(), "config") }
+
+// BinDir holds tools bothy had to supply because the system's were missing or
+// too old. It goes on PATH for bothy's session only, so a supplied tool never
+// shadows the user's everyday one.
+func (i Info) BinDir() string { return filepath.Join(i.BothyDir(), "bin") }
+
+// StateDir holds the manifest of what bothy installed.
+func (i Info) StateDir() string { return filepath.Join(i.BothyDir(), "state") }
+
+// UserConfigDir is ~/.config/bothy: the user's own settings, palette and
+// overrides. bothy reads it and writes only config.toml there.
+func (i Info) UserConfigDir() string { return filepath.Join(i.ConfigDir, "bothy") }
 
 // Detect probes the machine. It never fails: an undetectable field is left
 // zero, and the doctor is what turns a missing field into a visible problem.
@@ -64,7 +87,7 @@ func Detect() Info {
 	}
 	i.LocalBin = filepath.Join(home, ".local", "bin")
 	i.ConfigDir = xdg("XDG_CONFIG_HOME", home, ".config")
-	i.StateDir = xdg("XDG_STATE_HOME", home, ".local", "state")
+	i.DataDir = xdg("XDG_DATA_HOME", home, ".local", "share")
 
 	i.DistroID, i.DistroVersion = osRelease()
 	i.Container, i.ContainerName = detectContainer()

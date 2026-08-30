@@ -1,8 +1,35 @@
-# Ghostty reads exactly this file: ~/.config/ghostty/config, no extension.
-# A file named config.ghostty next to it is silently ignored — bothy doctor
-# checks for that, because it looks correct and does nothing.
+# bothy hands this file to ghostty with --config-file, so your own
+# ~/.config/ghostty/config is neither read nor written.
+#
+# The palette is written out here rather than referenced as `theme = <name>`.
+# Ghostty's theme *lookup* paths are not relocatable — a named theme is hunted
+# for in ~/.config/ghostty/themes and /usr/share/ghostty/themes — so naming one
+# would send it straight back into the directory this file exists to avoid.
+# Verified: ghostty +validate-config --config-file=<this> exits 0.
 
-theme = {{ .ThemeName }}
+background = {{ .Theme.Bg }}
+foreground = {{ .Theme.Fg }}
+cursor-color = {{ .Theme.Comment }}
+cursor-text = {{ .Theme.Bg }}
+selection-background = {{ .Theme.Selection }}
+selection-foreground = {{ .Theme.Fg }}
+
+palette = 0={{ .Theme.Bg }}
+palette = 1={{ .Theme.Red }}
+palette = 2={{ .Theme.Green }}
+palette = 3={{ .Theme.Yellow }}
+palette = 4={{ .Theme.Purple }}
+palette = 5={{ .Theme.Pink }}
+palette = 6={{ .Theme.Cyan }}
+palette = 7={{ .Theme.Fg }}
+palette = 8={{ .Theme.Comment }}
+palette = 9={{ .Theme.Red }}
+palette = 10={{ .Theme.Green }}
+palette = 11={{ .Theme.Yellow }}
+palette = 12={{ .Theme.Purple }}
+palette = 13={{ .Theme.Pink }}
+palette = 14={{ .Theme.Cyan }}
+palette = 15={{ .Theme.Fg }}
 {{ if .Font }}
 font-family = {{ .Font }}
 {{- end }}
@@ -13,10 +40,9 @@ link-url = true
 # --- watermark -------------------------------------------------------------
 #
 # A terminal cannot scope a background image to one pane, but the image can be
-# made to *land* on one. Build a mostly-transparent canvas the shape of the
-# window, composite the art at the percentage where the pane sits, and stretch
-# it: `fit = stretch` maps the image onto the window, so those percentages hold
-# at any resolution.
+# made to *land* on one: a mostly-transparent canvas the shape of the window,
+# with the art composited at the percentage where the pane sits. `fit = stretch`
+# maps it onto the window, so those percentages hold at any resolution.
 #
 # Do not use `fit = none` with a corner anchor — that positions in absolute
 # pixels and is correct on exactly one monitor. `position` is ignored under

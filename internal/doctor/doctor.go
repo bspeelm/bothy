@@ -93,6 +93,20 @@ type Env struct {
 	// Profile is the layout profile in use, for the pane-count check.
 	ProfileName string
 	PaneCount   int
+	// ToolEnv is the environment bothy's session runs tools with. Checks that
+	// invoke a tool must use it, or they interrogate the user's config instead
+	// of bothy's — a check that confidently reports on the wrong file is worse
+	// than no check at all. The caller supplies it via install.SessionEnv.
+	ToolEnv []string
+}
+
+// tool builds a command that runs the way bothy's session would.
+func (e Env) tool(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	if e.ToolEnv != nil {
+		cmd.Env = e.ToolEnv
+	}
+	return cmd
 }
 
 // Run executes every applicable check.
@@ -113,18 +127,15 @@ func Checks() []Check {
 		{ID: "yazi-version", Run: checkYaziVersion},
 		{ID: "yazi-config-keys", Run: checkYaziConfigKeys},
 		{ID: "image-previews", Run: checkImagePreviews},
-		{ID: "ghostty-config-name", Run: checkGhosttyConfigName},
+		{ID: "terminal-capability", Run: checkTerminalCapability},
+		{ID: "passthrough", Run: checkPassthrough},
+		{ID: "isolation", Run: checkIsolation},
 		{ID: "watermark-image", Run: checkWatermarkImage},
 		{ID: "zellij-config", Run: checkZellijConfig},
 		{ID: "terminfo", Run: checkTerminfo},
-		{ID: "editor-env", Run: checkEditorEnv},
-		{ID: "vim-colorscheme", Run: checkVimColorscheme},
-		{ID: "vim-colorscheme-location", Run: checkVimColorschemeLocation},
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},
 		{ID: "agent", Run: checkAgent},
-		{ID: "path-shadowing", Run: checkPathShadowing},
-		{ID: "local-bin-on-path", Run: checkLocalBinOnPath},
 		{ID: "theme-palette", Run: checkThemePalette},
 	}
 }
@@ -157,6 +168,9 @@ func checkYaziConfigDiscarded(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
+	if env.Config.PassesThrough("yazi") {
+		return skip("yazi is passed through to your own config")
+	}
 	bin, err := exec.LookPath("yazi")
 	if err != nil {
 		return fail("yazi is not installed",
@@ -164,7 +178,7 @@ func checkYaziConfigDiscarded(env Env) Result {
 			"run 'bothy install' to install it")
 	}
 	// --clear-cache does the config parse and exits, without needing a terminal.
-	out, _ := exec.Command(bin, "--clear-cache").CombinedOutput()
+	out, _ := env.tool(bin, "--clear-cache").CombinedOutput()
 	if yaziComplaint.Match(out) {
 		return fail("yazi is ignoring its entire config",
 			strings.TrimSpace(string(out)),
@@ -181,7 +195,7 @@ func checkYaziVersion(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
-	out, err := exec.Command("yazi", "--version").Output()
+	out, err := env.tool("yazi", "--version").Output()
 	if err != nil {
 		return skip("yazi is not installed")
 	}
@@ -189,7 +203,7 @@ func checkYaziVersion(env Env) Result {
 	if err != nil {
 		return warn("could not read the yazi version", string(out), "")
 	}
-	plugins := filepath.Join(env.Platform.ConfigDir, "yazi", "plugins")
+	plugins := filepath.Join(env.Platform.ConfigRoot(), "yazi", "plugins")
 	if entries, err := os.ReadDir(plugins); err == nil && len(entries) > 0 && !ok {
 		return fail(fmt.Sprintf("yazi %s is too old for the installed plugins", v),
 			"every current yazi-rs plugin refuses to load below 26.x",
@@ -205,12 +219,12 @@ func checkYaziVersion(env Env) Result {
 // 25.x still parses around — [manager] became [mgr], and filetype rules and
 // fetchers take `url` where they used to take `name` and `id`.
 func checkYaziConfigKeys(env Env) Result {
-	if env.Config.Slots.Browser != "yazi" {
-		return skip("browser slot is not yazi")
+	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
+		return skip("bothy is not managing yazi's config")
 	}
 	var stale []string
 	read := func(name string) string {
-		b, _ := os.ReadFile(filepath.Join(env.Platform.ConfigDir, "yazi", name))
+		b, _ := os.ReadFile(filepath.Join(env.Platform.ConfigRoot(), "yazi", name))
 		return string(b)
 	}
 	// Anchored to the start of a line: a config that *documents* the rename in
@@ -245,7 +259,7 @@ func checkImagePreviews(env Env) Result {
 	}
 	g := probe.CheckGraphics(mux, env.Platform.Terminal)
 
-	yaziToml := filepath.Join(env.Platform.ConfigDir, "yazi", "yazi.toml")
+	yaziToml := filepath.Join(env.Platform.ConfigRoot(), "yazi", "yazi.toml")
 	b, err := os.ReadFile(yaziToml)
 	if err != nil {
 		return skip("yazi is not configured yet")
@@ -268,45 +282,6 @@ func checkImagePreviews(env Env) Result {
 	}
 }
 
-// checkGhosttyConfigName catches a file that looks right and does nothing.
-// Ghostty reads exactly ~/.config/ghostty/config; a config.ghostty or
-// config.toml beside it is ignored without a word.
-func checkGhosttyConfigName(env Env) Result {
-	if env.Config.Slots.Terminal != "ghostty" {
-		return skip("terminal slot is not ghostty")
-	}
-	dir := filepath.Join(env.Platform.ConfigDir, "ghostty")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return skip("no ghostty config directory")
-	}
-	var nearMiss []string
-	hasConfig := false
-	for _, e := range entries {
-		switch {
-		case e.Name() == "config":
-			hasConfig = true
-		case strings.HasPrefix(e.Name(), "config."):
-			nearMiss = append(nearMiss, e.Name())
-		}
-	}
-	if len(nearMiss) > 0 {
-		return warn("a ghostty config file is being silently ignored",
-			strings.Join(nearMiss, ", ")+" — ghostty reads only the file named exactly 'config'",
-			"delete it, or rename it to 'config' (no extension)")
-	}
-	if !hasConfig {
-		return fail("ghostty has no config file",
-			dir+"/config does not exist",
-			"run 'bothy install'")
-	}
-	return pass("ghostty config is at the filename ghostty reads")
-}
-
-// checkWatermarkImage catches a watermark that is switched on but pointing at
-// nothing. Ghostty does not complain about a missing background-image — it just
-// draws no image, which looks exactly like "the opacity is too low" and sends
-// people tuning a setting that was never the problem.
 func checkWatermarkImage(env Env) Result {
 	if !env.Config.Workspace.Watermark {
 		return skip("watermark is off")
@@ -314,7 +289,7 @@ func checkWatermarkImage(env Env) Result {
 	if env.Config.Slots.Terminal != "ghostty" {
 		return skip("watermark needs ghostty")
 	}
-	path := filepath.Join(env.Platform.ConfigDir, "ghostty", "watermark.png")
+	path := filepath.Join(env.Platform.ConfigRoot(), "watermark.png")
 	fi, err := os.Stat(path)
 	if err != nil {
 		return fail("the watermark image is missing",
@@ -328,6 +303,73 @@ func checkWatermarkImage(env Env) Result {
 	return pass("watermark image is in place")
 }
 
+// checkTerminalCapability reports where bothy will run. A terminal that cannot
+// draw images is not an error — it is a reason previews will be off, and
+// saying so beats letting someone wonder why their config "did not work".
+func checkTerminalCapability(env Env) Result {
+	term := env.Platform.Terminal
+	if term == "" {
+		term = "an unrecognised terminal"
+	}
+	g := probe.CheckGraphics("", env.Platform.Terminal)
+	if g.Supported {
+		return pass("running in " + term + ", which can draw images")
+	}
+	return warn("this terminal cannot draw inline images",
+		g.Reason,
+		"launch from Ghostty, or let bothy open one for you")
+}
+
+// checkPassthrough states plainly which slots use your configs rather than
+// bothy's, and what that turns off. Passthrough is a reasonable thing to want
+// and a confusing thing to forget.
+func checkPassthrough(env Env) Result {
+	if len(env.Config.Passthrough) == 0 {
+		return skip("no slots are passed through")
+	}
+	var lost []string
+	for _, slot := range env.Config.Passthrough {
+		switch slot {
+		case "yazi":
+			lost = append(lost, "yazi: bothy's image-preview handling and container-aware opener do not apply")
+		case "zellij":
+			lost = append(lost, "zellij: bothy's theme does not apply; your own keybindings do")
+		}
+	}
+	return warn("using your own config for: "+strings.Join(env.Config.Passthrough, ", "),
+		strings.Join(lost, "; "),
+		"remove it from passthrough in ~/.config/bothy/config.toml to use bothy's")
+}
+
+// checkIsolation is the promise in ADR-009, checked rather than asserted:
+// bothy's tree exists, and the files revision 1 used to write are not there
+// with bothy's marker on them.
+func checkIsolation(env Env) Result {
+	root := env.Platform.ConfigRoot()
+	if _, err := os.Stat(root); err != nil {
+		return fail("bothy's config tree is missing", root+" does not exist",
+			"run 'bothy install'")
+	}
+	// Files a previous revision wrote outside the tree. Finding one means an
+	// upgrade left something behind that nothing will now maintain.
+	stale := []string{
+		filepath.Join(env.Platform.Home, ".bashrc.d", "bothy.sh"),
+		filepath.Join(env.Platform.LocalBin, "xdg-open"),
+	}
+	var found []string
+	for _, f := range stale {
+		if b, err := os.ReadFile(f); err == nil && strings.Contains(string(b), "bothy") {
+			found = append(found, f)
+		}
+	}
+	if len(found) > 0 {
+		return warn("files from an older bothy are still outside its tree",
+			strings.Join(found, ", "),
+			"delete them; bothy no longer writes outside "+root)
+	}
+	return pass("everything bothy manages is inside " + root)
+}
+
 func checkZellijConfig(env Env) Result {
 	if env.Config.Slots.Mux != "zellij" {
 		return skip("mux slot is not zellij")
@@ -336,11 +378,11 @@ func checkZellijConfig(env Env) Result {
 	if err != nil {
 		return fail("zellij is not installed", "", "run 'bothy install'")
 	}
-	out, err := exec.Command(bin, "setup", "--check").CombinedOutput()
+	out, err := env.tool(bin, "setup", "--check").CombinedOutput()
 	if err != nil {
 		return fail("zellij rejects its configuration",
 			strings.TrimSpace(string(out)),
-			"run 'bothy install' to regenerate ~/.config/zellij/config.kdl")
+			"run 'bothy install' to regenerate bothy's zellij config")
 	}
 	return pass("zellij accepts its config")
 }
@@ -365,98 +407,6 @@ func checkTerminfo(env Env) Result {
 	return pass("terminfo entry for " + term + " is present")
 }
 
-// checkEditorEnv catches Fedora's nano-default-editor, which exports
-// EDITOR=nano from /etc/profile.d and quietly wins over an unset EDITOR.
-func checkEditorEnv(env Env) Result {
-	want := env.Config.Slots.Editor
-	if want == "" || want == "none" {
-		return skip("no editor slot configured")
-	}
-	got := os.Getenv("EDITOR")
-	if got == "" {
-		return fail("EDITOR is not set",
-			"yazi, lazygit and git all shell out to it",
-			"start a new shell so ~/.bashrc.d/bothy.sh is sourced, or run 'bothy install'")
-	}
-	if !strings.Contains(filepath.Base(got), strings.TrimSuffix(want, "-code")) {
-		return warn("EDITOR is "+got+", not the configured editor ("+want+")",
-			"Fedora's nano-default-editor package sets this from /etc/profile.d",
-			"start a new shell so ~/.bashrc.d/bothy.sh is sourced")
-	}
-	return pass("EDITOR is " + got)
-}
-
-// checkVimColorscheme tests that the colorscheme actually loaded, rather than
-// that its file exists. The distinction matters: a colorscheme in
-// ~/.vim/pack/*/start is on 'runtimepath' only *after* .vimrc is sourced, so
-// the `colorscheme` line fails silently and vim comes up in default colours.
-//
-// The -u is not optional. `vim -es` alone does not source ~/.vimrc, so without
-// it this test passes while testing nothing.
-func checkVimColorscheme(env Env) Result {
-	if env.Config.Slots.Editor != "vim" {
-		return skip("editor slot is not vim")
-	}
-	if _, err := exec.LookPath("vim"); err != nil {
-		return skip("vim is not installed")
-	}
-	vimrc := filepath.Join(env.Platform.Home, ".vimrc")
-	if _, err := os.Stat(vimrc); err != nil {
-		return skip("no ~/.vimrc")
-	}
-
-	out, err := os.CreateTemp("", "bothy-colors-*")
-	if err != nil {
-		return skip("could not create a temporary file")
-	}
-	path := out.Name()
-	out.Close()
-	defer os.Remove(path)
-
-	cmd := exec.Command("vim", "-es", "-u", vimrc,
-		"-c", fmt.Sprintf("call writefile([get(g:,'colors_name','NONE')],'%s')", path),
-		"-c", "q")
-	cmd.Stdin = strings.NewReader("")
-	_ = cmd.Run()
-
-	b, _ := os.ReadFile(path)
-	name := strings.TrimSpace(string(b))
-	if name == "" || name == "NONE" {
-		return fail("vim's colorscheme did not load",
-			"g:colors_name is unset after sourcing ~/.vimrc — the colorscheme file was not found",
-			"colorschemes belong in ~/.vim/colors/, not ~/.vim/pack/*/start/")
-	}
-	return pass("vim colorscheme " + name + " loads")
-}
-
-// checkVimColorschemeLocation warns about the arrangement the previous check
-// would catch only once it has already broken.
-func checkVimColorschemeLocation(env Env) Result {
-	if env.Config.Slots.Editor != "vim" {
-		return skip("editor slot is not vim")
-	}
-	pack := filepath.Join(env.Platform.Home, ".vim", "pack")
-	var found []string
-	_ = filepath.WalkDir(pack, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if filepath.Base(filepath.Dir(path)) == "colors" && strings.HasSuffix(path, ".vim") {
-			found = append(found, path)
-		}
-		return nil
-	})
-	if len(found) > 0 {
-		return warn("colorschemes found under ~/.vim/pack",
-			fmt.Sprintf("%d file(s); pack/*/start joins 'runtimepath' after .vimrc is sourced", len(found)),
-			"copy them to ~/.vim/colors/ instead")
-	}
-	return pass("no colorschemes in the wrong place")
-}
-
-// checkOpener catches "Enter on a png says No such file or directory": Yazi's
-// default opener is xdg-open, which a container has neither the binary nor any
-// application for.
 func checkOpener(env Env) Result {
 	if _, err := exec.LookPath("xdg-open"); err != nil {
 		if env.Platform.InContainer() {
@@ -474,7 +424,7 @@ func checkOpener(env Env) Result {
 // is on the host's PATH too — without its containerenv guard, the host execs
 // itself forever.
 func checkXdgOpenShimGuard(env Env) Result {
-	shim := filepath.Join(env.Platform.LocalBin, "xdg-open")
+	shim := filepath.Join(env.Platform.BinDir(), "xdg-open")
 	b, err := os.ReadFile(shim)
 	if err != nil {
 		return skip("no xdg-open shim installed")
@@ -512,36 +462,6 @@ func checkAgent(env Env) Result {
 // an unrelated package repository puts an older one earlier on PATH.
 var shadowable = []string{"rg", "fd", "fzf", "jq", "delta"}
 
-func checkPathShadowing(env Env) Result {
-	var shadowed []string
-	for _, tool := range shadowable {
-		paths := whichAll(tool)
-		if len(paths) > 1 {
-			shadowed = append(shadowed, fmt.Sprintf("%s (%s)", tool, strings.Join(paths, " before ")))
-		}
-	}
-	if len(shadowed) > 0 {
-		return warn("more than one copy of some tools is on PATH",
-			strings.Join(shadowed, "; "),
-			"check which one wins with 'command -v <tool>'; the first is used")
-	}
-	return pass("no duplicate tools on PATH")
-}
-
-func checkLocalBinOnPath(env Env) Result {
-	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
-		if dir == env.Platform.LocalBin {
-			return pass("~/.local/bin is on PATH")
-		}
-	}
-	return fail("~/.local/bin is not on PATH",
-		"bothy installs binaries there and nothing would find them",
-		`add it: export PATH="$HOME/.local/bin:$PATH"`)
-}
-
-// checkThemePalette verifies a custom palette file still loads. It lives
-// outside anything bothy manages, so it can be moved or edited into an invalid
-// state long after the install that read it.
 func checkThemePalette(env Env) Result {
 	path := env.Config.PalettePath(env.Platform)
 	if path == "" {
