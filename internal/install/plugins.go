@@ -76,7 +76,10 @@ func EnsureYaziPlugins(p platform.Info, offline bool) (*PluginReport, error) {
 		return nil, fmt.Errorf("install: %w", err)
 	}
 
-	ya, lookErr := exec.LookPath("ya")
+	// ya ships inside the yazi archive, so when bothy supplied yazi it is in
+	// bothy's bin and nowhere the ambient PATH would find it.
+	ya := ToolPath(p, "ya")
+	_, lookErr := os.Stat(ya)
 	for _, pl := range plugins {
 		if PluginInstalled(p, pl.Name) {
 			rep.Present = append(rep.Present, pl)

@@ -3,6 +3,7 @@ package doctor
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bothy-dev/bothy/internal/config"
@@ -169,5 +170,35 @@ func TestCheckIDsAreUnique(t *testing.T) {
 			t.Errorf("duplicate check ID %q", c.ID)
 		}
 		seen[c.ID] = true
+	}
+}
+
+// The same bug happened four times: a check resolving a binary through the
+// ambient PATH reports on one bothy is not going to run. In a container where
+// bothy supplied every tool, that produced a report saying "9 supplied by
+// bothy" and "zellij is not installed" at once.
+//
+// Env.lookPath is the fix, and this stops the next one going back.
+func TestChecksResolveBinariesThroughBothysBin(t *testing.T) {
+	src, err := os.ReadFile("doctor.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, line := range strings.Split(string(src), "\n") {
+		if !strings.Contains(line, "exec.LookPath") {
+			continue
+		}
+		// The one legitimate use: ghostty is a host application that bothy
+		// never installs, so it is never in bothy's bin.
+		if strings.Contains(line, `"ghostty"`) {
+			continue
+		}
+		// The definition of lookPath itself.
+		if strings.Contains(line, "return exec.LookPath(name)") {
+			continue
+		}
+		t.Errorf("doctor.go:%d resolves through the ambient PATH: %s\n"+
+			"        use env.lookPath, or a tool bothy supplied will be reported missing",
+			i+1, strings.TrimSpace(line))
 	}
 }

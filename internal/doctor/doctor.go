@@ -107,6 +107,22 @@ type Env struct {
 	ToolEnv []string
 }
 
+// lookPath resolves a binary the way bothy's session will: its own bin first,
+// then the system PATH.
+//
+// This exists because forgetting it has now caused the same bug four times.
+// A check that resolves through the ambient PATH reports on a binary bothy is
+// not going to run — and in a container where bothy supplied every tool, that
+// meant the doctor announcing "0 from your system, 9 supplied by bothy" and
+// "zellij is not installed" in the same report.
+func (e Env) lookPath(name string) (string, error) {
+	own := filepath.Join(e.Platform.BinDir(), name)
+	if fi, err := os.Stat(own); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+		return own, nil
+	}
+	return exec.LookPath(name)
+}
+
 // tool builds a command that runs the way bothy's session would.
 func (e Env) tool(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
@@ -182,7 +198,7 @@ func checkYaziConfigDiscarded(env Env) Result {
 	if env.Config.PassesThrough("yazi") {
 		return skip("yazi is passed through to your own config")
 	}
-	bin, err := exec.LookPath("yazi")
+	bin, err := env.lookPath("yazi")
 	if err != nil {
 		return fail("yazi is not installed",
 			"the browser pane would open an empty pane",
@@ -206,7 +222,11 @@ func checkYaziVersion(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
-	out, err := env.tool("yazi", "--version").Output()
+	yaziBin, err := env.lookPath("yazi")
+	if err != nil {
+		return skip("yazi is not installed")
+	}
+	out, err := env.tool(yaziBin, "--version").Output()
 	if err != nil {
 		return skip("yazi is not installed")
 	}
@@ -441,7 +461,7 @@ func checkZellijConfig(env Env) Result {
 	if env.Config.Slots.Mux != "zellij" {
 		return skip("mux slot is not zellij")
 	}
-	bin, err := exec.LookPath("zellij")
+	bin, err := env.lookPath("zellij")
 	if err != nil {
 		return fail("zellij is not installed", "", "run 'bothy install'")
 	}
@@ -475,11 +495,11 @@ func checkTerminfo(env Env) Result {
 }
 
 func checkOpener(env Env) Result {
-	if _, err := exec.LookPath("xdg-open"); err != nil {
+	if _, err := env.lookPath("xdg-open"); err != nil {
 		if env.Platform.InContainer() {
 			return fail("xdg-open is not on PATH",
 				"pressing Enter on a file in yazi will report 'No such file or directory'",
-				"run 'bothy install' to place the host-forwarding shim in ~/.local/bin")
+				"run 'bothy install' to place the host-forwarding shim in bothy's bin")
 		}
 		return warn("xdg-open is not on PATH", "", "install xdg-utils")
 	}
@@ -559,7 +579,7 @@ func checkAgent(env Env) Result {
 	if bin == "" {
 		bin = slot
 	}
-	if _, err := exec.LookPath(bin); err != nil {
+	if _, err := env.lookPath(bin); err != nil {
 		return fail(bin+" is not on PATH",
 			"the agent pane would open empty",
 			"install it, or point the slot elsewhere: bothy config set slots.agent <name>")
