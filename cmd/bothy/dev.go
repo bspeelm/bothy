@@ -114,6 +114,15 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 		return err
 	}
 
+	// Refuse before writing anything. Launching on a machine that was never
+	// installed used to render the layout first and fail afterwards, leaving a
+	// directory tree behind on a machine whose owner had run one command and
+	// been told it did not work. Nothing bothy does should leave debris.
+	if _, err := os.Stat(p.ConfigRoot()); err != nil {
+		return fmt.Errorf("bothy is not installed on this machine\n"+
+			"      %s does not exist — run 'bothy install' first", p.ConfigRoot())
+	}
+
 	// Zellij reads layouts from disk, so the rendered profile goes into
 	// bothy's own layout directory. It is regenerated every launch, which is
 	// also why editing it by hand does nothing.

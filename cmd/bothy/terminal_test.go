@@ -1,9 +1,12 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/bothy-dev/bothy/internal/config"
 	"github.com/bothy-dev/bothy/internal/platform"
 )
 
@@ -77,5 +80,28 @@ func TestGhosttyCommandUsesTheHostFromAContainer(t *testing.T) {
 	}
 	if len(cmd) > 1 && cmd[1] != "--host" {
 		t.Errorf("got %v; from a container the launch should go to the host", cmd)
+	}
+}
+
+// A command that fails must not leave a directory tree behind. `bothy dev`
+// used to render the layout before checking anything could use it, so running
+// it on a machine that was never installed created a partial tree and then
+// reported failure — debris on the machine of someone who ran one command and
+// was told it did not work.
+func TestDevLeavesNothingBehindWhenNotInstalled(t *testing.T) {
+	home := t.TempDir()
+	data := filepath.Join(home, "share")
+
+	p := platform.Info{
+		Home: home, DataDir: data,
+		ConfigDir: filepath.Join(home, "config"),
+		LocalBin:  filepath.Join(home, "bin"),
+	}
+	if err := launch(p, config.Default(), home, "cockpit"); err == nil {
+		t.Fatal("expected a refusal when bothy is not installed")
+	}
+	entries, err := os.ReadDir(data)
+	if err == nil && len(entries) > 0 {
+		t.Errorf("a failed launch created %d path(s) under %s", len(entries), data)
 	}
 }
