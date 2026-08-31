@@ -1,10 +1,20 @@
--- Per-file git status in the listing. The fetcher is registered in yazi.toml;
--- this half is also required, and git.yazi silently does nothing without it.
+-- Only the plugins actually installed are set up here. bothy writes this file
+-- to match what is present rather than what it would like to be present: a
+-- require() for a missing plugin fails at launch, and `yazi --clear-cache`
+-- does not execute this file, so nothing would catch it beforehand.
+{{- if index .Plugins "git" }}
+
+-- Per-file git status in the listing. This is only half of it — yazi.toml
+-- registers the fetcher — and with only one half git.yazi silently does
+-- nothing at all.
 require("git"):setup {
 	order = 1500,
 }
+{{- end }}
+{{- if index .Plugins "full-border" }}
 
 -- Close the pane borders so the theme's border colour reads as a full frame.
 require("full-border"):setup {
 	type = ui.Border.ROUNDED,
 }
+{{- end }}

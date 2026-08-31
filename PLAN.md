@@ -244,9 +244,14 @@ Revised or new:
 - **Binary provenance** — for each tool, system or bothy-supplied, and its
   version. Replaces the PATH-shadowing check, which mattered only because
   revision 1 installed into `~/.local/bin`.
-- **Layout actually built** — compare the profile's pane count against Zellij's
-  resolved `session-layout.kdl`. Still unbuilt; the one check revision 1
-  specified and never implemented.
+- **Layout actually built** — compares the profile's pane count against
+  Zellij's resolved `session-layout.kdl`. Guards the far side of the renderer:
+  that Zellij still *interprets* the KDL the way it did when the renderer was
+  written.
+- **Yazi plugins** — bothy's config references four; a missing one costs the
+  feature it names.
+- **Profile renders** — a hand-written profile is the likeliest thing here to
+  be broken, and better caught before launch than at it.
 
 Dropped: `xdg-open` shim guard, `EDITOR` override, vim colorscheme location,
 Ghostty near-miss filename. All four existed because bothy wrote into a shared
@@ -309,8 +314,14 @@ Per-slot passthrough skips both the config write and the environment variable.
 The `.desktop` entry is a separate opt-in command, because it is the one file
 that must live outside bothy's tree to work at all.
 
-**Phase D — doctor revision.** The §8 changes, including the pane-count check
-that revision 1 specified and never built.
+**Phase D — doctor revision. Done.** The §8 changes, plus the pane-count check
+revision 1 specified and never built — keyed on `ZELLIJ_SESSION_NAME` so it
+reads the session you are in, and tested against real `session-layout.kdl`
+files rather than an invented fixture. Also fixed the bug the work exposed:
+bothy's `init.lua` required Yazi plugins it never installed, and the config
+check could not see it because `yazi --clear-cache` does not execute
+`init.lua`. Plugins are now installed with `ya pkg` into bothy's tree, and the
+generated config is written to match what is actually present.
 
 **Phase E — docs and v0.1.0.** README rewrite around the isolation model,
 `docs/adding-a-provider.md` refresh, goreleaser, bootstrap pinned to the release.

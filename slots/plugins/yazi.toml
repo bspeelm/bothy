@@ -1,0 +1,36 @@
+# Yazi plugins bothy's generated config depends on.
+#
+# These are not decoration. bothy's init.lua, keymap.toml and yazi.toml all
+# reference them, so a missing one is not a missing feature — it is a config
+# that fails at launch. The generated files are therefore written to match what
+# is actually installed, and `bothy doctor` reports the difference.
+#
+# They are installed with `ya pkg add`, Yazi's own package manager, which
+# honours YAZI_CONFIG_HOME and records a rev and hash in package.toml. That
+# keeps them pinned and inside bothy's tree without vendoring anyone's code.
+
+[[plugin]]
+name  = "git"
+use   = "yazi-rs/plugins:git"
+gives = "per-file git status in the listing"
+# Needs both halves: a fetcher entry in yazi.toml and a setup call in init.lua.
+# With only one, it silently does nothing.
+needs = ["init", "fetcher"]
+
+[[plugin]]
+name  = "full-border"
+use   = "yazi-rs/plugins:full-border"
+gives = "closed pane borders, so the theme reads as a full frame"
+needs = ["init"]
+
+[[plugin]]
+name  = "smart-enter"
+use   = "yazi-rs/plugins:smart-enter"
+gives = "l opens a file or enters a directory"
+needs = ["keymap"]
+
+[[plugin]]
+name  = "chmod"
+use   = "yazi-rs/plugins:chmod"
+gives = "c m to chmod without dropping to a shell"
+needs = ["keymap"]

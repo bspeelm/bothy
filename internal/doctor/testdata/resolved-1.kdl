@@ -1,0 +1,35 @@
+layout {
+    cwd "/home/user/project"
+    tab name="Tab #1" focus=true hide_floating_panes=true {
+        pane command="yazi" focus=true size="22%" {
+            start_suspended true
+        }
+        pane command="claude" name="claude" size="43%" {
+            start_suspended true
+        }
+        pane name="side" size="35%"
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    new_tab_template {
+        pane command="yazi" size="22%" {
+            start_suspended true
+        }
+        pane {
+            pane command="claude" name="claude" focus=true {
+                start_suspended true
+            }
+            pane name="side" size="35%"
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+}

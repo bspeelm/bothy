@@ -54,7 +54,11 @@ trap in that document is now a `doctor` check, because every one of them fails
 | Your terminal config does nothing | Ghostty reads `config`, and yours is named `config.ghostty` |
 | A phantom "Find next" on every image | The multiplexer mangled a capability reply; the bytes became keystrokes |
 
-`bothy doctor` finds all four, and prints the one-line fix for each.
+`bothy doctor` finds all four, and prints the one-line fix for each. It grew a
+fifth while this was being built: bothy's own Yazi config required plugins it
+never installed, and nothing noticed, because `yazi --clear-cache` — what the
+config check runs — does not execute `init.lua`. The config now matches the
+plugins actually present, and a check reports any that are missing.
 
 ## Install
 

@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/bothy-dev/bothy/internal/config"
+	"github.com/bothy-dev/bothy/internal/install"
+	"github.com/bothy-dev/bothy/internal/layout"
 	"github.com/bothy-dev/bothy/internal/platform"
 	"github.com/bothy-dev/bothy/internal/probe"
 	"github.com/bothy-dev/bothy/internal/theme"
@@ -131,7 +133,10 @@ func Checks() []Check {
 		{ID: "yazi-config-discarded", Run: checkYaziConfigDiscarded},
 		{ID: "yazi-version", Run: checkYaziVersion},
 		{ID: "yazi-config-keys", Run: checkYaziConfigKeys},
+		{ID: "yazi-plugins", Run: checkYaziPlugins},
 		{ID: "image-previews", Run: checkImagePreviews},
+		{ID: "profile-renders", Run: checkProfileRenders},
+		{ID: "layout-built", Run: checkLayoutBuilt},
 		{ID: "terminal-capability", Run: checkTerminalCapability},
 		{ID: "passthrough", Run: checkPassthrough},
 		{ID: "isolation", Run: checkIsolation},
@@ -312,6 +317,56 @@ func checkWatermarkImage(env Env) Result {
 // checkTerminalCapability reports where bothy will run. A terminal that cannot
 // draw images is not an error — it is a reason previews will be off, and
 // saying so beats letting someone wonder why their config "did not work".
+// checkYaziPlugins reports plugins bothy's config wants and does not have.
+//
+// This is a warning rather than a failure because the generated config is
+// written to match what is installed, so a missing plugin costs a feature
+// rather than breaking the workspace. That was not always true: an earlier
+// version referenced all four unconditionally and installed none, producing a
+// config that failed only at launch — and `yazi --clear-cache`, which the
+// config check uses, does not execute init.lua, so nothing caught it.
+func checkYaziPlugins(env Env) Result {
+	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
+		return skip("bothy is not managing yazi's config")
+	}
+	plugins, err := install.YaziPlugins()
+	if err != nil {
+		return warn("could not read the plugin list", err.Error(), "")
+	}
+	var missing []string
+	for _, pl := range plugins {
+		if !install.PluginInstalled(env.Platform, pl.Name) {
+			missing = append(missing, pl.Name+" ("+pl.Gives+")")
+		}
+	}
+	if len(missing) > 0 {
+		return warn(fmt.Sprintf("%d yazi plugin(s) are not installed", len(missing)),
+			strings.Join(missing, "; "),
+			"run 'bothy install' with a network connection")
+	}
+	return pass(fmt.Sprintf("all %d yazi plugins installed", len(plugins)))
+}
+
+// checkProfileRenders catches a broken profile before launch rather than at it.
+// A custom profile in ~/.config/bothy/profiles is hand-written and therefore
+// the most likely thing here to be wrong.
+func checkProfileRenders(env Env) Result {
+	name := env.ProfileName
+	if name == "" {
+		name = "cockpit"
+	}
+	prof, err := install.LoadProfile(env.Platform, name)
+	if err != nil {
+		return fail("the layout profile does not load", err.Error(),
+			"fix it, or switch back: bothy config set profile cockpit")
+	}
+	if _, err := layout.Render(prof, install.Commands(env.Config)); err != nil {
+		return fail("the layout profile does not render", err.Error(),
+			"a pane probably names a slot nothing fills")
+	}
+	return pass(fmt.Sprintf("profile %q renders (%d panes)", name, prof.PaneCount()))
+}
+
 func checkTerminalCapability(env Env) Result {
 	term := env.Platform.Terminal
 	if term == "" {

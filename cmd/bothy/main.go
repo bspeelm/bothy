@@ -128,7 +128,7 @@ func cmdInstall(args []string) error {
 		printTools(treport)
 	}
 
-	res, err := install.Run(p, cfg, install.Options{DryRun: *dryRun})
+	res, err := install.Run(p, cfg, install.Options{DryRun: *dryRun, Offline: *offline})
 	if err != nil {
 		return err
 	}
@@ -141,6 +141,16 @@ func cmdInstall(args []string) error {
 		verb, len(res.Written), len(res.Unchanged), tilde(res.Root, p.Home))
 	for _, f := range res.Written {
 		fmt.Printf("  + %s\n", tilde(f, p.Home))
+	}
+
+	if pr := res.Plugins; pr != nil {
+		for _, pl := range pr.Installed {
+			fmt.Printf("  + yazi plugin %s — %s\n", pl.Name, pl.Gives)
+		}
+		for _, f := range pr.Failed {
+			fmt.Printf("  ! yazi plugin %s unavailable (%v) — %s is off\n",
+				f.Plugin.Name, f.Err, f.Plugin.Gives)
+		}
 	}
 
 	fmt.Printf("\nimage previews: %v — %s\n", res.Data.ImagePreviews, res.Data.GraphicsReason)

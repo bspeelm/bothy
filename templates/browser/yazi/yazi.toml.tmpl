@@ -30,6 +30,7 @@ prepend_preloaders = [
 ]
 {{- end }}
 
+{{ if index .Plugins "git" -}}
 # git.yazi — per-file status in the listing. Needs Yazi >= 26.
 # 26.x renamed the `id` key in fetchers to `url` + `group`.
 [[plugin.prepend_fetchers]]
@@ -41,7 +42,7 @@ group = "git"
 url   = "*/"
 run   = "git"
 group = "git"
-
+{{ end }}
 [preview]
 max_width  = 900
 max_height = 900

@@ -45,6 +45,10 @@ type Data struct {
 	Watermark        bool
 	WatermarkPath    string
 	WatermarkOpacity string
+
+	// Plugins is the set of Yazi plugins actually installed. Templates key on
+	// it so a generated config never references something that is not there.
+	Plugins map[string]bool
 }
 
 // Result reports what an install did.
@@ -53,11 +57,14 @@ type Result struct {
 	Unchanged []string
 	Root      string
 	Data      Data
+	Plugins   *PluginReport
 }
 
 // Options configures one install run.
 type Options struct {
 	DryRun bool
+	// Offline skips anything needing the network, including plugin install.
+	Offline bool
 }
 
 // Run renders bothy's config tree.
@@ -66,12 +73,25 @@ func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	res0 := &Result{}
+
+	// Plugins first: the generated config is written to match what is actually
+	// installed, so it has to know before the templates render.
+	if !opts.DryRun && cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+		pr, err := EnsureYaziPlugins(p, opts.Offline)
+		if err != nil {
+			return nil, err
+		}
+		res0.Plugins = pr
+	}
 
 	w := render.NewWriter(p.BothyDir(), filepath.Join(p.UserConfigDir(), "overrides"))
 	w.DryRun = opts.DryRun
 
 	data := buildData(p, cfg, pal)
-	res := &Result{Root: p.BothyDir(), Data: data}
+	res := res0
+	res.Root = p.BothyDir()
+	res.Data = data
 
 	for _, f := range plan(p, cfg, data) {
 		body, err := renderFile(w, f, data)
@@ -234,6 +254,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		Watermark:        cfg.Workspace.Watermark,
 		WatermarkPath:    filepath.Join(p.ConfigRoot(), "watermark.png"),
 		WatermarkOpacity: "0.05",
+		Plugins:          InstalledPlugins(p),
 	}
 	d.VimColorscheme = cfg.Theme.VimColorscheme
 	if d.VimColorscheme == "" {
