@@ -40,7 +40,7 @@ copr-cli create bothy \
 
 ```sh
 copr-cli build bothy \
-    --srpm-url https://github.com/bspeelm/bothy/releases/download/v0.1.1/bothy-0.1.1-1.src.rpm
+    --srpm-url https://github.com/bspeelm/bothy/releases/download/v0.1.2/bothy-0.1.2-1.src.rpm
 ```
 
 Or build straight from the spec after bumping `Version` and adding a changelog
