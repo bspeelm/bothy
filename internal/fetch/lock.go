@@ -44,6 +44,10 @@ type Entry struct {
 // SHA returns the checksum for a platform, or "" if this entry has none.
 func (e Entry) SHA(p platform.Info) string { return e.SHA256[p.OS+"_"+p.Arch] }
 
+// APIBase is GitHub's API root, as a variable so a test can point it at a
+// local server rather than the internet.
+var APIBase = "https://api.github.com"
+
 // LockPath is the lockfile's name at the repository root.
 const LockPath = "bothy.lock"
 
@@ -112,7 +116,20 @@ func (l *Lockfile) Save(path string) error {
 
 // LatestRelease asks GitHub for a repository's latest release tag.
 func LatestRelease(repo string) (string, error) {
-	resp, err := Client.Get("https://api.github.com/repos/" + repo + "/releases/latest")
+	req, err := http.NewRequest(http.MethodGet, APIBase+"/repos/"+repo+"/releases/latest", nil)
+	if err != nil {
+		return "", fmt.Errorf("fetch: %s: %w", repo, err)
+	}
+	// GitHub asks for a User-Agent and is entitled to know who is calling.
+	req.Header.Set("User-Agent", "bothy")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	// Unauthenticated requests are limited to sixty an hour per IP, which a
+	// shared CI runner burns through on someone else's behalf. A token lifts
+	// it to five thousand; there is no requirement to have one.
+	if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
+	}
+	resp, err := Client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("fetch: %s: %w", repo, err)
 	}

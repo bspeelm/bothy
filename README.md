@@ -109,6 +109,7 @@ gives you the right command for both.
 | `bothy doctor` | What is broken, and how to fix it (`--json` for CI) |
 | `bothy install` | Re-apply your settings after changing them |
 | `bothy tools` | Which tools are in use, and where they came from |
+| `bothy outdated` | Which pinned tools have newer releases upstream |
 | `bothy config set <key> <value>` | Change a setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file |
