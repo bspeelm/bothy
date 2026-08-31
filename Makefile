@@ -1,14 +1,23 @@
-# bothy — see PLAN.md §0 for the budgets these targets enforce.
+# bothy — see PLAN.md §3 for the budgets these targets enforce.
 
 BINARY   := bothy
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.Version=$(VERSION)
 
-# PLAN.md §0: the core binary stays under 10 MB and the core source under ~5k
-# lines. These are checked, not aspired to — a change that breaks one needs a
-# written justification, not a quiet bump.
+# PLAN.md §3: the core binary stays under 10 MB and the core source under ~5k
+# LOC. Checked, not aspired to.
+#
+# Two source limits, because one number could not tell code from prose. The
+# principle says "LOC", and comments are not code — this project's comments are
+# where the reasons live, and trimming them to pass a line count would delete
+# the most valuable thing in the repository to satisfy a proxy for the thing it
+# was meant to measure. So: code is capped at 5k, and total lines at 7k so the
+# prose cannot grow without limit either. See docs/decisions.md ADR-010.
 MAX_BINARY_BYTES := 10485760
-MAX_SOURCE_LINES := 5500
+MAX_CODE_LINES   := 5000
+MAX_TOTAL_LINES  := 7000
+
+SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
 .PHONY: all build test lint vet fmt budgets check clean install-binary
 
