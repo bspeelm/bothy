@@ -67,9 +67,15 @@ choice and it is the wrong one.
 
 To set it up:
 
-1. Copr → project → Settings → Integrations, and copy the webhook secret.
+1. Open <https://copr.fedorainfracloud.org/coprs/bspeelman/bothy/integrations/>
+   while logged in. It shows the GitHub webhook URL with the secret already
+   in it. Copy it and append `bothy/`.
+
+   The secret is not readable from `copr-cli` — `new-webhook-secret`
+   *regenerates* it rather than printing the current one, so running that
+   invalidates any hook already using it.
 2. GitHub → repo → Settings → Webhooks → Add webhook.
-   - Payload URL: `https://copr.fedorainfracloud.org/webhooks/github/255721/<SECRET>/bothy/`
+   - Payload URL: the copied URL, ending `/<secret>/bothy/`
    - Content type: `application/json`
    - Events: *Let me select individual events* → **Branch or tag creation**
      only. Uncheck Push.
