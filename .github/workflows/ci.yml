@@ -75,7 +75,12 @@ jobs:
       # the runner's glibc.
       - run: make build
       - name: install, verify and uninstall in each container
+        # pipefail is not on by default, and without it `go test | tee` reports
+        # tee's exit code -- so a failing test produced a green job. That is
+        # the same "green and testing nothing" failure the isolation job below
+        # was written to prevent, and it happened here on the first run.
         run: |
+          set -o pipefail
           go test ./cmd/bothy/ -tags container -timeout 20m -v \
             -run TestBothyInstallsInAContainer | tee container.log
           # `go test -run` exits 0 when its filter matches nothing, so a
