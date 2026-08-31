@@ -1,0 +1,13 @@
+# The agent is advised, never installed.
+#
+# PLAN.md §11 puts agent management out of scope: their install methods change,
+# they need auth bothy has no business touching, and a workspace tool that
+# quietly installs an AI agent is doing something its user did not ask for.
+# Naming the command is the whole of the help that is appropriate.
+
+name = "claude-code"
+what = "the agent that sits in the main pane"
+binary = "claude"
+
+[install]
+default = "npm install -g @anthropic-ai/claude-code"

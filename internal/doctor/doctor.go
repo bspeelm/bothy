@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bothy-dev/bothy/internal/advice"
 	"github.com/bothy-dev/bothy/internal/config"
 	"github.com/bothy-dev/bothy/internal/install"
 	"github.com/bothy-dev/bothy/internal/layout"
@@ -402,9 +403,15 @@ func checkTerminalCapability(env Env) Result {
 	// cannot draw, so this is a statement of what will happen rather than a
 	// problem to fix. It becomes one only if there is no Ghostty to open.
 	if _, err := exec.LookPath("ghostty"); err != nil {
+		fix := "install a terminal that can draw images, or accept block-art previews"
+		if a, err := advice.Get("ghostty"); err == nil {
+			fix = a.Command(env.Platform)
+			if w := a.Warnings(); w != "" {
+				fix += "\n         " + w
+			}
+		}
 		return warn("this terminal cannot draw inline images, and ghostty is not installed",
-			g.Reason+"; previews will fall back to block art",
-			"install ghostty, or accept block-art previews")
+			g.Reason, fix)
 	}
 	return pass("this terminal cannot draw images, so bothy will open a Ghostty window — " + g.Reason)
 }
@@ -619,9 +626,12 @@ func checkAgent(env Env) Result {
 		bin = slot
 	}
 	if _, err := env.lookPath(bin); err != nil {
-		return fail(bin+" is not on PATH",
-			"the agent pane would open empty",
-			"install it, or point the slot elsewhere: bothy config set slots.agent <name>")
+		fix := "install it, or point the slot elsewhere: bothy config set slots.agent none"
+		if a, err := advice.Get(slot); err == nil {
+			fix = a.Command(env.Platform) +
+				"\n         or turn the pane off: bothy config set slots.agent none"
+		}
+		return fail(bin+" is not on PATH", "the agent pane would open empty", fix)
 	}
 	return pass(bin + " is on PATH")
 }
