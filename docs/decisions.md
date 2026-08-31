@@ -181,3 +181,60 @@ narration rather than reasoning.
 The general point, since it applies beyond this budget: when a measure and the
 thing it measures disagree, fix the measure. Do not quietly move its threshold,
 and do not damage the thing to satisfy it.
+
+## ADR-011 — Toolbx is detected by its own marker, not by having a name
+
+`/run/.containerenv` is written by podman, not by Toolbx — it opens with the
+engine that wrote it — and podman puts a `name=` line in it for every container
+it runs, generating a name where none was given. bothy read that name as
+evidence of Toolbx, on a comment that said "a bare podman container usually
+does not [have a name]". It always does.
+
+The cost was not theoretical. `ContainerName` feeds `ContainerFor`, so `bothy`
+on the host answered a plain `podman run --name foo` with `toolbox run
+--container foo`, a hop that cannot succeed. Toolbx writes `/run/.toolboxenv`;
+that mark is now the only evidence read, and a named podman container is
+`Generic`.
+
+Two things about how this was found are worth keeping. A test asserted the bug
+was correct — it skipped unless `/run/.containerenv` existed, which is true in
+every podman container, and then asserted the container was a Toolbx. And
+detection could not be tested at all without running inside the thing being
+detected, which is why nobody had. `detectContainerIn` now takes a root, and a
+table test covers the marker files directly. When a thing can only be tested by
+being the thing, it will not be tested.
+
+## ADR-012 — Portability is a CI claim, not a README claim
+
+The README said bothy runs on Linux. It had only ever run on Fedora: on
+Silverblue, in a Fedora toolbox, and in `fedora-toolbox:44` — three
+environments and one distribution. `PLAN.md` §10 was honest about this, which
+is the only reason it was fixable.
+
+So Ubuntu support arrives as a CI job rather than as an edit to a sentence. The
+job installs bothy into `fedora:44` and `ubuntu:24.04`, runs the doctor,
+compares the whole report against a table of expected severities, and
+uninstalls, asserting the tree is empty afterwards.
+
+It is a Go test behind a build tag rather than a shell script, because ADR-001
+keeps exactly one shell file in this repository and because the assertions are
+a set comparison and a directory walk — pleasant in Go, miserable in shell. It
+drives Docker rather than podman, and the container's `$HOME` is a bind-mounted
+host directory, so every filesystem assertion happens on the outside where the
+test can see it.
+
+The job earned its place immediately, in two ways. It found that
+`install.SessionEnv` set no XDG directories, so `yazi --clear-cache` and
+`zellij setup --check` — both run by the doctor, through that same environment
+— wrote outside bothy's tree. ADR-009 held for `install` and leaked at every
+other command. `plugins.go` had already described that gap and concluded it
+"has to be closed one subprocess at a time"; it does not, because the tools
+agree on where to look, so three environment variables close it for all of them
+at once, including the ones added later.
+
+And on its first run it was green while its test was red: `go test | tee`
+reports `tee`'s exit code, and pipefail is not on by default in a GitHub
+Actions step. A job written to cite the "green and testing nothing" bug
+committed it on its first attempt. The lesson is not that pipefail is easy to
+forget. It is that a passing job is evidence of nothing until you have watched
+it fail.

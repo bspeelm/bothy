@@ -33,6 +33,7 @@ type Info struct {
 	Arch string // "x86_64", "aarch64" — release-asset spelling, not Go's
 
 	DistroID      string // os-release ID, e.g. "fedora", "ubuntu", "arch"
+	DistroLike    string // os-release ID_LIKE, e.g. "debian" on Mint and Pop!_OS
 	DistroVersion string // os-release VERSION_ID
 	Immutable     bool   // rpm-ostree/bootc host: never install system packages
 
@@ -69,6 +70,19 @@ func (i Info) BinDir() string { return filepath.Join(i.BothyDir(), "bin") }
 // StateDir holds the manifest of what bothy installed.
 func (i Info) StateDir() string { return filepath.Join(i.BothyDir(), "state") }
 
+// CacheDir is where the tools bothy runs are pointed with XDG_CACHE_HOME, so
+// that what they cache lands inside bothy's tree like everything else.
+func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
+
+// ShareDir is what XDG_DATA_HOME points at for bothy's session.
+//
+// Deliberately a level below BothyDir rather than BothyDir itself: bothy
+// derives DataDir from XDG_DATA_HOME and BothyDir from DataDir, so pointing
+// that variable at BothyDir would make a bothy run inside a bothy session
+// resolve a different tree. One level down, a nested bothy lands at
+// <bothy>/share/bothy -- still inside the tree, which is all isolation asks.
+func (i Info) ShareDir() string { return filepath.Join(i.BothyDir(), "share") }
+
 // UserConfigDir is ~/.config/bothy: the user's own settings, palette and
 // overrides. bothy reads it and writes only config.toml there.
 func (i Info) UserConfigDir() string { return filepath.Join(i.ConfigDir, "bothy") }
@@ -89,7 +103,7 @@ func Detect() Info {
 	i.ConfigDir = xdg("XDG_CONFIG_HOME", home, ".config")
 	i.DataDir = xdg("XDG_DATA_HOME", home, ".local", "share")
 
-	i.DistroID, i.DistroVersion = osRelease()
+	i.DistroID, i.DistroLike, i.DistroVersion = osRelease()
 	i.Container, i.ContainerName = detectContainer()
 	i.SharedHome = i.Container == Toolbx || i.Container == Distrobox
 	i.WSL = detectWSL()
@@ -125,10 +139,16 @@ func xdg(env, home string, fallback ...string) string {
 }
 
 // osRelease reads ID and VERSION_ID from /etc/os-release.
-func osRelease() (id, version string) {
+// osRelease reads the three fields bothy dispatches on.
+//
+// ID_LIKE matters as much as ID: it is how Mint, Pop!_OS and every other
+// derivative say "treat me as debian". Reading only ID gave all of them the
+// generic advice, which on the one slot that offers per-distro instructions is
+// the whole of what that slot is for.
+func osRelease() (id, like, version string) {
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	defer f.Close()
 
@@ -142,47 +162,67 @@ func osRelease() (id, version string) {
 		switch strings.TrimSpace(k) {
 		case "ID":
 			id = v
+		case "ID_LIKE":
+			// ID_LIKE is a space-separated, most-similar-first list.
+			like, _, _ = strings.Cut(v, " ")
 		case "VERSION_ID":
 			version = v
 		}
 	}
-	return id, version
+	return id, like, version
 }
 
 // detectContainer identifies Toolbx/Distrobox and recovers the container's
 // name. The name matters: `dev` run from the host has to hop back into *this*
 // container, and hardcoding a name is exactly the machine-specific detail that
 // stopped the origin setup from being portable.
-func detectContainer() (ContainerKind, string) {
-	if _, err := os.Stat("/run/.distrobox-enter-path"); err == nil {
-		return Distrobox, containerName()
+func detectContainer() (ContainerKind, string) { return detectContainerIn("/") }
+
+// detectContainerIn is detectContainer against an arbitrary root, so that the
+// marker files can be tested. Reading absolute paths directly made this the
+// one piece of detection that could only be exercised by running inside the
+// thing it detects — which is how the bug below survived.
+func detectContainerIn(root string) (ContainerKind, string) {
+	marker := func(name string) bool {
+		_, err := os.Stat(filepath.Join(root, name))
+		return err == nil
+	}
+	name := func() string { return containerNameIn(root) }
+
+	if marker("run/.distrobox-enter-path") {
+		return Distrobox, name()
 	}
 	if os.Getenv("DISTROBOX_ENTER_PATH") != "" || os.Getenv("CONTAINER_ID") != "" {
-		if name := os.Getenv("CONTAINER_ID"); name != "" {
-			return Distrobox, name
+		if id := os.Getenv("CONTAINER_ID"); id != "" {
+			return Distrobox, id
 		}
-		return Distrobox, containerName()
+		return Distrobox, name()
 	}
-	if _, err := os.Stat("/run/.containerenv"); err == nil {
-		if _, err := os.Stat("/run/.toolboxenv"); err == nil {
-			return Toolbx, containerName()
-		}
-		// A Toolbx container always has a name in .containerenv; a bare podman
-		// container usually does not.
-		if n := containerName(); n != "" {
-			return Toolbx, n
+	if marker("run/.containerenv") {
+		// Toolbx marks itself, and that mark is the only evidence worth
+		// reading. /run/.containerenv is written by podman, not by Toolbx --
+		// it names the engine that wrote it -- and podman puts a name in it
+		// for every container it runs, generating one where none was given.
+		// Treating that name as evidence of Toolbx made every `podman run
+		// --name` a Toolbx, and had `bothy` on the host answer a plain podman
+		// container with `toolbox run --container <that name>`, a hop that
+		// could never work.
+		if marker("run/.toolboxenv") {
+			return Toolbx, name()
 		}
 		return Generic, ""
 	}
-	if _, err := os.Stat("/.dockerenv"); err == nil {
+	if marker(".dockerenv") {
 		return Generic, ""
 	}
 	return NotContainer, ""
 }
 
 // containerName parses name="…" out of /run/.containerenv.
-func containerName() string {
-	f, err := os.Open("/run/.containerenv")
+func containerName() string { return containerNameIn("/") }
+
+func containerNameIn(root string) string {
+	f, err := os.Open(filepath.Join(root, "run/.containerenv"))
 	if err != nil {
 		return ""
 	}

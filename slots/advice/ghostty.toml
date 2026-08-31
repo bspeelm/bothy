@@ -19,10 +19,15 @@ debian        = "see https://ghostty.org/docs/install — Debian has no official
 arch          = "sudo pacman -S ghostty"
 darwin        = "brew install --cask ghostty"
 
+# Both of these are Copr repositories, so they are advice for Fedora and noise
+# anywhere else. distros scopes them; without it an Ubuntu user was told to
+# stay away from a repository they cannot enable in the first place.
 [[avoid]]
-repo = "copr pgdev/ghostty"
-why  = "no builds for current Fedora; it blocks rpm-ostree upgrades until removed"
+repo    = "copr pgdev/ghostty"
+why     = "no builds for current Fedora; it blocks rpm-ostree upgrades until removed"
+distros = ["fedora"]
 
 [[avoid]]
-repo = "copr ldivizio/tools, copr kray74/cli-tools"
-why  = "they bundle ten-plus packages that shadow ripgrep, fd, fzf, jq and delta from Fedora proper"
+repo    = "copr ldivizio/tools, copr kray74/cli-tools"
+why     = "they bundle ten-plus packages that shadow ripgrep, fd, fzf, jq and delta from Fedora proper"
+distros = ["fedora"]

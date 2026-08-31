@@ -224,7 +224,14 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// where it was on the host's PATH too and needed a guard against the host
 	// executing it and recursing into itself. Scoping removes that hazard; the
 	// guard stays anyway, because it is three lines and PATH is fickle.
-	if p.InContainer() {
+	//
+	// SharedHome rather than InContainer: the shim forwards through
+	// flatpak-spawn, which exists in Toolbx and Distrobox and nowhere else. A
+	// plain podman or docker container has no host session to reach, so
+	// writing it there produced a shim that could not work -- and then passed
+	// the opener check, because that check only asks whether xdg-open
+	// resolves and this put something on PATH that answered to the name.
+	if p.SharedHome {
 		out = append(out, file{
 			Dest: filepath.Join(p.BinDir(), "xdg-open"), Tool: "shell",
 			Template: "templates/shell/xdg-open.tmpl",
@@ -399,6 +406,23 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
 		env.set("VIMINIT", "source "+VimRC(p))
 	}
+
+	// The XDG directories, pointed inside bothy's tree.
+	//
+	// ADR-009 says bothy writes nothing outside its own directory, and until
+	// now that covered only the files bothy writes itself. It said nothing
+	// about what the tools bothy *runs* decide to write -- and they write
+	// plenty: `yazi --clear-cache` clears ~/.cache/yazi, `zellij setup
+	// --check` touches zellij's own cache and data directories, and both are
+	// invoked by the doctor, which uses this same environment. So the promise
+	// held for install and quietly leaked at every other command.
+	//
+	// plugins.go said this gap "has to be closed one subprocess at a time".
+	// It does not: the tools all agree on where to look, so telling them once
+	// closes it for every subprocess at once, including the ones added later.
+	env.set("XDG_CACHE_HOME", p.CacheDir())
+	env.set("XDG_STATE_HOME", p.StateDir())
+	env.set("XDG_DATA_HOME", p.ShareDir())
 
 	env.set("BOTHY_SESSION", "1")
 	return env.slice()
