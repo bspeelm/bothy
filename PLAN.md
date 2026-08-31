@@ -353,7 +353,15 @@ commands — fetch the binary, then run it. That is the same shape as
 `flatpak install` followed by running the app, and it is the shape it should
 always have had.
 
-Remaining before tagging v0.1.0: run it on a distro that is not Fedora.
+**v0.1.0 is tagged and released.** The release workflow ran for the first time
+and passed: `make check`, then goreleaser building linux and darwin for amd64
+and arm64 under the names `bootstrap/install.sh` already expected. The
+one-liner in the README was then run against the real release and installs a
+working binary.
+
+Remaining before v0.2.0: run it on a distro that is not Fedora. Everything is
+verified on Fedora Silverblue, a Fedora toolbox, and a bare
+`fedora-toolbox:44` — which is three environments and one distribution.
 
 Deferred, unchanged: macOS, WSL2/Windows, tmux, `bothy update`.
 

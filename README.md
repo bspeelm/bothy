@@ -76,11 +76,6 @@ check runs — does not execute `init.lua`.
 
 ## Install
 
-> **Pre-release.** There is no tagged release yet, so the one-line install
-> below does not work — both the script and the binary it fetches return 404.
-> Until then, [build from source](#from-source). This note goes away with the
-> first tag.
-
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
 bothy
@@ -96,8 +91,8 @@ and then launches it.
 
 ### From source
 
-The working path today, and the one for contributors. Needs Go and `make`,
-which a fresh container or a clean machine will not have.
+For contributors. Needs Go and `make`, which a fresh container or a clean
+machine will not have — the one-liner above is the path for everyone else.
 
 ```sh
 git clone https://github.com/bspeelm/bothy && cd bothy
