@@ -11,11 +11,21 @@ distro package that repackages someone else's prebuilt binary is a distro
 package in name only, and rebuilding from source is what makes the `%check`
 section meaningful.
 
+Two usernames are in play and they are not the same: the Copr project lives
+under the **Fedora account** name (`bspeelman`), while the source and releases
+live under the **GitHub** name (`bspeelm`). Copr uses the Fedora one.
+
 ### One-time setup
 
 ```sh
-# Get an API token from https://copr.fedorainfracloud.org/api/
-# and save it to ~/.config/copr
+# Log in at https://copr.fedorainfracloud.org/oidc_login/ first — being signed
+# in to accounts.fedoraproject.org is not the same thing, and without a Copr
+# session the token page shows LOGIN_TO_REVEAL instead of the values.
+#
+# Then copy the block from https://copr.fedorainfracloud.org/api/ into
+# ~/.config/copr and chmod 600 it: your home is shared with every toolbox.
+# `copr-cli new-api-token` renews an existing token; it cannot create the first
+# one, because it works by updating the file that does not exist yet.
 
 copr-cli create bothy \
     --chroot fedora-rawhide-x86_64 \
@@ -23,7 +33,7 @@ copr-cli create bothy \
     --chroot fedora-43-x86_64 \
     --chroot fedora-44-aarch64 \
     --description "A turn-key terminal workspace built from tools you already trust" \
-    --instructions "dnf copr enable bspeelm/bothy && dnf install bothy"
+    --instructions "dnf copr enable bspeelman/bothy && dnf install bothy"
 ```
 
 ### Building a release
