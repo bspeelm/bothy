@@ -76,17 +76,37 @@ check runs — does not execute `init.lua`.
 
 ## Install
 
+> **Pre-release.** There is no tagged release yet, so the one-line install
+> below does not work — both the script and the binary it fetches return 404.
+> Until then, [build from source](#from-source). This note goes away with the
+> first tag.
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
 bothy
 ```
 
-That is the whole thing. The script puts one binary on your `PATH`; the first
-`bothy` sets the workspace up — fetching only the tools you are missing, after
-telling you which and asking — and then launches it.
+Two commands, and the second is the one you keep using. The script puts a
+single binary on your `PATH`; the first `bothy` sets the workspace up —
+installing only the tools you are missing, after telling you which and asking —
+and then launches it.
 
-`bothy install` exists too, and you need it after changing a setting with
+`bothy install` exists too, and you want it after changing a setting with
 `bothy config set`. You do not need it to start.
+
+### From source
+
+The working path today, and the one for contributors. Needs Go and `make`,
+which a fresh container or a clean machine will not have.
+
+```sh
+git clone https://github.com/bspeelm/bothy && cd bothy
+make install-binary     # builds ./bothy, copies it to ~/.local/bin/bothy
+bothy
+```
+
+`make install-binary` installs the *binary*. `bothy install` sets up the
+*workspace*. Different things; the target is named for which.
 
 ### What it installs
 
@@ -127,21 +147,6 @@ For both, `bothy doctor` prints the command for the machine you are actually
 on — the `rpm-ostree` one with its reboot on Silverblue, the `dnf` one on
 Fedora Workstation — along with the repositories to stay away from, including
 the one that blocks system upgrades until it is removed.
-
-### From source
-
-For contributors. Needs Go and `make`, which a fresh container or a clean
-machine will not have — the bootstrap script above is the path for everyone
-else.
-
-```sh
-git clone https://github.com/bspeelm/bothy && cd bothy
-make install-binary     # builds ./bothy and copies it to ~/.local/bin
-bothy
-```
-
-`make install-binary` installs the *binary*. `bothy install` sets up the
-*workspace*. Different things; the target is named for which.
 
 ## Commands
 
