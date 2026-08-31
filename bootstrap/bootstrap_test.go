@@ -13,6 +13,9 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,6 +24,50 @@ import (
 	"strings"
 	"testing"
 )
+
+// releaseServer serves a release the way GitHub does: the archive under
+// /latest/download/, and the checksums.txt goreleaser publishes beside it.
+//
+// sums controls what that file says -- "" omits it entirely, which is what an
+// old release looks like.
+func releaseServer(archive []byte, sums string) (*httptest.Server, *string) {
+	asked := new(string)
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "checksums.txt"):
+			if sums == "" {
+				http.NotFound(w, r)
+				return
+			}
+			fmt.Fprint(w, sums)
+		case strings.HasSuffix(r.URL.Path, ".tar.gz"):
+			*asked = r.URL.Path
+			w.Write(archive)
+		default:
+			http.NotFound(w, r)
+		}
+	})), asked
+}
+
+// checksumsFor renders the checksums.txt goreleaser would publish.
+func checksumsFor(archive []byte, name string) string {
+	sum := sha256.Sum256(archive)
+	return hex.EncodeToString(sum[:]) + "  " + name + "\n"
+}
+
+// archiveName is what the running platform's archive is called, which is what
+// the script will ask for.
+func archiveName(t *testing.T) string {
+	t.Helper()
+	out, err := exec.Command("sh", "-c",
+		`case "$(uname -s)" in Linux) os=linux;; Darwin) os=darwin;; esac
+		 case "$(uname -m)" in x86_64|amd64) a=amd64;; aarch64|arm64) a=arm64;; esac
+		 echo "bothy_${os}_${a}.tar.gz"`).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
+}
 
 // releaseArchive builds the tarball .goreleaser.yaml describes: the binary at
 // the root of the archive, no wrapping directory.
@@ -48,11 +95,7 @@ func TestBootstrapInstallsTheBinary(t *testing.T) {
 	}
 	archive := releaseArchive(t, "#!/bin/sh\necho bothy-under-test\n")
 
-	var asked string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		asked = r.URL.Path
-		w.Write(archive)
-	}))
+	srv, askedp := releaseServer(archive, checksumsFor(archive, archiveName(t)))
 	defer srv.Close()
 
 	home := t.TempDir()
@@ -65,6 +108,7 @@ func TestBootstrapInstallsTheBinary(t *testing.T) {
 
 	// The URL must match what goreleaser publishes, or the script 404s for
 	// everyone on the day of the first release.
+	asked := *askedp
 	if !strings.Contains(asked, "/latest/download/bothy_") {
 		t.Errorf("requested %q, which is not the release layout", asked)
 	}
@@ -86,9 +130,7 @@ func TestBootstrapInstallsTheBinary(t *testing.T) {
 // looks like it did nothing.
 func TestBootstrapWarnsWhenBindirIsNotOnPath(t *testing.T) {
 	archive := releaseArchive(t, "x")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write(archive)
-	}))
+	srv, _ := releaseServer(archive, checksumsFor(archive, archiveName(t)))
 	defer srv.Close()
 
 	home := t.TempDir()
@@ -111,9 +153,7 @@ func TestBootstrapWarnsWhenBindirIsNotOnPath(t *testing.T) {
 
 // A download that fails must not leave a half-installed binary behind.
 func TestBootstrapLeavesNothingOnAFailedDownload(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.NotFound(w, r)
-	}))
+	srv, _ := releaseServer(nil, "")
 	defer srv.Close()
 
 	home := t.TempDir()
@@ -136,5 +176,90 @@ func TestBootstrapPointsAtTheRightNextStep(t *testing.T) {
 	}
 	if strings.Contains(string(src), "next: bothy install") {
 		t.Error("still tells people to run 'bothy install'; first run sets up on its own")
+	}
+}
+
+// Every tool bothy installs is checksum-verified before it is written. For a
+// long time the one unverified download in the whole system was bothy's own
+// binary, which is a poor advertisement for the argument.
+func TestBootstrapVerifiesTheChecksum(t *testing.T) {
+	archive := releaseArchive(t, "#!/bin/sh\necho ok\n")
+	srv, _ := releaseServer(archive, checksumsFor(archive, archiveName(t)))
+	defer srv.Close()
+
+	home := t.TempDir()
+	cmd := exec.Command("sh", "install.sh")
+	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("install.sh failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "checksum verified") {
+		t.Errorf("no verification reported:\n%s", out)
+	}
+}
+
+// The case the check exists for. A truncated or tampered download must not be
+// installed, and must not be reported as success.
+func TestBootstrapRefusesAMismatchedChecksum(t *testing.T) {
+	archive := releaseArchive(t, "#!/bin/sh\necho ok\n")
+	other := releaseArchive(t, "#!/bin/sh\necho something else entirely\n")
+	// checksums.txt describes a different archive than the one served.
+	srv, _ := releaseServer(archive, checksumsFor(other, archiveName(t)))
+	defer srv.Close()
+
+	home := t.TempDir()
+	cmd := exec.Command("sh", "install.sh")
+	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("a mismatched checksum reported success:\n%s", out)
+	}
+	if !strings.Contains(string(out), "checksum mismatch") {
+		t.Errorf("the failure does not say what went wrong:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".local", "bin", "bothy")); err == nil {
+		t.Error("a mismatched archive was installed anyway")
+	}
+}
+
+// An archive missing from checksums.txt is a broken release, not a reason to
+// install it unchecked.
+func TestBootstrapRefusesAnUnlistedArchive(t *testing.T) {
+	archive := releaseArchive(t, "x")
+	srv, _ := releaseServer(archive, checksumsFor(archive, "bothy_some_other_platform.tar.gz"))
+	defer srv.Close()
+
+	home := t.TempDir()
+	cmd := exec.Command("sh", "install.sh")
+	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("an unlisted archive reported success:\n%s", out)
+	}
+	if !strings.Contains(string(out), "not listed") {
+		t.Errorf("the failure does not say what went wrong:\n%s", out)
+	}
+}
+
+// Releases before 0.1.4 have no checksums.txt. Those must still install, and
+// must say plainly that nothing was verified rather than implying it was.
+func TestBootstrapSaysWhenItCannotVerify(t *testing.T) {
+	archive := releaseArchive(t, "#!/bin/sh\necho ok\n")
+	srv, _ := releaseServer(archive, "") // no checksums.txt published
+	defer srv.Close()
+
+	home := t.TempDir()
+	cmd := exec.Command("sh", "install.sh")
+	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("an old release without checksums.txt would not install: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "skipping verification") {
+		t.Errorf("silently skipped verification:\n%s", out)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".local", "bin", "bothy")); err != nil {
+		t.Error("nothing was installed")
 	}
 }

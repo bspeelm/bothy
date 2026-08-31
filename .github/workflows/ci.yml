@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only for every job here. Nothing in CI writes to the repository -- the
+# release workflow is the only thing that needs contents: write -- and the
+# default token is far broader than any of this needs.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest

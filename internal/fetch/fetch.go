@@ -85,7 +85,16 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 		return nil, fmt.Errorf("fetch: %w", err)
 	}
 	var installed []string
-	for name, content := range found {
+	// Iterate the tool's own declared binaries, not the map's keys. Both are
+	// the same set by now -- Extract keeps only what was asked for -- but the
+	// names here come from slots/tools rather than from the archive, so the
+	// path being written is not derived from downloaded data at all. The
+	// previous form was safe for reasons a reader had to assemble from two
+	// places: that path.Base cannot return a separator, and that the
+	// allowlist had already filtered the key. Emergent safety is the kind
+	// that a later edit removes without noticing.
+	for _, name := range t.Binaries() {
+		content := found[name]
 		dest := filepath.Join(destDir, name)
 		if err := writeExecutable(dest, content); err != nil {
 			return nil, fmt.Errorf("fetch: %s: %w", dest, err)
@@ -139,13 +148,30 @@ func Sum(b []byte) string {
 // writeExecutable writes a binary atomically. The rename matters: a partially
 // written binary that is already on PATH is a worse failure than no binary.
 func writeExecutable(dest string, content []byte) error {
-	tmp := dest + ".bothy-tmp"
-	if err := os.WriteFile(tmp, content, 0o755); err != nil {
+	// A unique temporary name, not dest+".bothy-tmp". Two installs running at
+	// once -- or an install racing a doctor that regenerates a config --
+	// shared that one name, so one process could rename the other's
+	// half-written file into place and defeat the atomicity this function
+	// exists to provide.
+	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".bothy-*")
+	if err != nil {
 		return err
 	}
-	if err := os.Rename(tmp, dest); err != nil {
-		os.Remove(tmp)
+	tmp := f.Name()
+	defer os.Remove(tmp) // no-op once the rename below succeeds
+
+	if _, err := f.Write(content); err != nil {
+		f.Close()
 		return err
 	}
-	return nil
+	if err := f.Close(); err != nil {
+		return err
+	}
+	// CreateTemp makes the file 0600; the caller's mode is the one that
+	// matters, and it must be set before the rename so nothing observes the
+	// file at the wrong permissions.
+	if err := os.Chmod(tmp, 0o755); err != nil {
+		return err
+	}
+	return os.Rename(tmp, dest)
 }

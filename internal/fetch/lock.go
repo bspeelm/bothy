@@ -142,8 +142,18 @@ func LatestRelease(repo string) (string, error) {
 //	0.19.2    -> 0.19.2     (delta, ripgrep)
 //	jq-1.8.2  -> 1.8.2      (jq)
 func VersionFromTag(tag string) string {
-	if i := strings.LastIndexByte(tag, '-'); i >= 0 && !isDigits(tag[:i]) {
-		tag = tag[i+1:]
+	// Strip a leading "<name>-" prefix, and only that: the version is what
+	// starts at the first digit after it.
+	//
+	// This keyed on the *last* hyphen instead, which is right for "jq-1.8.2"
+	// and wrong for anything carrying a suffix -- "v1.2.3-rc.1" became "rc.1",
+	// and "tool-1.2.3-1" became "1". Nothing pinned today has such a tag, so
+	// the damage was latent: a garbage version silently breaks every
+	// asset-name interpolation that follows it.
+	if i := strings.IndexByte(tag, '-'); i >= 0 && i+1 < len(tag) {
+		if rest := tag[i+1:]; rest[0] >= '0' && rest[0] <= '9' && !isDigits(tag[:i]) {
+			tag = rest
+		}
 	}
 	return strings.TrimPrefix(tag, "v")
 }
