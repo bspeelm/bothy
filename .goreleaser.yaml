@@ -1,6 +1,8 @@
-# Release build. The archive names here must match what bootstrap/install.sh
-# downloads: bothy_<os>_<arch>.tar.gz, with no version in the name, so that the
-# /releases/latest/download/ URL works without the script knowing a version.
+# Release build. Two naming conventions live here on purpose. The archive names
+# must match what bootstrap/install.sh downloads: bothy_<os>_<arch>.tar.gz, with
+# no version in the name, so that the /releases/latest/download/ URL works
+# without the script knowing a version. The .deb below does carry its version,
+# because Debian expects that and nothing resolves it by a fixed URL.
 
 version: 2
 
@@ -29,6 +31,63 @@ archives:
     files:
       - LICENSE
       - README.md
+
+nfpms:
+  # A Debian package for the release page, and nothing more. There is no apt
+  # source to add and no signing key, because a repository is something you
+  # have to keep serving and re-signing for as long as anyone has it in their
+  # sources.list, and this project cannot promise that. See ADR-013.
+  #
+  # deb only, deliberately. The rpm is built from source by Copr out of
+  # packaging/bothy.spec; adding "rpm" here would publish a second package
+  # called bothy, built a different way from a different input, and which one
+  # a machine ended up with would be luck.
+  - id: bothy
+    # Named rather than defaulted, so a second build added later cannot
+    # quietly find its way into this package.
+    ids: [bothy]
+    package_name: bothy
+    formats: [deb]
+
+    maintainer: Bryan Speelman <bryspeelm@pm.me>
+    homepage: https://github.com/bspeelm/bothy
+    license: MIT
+    section: utils
+    priority: optional
+    description: |-
+      A turn-key terminal workspace built from tools you already trust
+
+      bothy launches a persistent terminal layout -- a file browser, an agent
+      and a shell -- and tells you what is broken and how to fix it. It
+      installs any tool you are missing into its own directory, writes its own
+      configs there, and leaves your dotfiles alone: everything it manages
+      lives under ~/.local/share/bothy, and 'bothy uninstall' removes that one
+      directory.
+
+    # bothy_0.1.4_amd64.deb, which is what Debian expects and is not what
+    # goreleaser picks on its own -- its default puts the OS in the middle.
+    file_name_template: "{{ .ConventionalFileName }}"
+
+    # Matching the spec's %{_bindir}. The two packages must agree, or a
+    # machine that has had both ends up with two bothys.
+    bindir: /usr/bin
+
+    # The same files the rpm ships as %license and %doc. NOTICE belongs in a
+    # system package: it is the answer to "what is in this and who wrote it".
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/bothy/LICENSE
+      - src: README.md
+        dst: /usr/share/doc/bothy/README.md
+      - src: NOTICE
+        dst: /usr/share/doc/bothy/NOTICE
+
+    # Deliberately no Depends, as the spec has no Requires. bothy needs git at
+    # runtime for its Yazi plugins and infocmp for one doctor check; neither is
+    # declared, because a missing one is not a broken install -- `bothy doctor`
+    # names it and gives you the command, which is the thing bothy is for.
+    # Declaring them on one distribution and not the other would make "what
+    # does this package require" depend on which package you asked.
 
 checksum:
   name_template: checksums.txt
@@ -61,6 +120,12 @@ release:
     ```sh
     curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
     bothy install
+    ```
+
+    Or, on Debian and Ubuntu, download the `.deb` below and:
+
+    ```sh
+    sudo apt install ./bothy_*.deb
     ```
 
     Then run `bothy`.

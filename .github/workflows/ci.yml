@@ -92,3 +92,39 @@ jobs:
               exit 1
             }
           done
+
+  deb:
+    # The .deb only exists once a release is published, so without this the
+    # first time anyone runs `apt install` on one is after the tag is pushed
+    # and irrevocable. --snapshot builds the whole artifact set and publishes
+    # none of it, which is close enough: what goes wrong with a .deb is its
+    # metadata, and that comes from the same config either way.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # goreleaser needs tags to compute the snapshot version.
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: '~> v2'
+          args: release --snapshot --clean --skip=publish
+      - name: install it, run it, remove it
+        run: |
+          set -euo pipefail
+          deb=$(ls dist/bothy_*_amd64.deb)
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb"
+          sudo apt-get install -y "./$deb"
+          # From /usr/bin, not from the build tree.
+          test "$(command -v bothy)" = /usr/bin/bothy
+          bothy version
+          # No dependencies is a claim (ADR-013), so check it rather than
+          # assume it -- an accidental Depends: would pull perl onto the
+          # machine of someone who wanted one static binary.
+          test -z "$(dpkg-deb -f "$deb" Depends)"
+          sudo apt-get remove -y bothy
+          ! command -v bothy

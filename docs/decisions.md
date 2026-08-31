@@ -238,3 +238,47 @@ Actions step. A job written to cite the "green and testing nothing" bug
 committed it on its first attempt. The lesson is not that pipefail is easy to
 forget. It is that a passing job is evidence of nothing until you have watched
 it fail.
+
+## ADR-013 — The Debian package is a file, not a repository
+
+Fedora gets a Copr repository and Debian gets a `.deb` attached to the GitHub
+release. The asymmetry is deliberate, and what was rejected to reach it is the
+part worth writing down.
+
+A Launchpad PPA is the obvious answer and it is the wrong shape. It builds from
+a Debian source package, which means carrying `debian/control`, `debian/rules`
+and a `debian/changelog` in a second packaging syntax alongside the rpm spec — a
+second place for the version to live, when `make release-tag` and `make copr` go
+to some trouble to have only one. It wants a series per Ubuntu release, so the
+matrix grows every six months whether or not anything changed. And it is Ubuntu
+only, so Debian and Mint would still be downloading a file.
+
+Hosting an apt repository directly is worse. It needs a GPG key that has to be
+kept, kept secret and kept alive, and a signed `Release` file that carries an
+expiry date. The failure mode is therefore not "no new version" but "every
+existing user's `apt update` begins erroring on a date I have forgotten about",
+which is principle 7 exactly: an automated path whose failure is silent until it
+is someone else's problem. Copr is tolerable because Fedora runs it. The Debian
+equivalent is a thing I would be running.
+
+So the `.deb` comes out of goreleaser's `nfpms:` block, built from the binary of
+the same tag, and lands on the release page beside the tarballs. It costs one
+block of configuration and no ongoing anything.
+
+The cost is real and belongs in the open rather than in a footnote: **`apt
+upgrade` will never bring you a new bothy.** dpkg tracks it and `apt remove`
+removes it, but there is no source for apt to learn a newer one exists, so
+upgrading means fetching the next file by hand. Anyone who wants updates to
+arrive on their own should use the install script, which resolves
+`/releases/latest/` on every run. The `.deb` is for people who would rather their
+package manager knew the binary was there — the same wish the Copr serves — and
+it delivers that much and no more.
+
+Two smaller decisions follow from the same place. The `.deb` is built from the
+release binary rather than from source, which is the opposite of what
+`packaging/bothy.spec` does and is defensible only because this one is not
+claiming to be a distribution's package: it is the tarball wearing a `.deb`, so
+that dpkg has a record of the file it put in `/usr/bin`. And `nfpms:` emits `deb`
+and nothing else. It would have taken one word to emit an rpm too, and the result
+would have been two packages named `bothy`, built from different inputs by
+different systems, with nothing to say which one a machine ought to have.
