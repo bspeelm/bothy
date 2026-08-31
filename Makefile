@@ -135,6 +135,10 @@ release-tag:
 #
 # Kept separate from `release` so it follows the GitHub release rather than
 # racing it.
+#
+# --nowait because copr-cli otherwise watches the build to completion, which
+# means several minutes of no output from a command that looks hung. It prints
+# the build URL instead; watch it there.
 copr:
 	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); \
 	git rev-parse -q --verify "refs/tags/v$$v" >/dev/null || \
@@ -147,4 +151,5 @@ copr:
 	    --commit "v$$v" \
 	    --spec packaging/$(BINARY).spec \
 	    --type git \
-	    --method make_srpm
+	    --method make_srpm \
+	    --nowait
