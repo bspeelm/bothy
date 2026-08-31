@@ -17,8 +17,6 @@ Dracula (the open theme)
     commercially licensed — is read from a file on the user's own machine and
     is never carried here. See docs/decisions.md ADR-006.
 
-Dracula PRO is a separate, paid product and no part of it is included,
-reproduced, or derived from in this repository.
 
 --------------------------------------------------------------------------
 Vendored Go dependency

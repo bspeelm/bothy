@@ -16,7 +16,8 @@
 > to use, kept by two customs: leave it as you found it, and leave fuel for the
 > next visitor.
 
-One command opens a persistent layout with a file browser, an agent and a shell:
+One command opens a file browser, an AI coding agent and a shell, all in one
+terminal window that stays put:
 
 ```sh
 cd ~/some-project
@@ -28,50 +29,52 @@ bothy
 </p>
 
 bothy installs any tool you are missing, writes its own configs, arranges the
-panes, and then tells you what is broken and how to fix it. It does not touch
-your dotfiles: everything it manages lives in one directory, and
-`bothy uninstall` removes it.
+panes, then tells you what is broken and how to fix it. It leaves your dotfiles
+alone. Everything it manages lives in one directory, and `bothy uninstall`
+removes it.
 
 ## Install
 
-### What you need
+### What you need first
 
 | | |
 |---|---|
-| **git** | required — bothy installs its Yazi plugins with `ya pkg`, which clones them |
-| **curl** or **wget** | for the install script only |
-| **[Ghostty](https://ghostty.org)** | strongly recommended — without a terminal that speaks the Kitty graphics protocol (Ghostty, Kitty, WezTerm) image previews fall back to block art |
-| **an agent** | optional — the main pane runs `claude` by default and opens empty without it |
-| **Go** and **make** | for building from source only |
+| **git** | Required. bothy uses it to fetch its Yazi plugins. |
+| **curl** or **wget** | Only for the install script below. |
+| **[Ghostty](https://ghostty.org)** | Recommended. Yazi can only draw real image previews in a terminal that supports them, which means Ghostty, Kitty or WezTerm. In anything else you get a rough approximation made of text characters. |
+| **an AI agent** | Optional. The middle pane runs `claude` by default and sits empty if you have not installed one. |
+| **Go** and **make** | Only if you build from source. |
 
-bothy supplies everything else itself. `bothy doctor` reports any of these that
-are missing, with the command for the machine you are on.
+bothy provides everything else. If any of these are missing, `bothy doctor`
+says so and gives you the command to fix it on your system.
 
-Pick one. Same program and same version either way.
+### Getting bothy
+
+Pick whichever suits you. You get the same program and version from all four.
 
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
-| **Go** | you already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+| **Go** | if you already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors | `git clone` then `make install-binary` |
 
-Then, from any directory:
+Then run this from any directory:
 
 ```sh
 bothy
 ```
 
-The first run sets the workspace up — installing only the tools you are
-missing, after telling you which and asking — and launches it.
+The first run sets everything up. It lists the tools you are missing, asks
+before downloading them, then launches.
 
-> On Silverblue and other image-based hosts, `dnf` means `rpm-ostree install`
-> and a reboot. The script has neither cost.
+> On Silverblue and other image-based systems, installing with `dnf` requires
+> `rpm-ostree install` and a reboot. The script needs neither.
 
-### What arrives
+### What gets installed
 
-Nine tools, about 131 MB, on a machine that has none of them — each verified
-against `bothy.lock` before a byte is written:
+If you have none of them already, bothy downloads these nine tools, about
+131 MB in total:
 
 | | | | |
 |---|---|---|---|
@@ -79,86 +82,95 @@ against `bothy.lock` before a byte is written:
 | ripgrep | fzf | fd | jq |
 | zoxide | | | |
 
-On a machine that already has current versions, bothy downloads nothing and
-says which it is using. Your package manager is never invoked, nothing needs
-root, and nothing is added to your `PATH`.
+Each download is checked against a recorded checksum before bothy installs it.
 
-### What it will not install
+If you already have current versions, bothy downloads nothing and tells you
+which of yours it is using. It never calls your package manager, never needs
+root, and never adds anything to your `PATH`.
 
-Ghostty and the agent, both listed above. Ghostty publishes no release
-binaries and every install path needs root; managing an agent — its version,
-its auth, its config — is not bothy's business. `bothy doctor` prints the
-command for your machine in both cases.
+Two things it will not install for you: Ghostty, because it ships no
+ready-made binaries and every way of installing it needs root, and the agent,
+because your AI tools and their credentials are yours to manage. `bothy doctor`
+gives you the right command for both.
 
 ## Commands
 
 | | |
 |---|---|
 | `bothy` | Launch the workspace |
-| `bothy attach` | Reattach to a running session |
-| `bothy doctor` | What is broken, and the one-line fix (`--json` for CI) |
-| `bothy install` | Re-apply after changing a setting |
-| `bothy tools` | Which tools are used, and where they came from |
-| `bothy config set <key> <value>` | Change a slot, theme or workspace setting |
+| `bothy attach` | Reconnect to a running session |
+| `bothy doctor` | What is broken, and how to fix it (`--json` for CI) |
+| `bothy install` | Re-apply your settings after changing them |
+| `bothy tools` | Which tools are in use, and where they came from |
+| `bothy config set <key> <value>` | Change a setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file |
 | `bothy desktop-entry` | Print a `.desktop` launcher (`--install` writes it) |
-| `bothy uninstall` | Remove bothy's directory and its binary |
+| `bothy uninstall` | Remove bothy and everything it installed |
 
 ## What it touches
 
 ```
-~/.local/share/bothy/     bothy's tree — configs, and any tool it supplied
-~/.config/bothy/          yours — config.toml, palette, overrides   (git this)
+~/.local/share/bothy/     bothy's files: configs, and any tool it installed
+~/.config/bothy/          your files: settings, palette, overrides
 ```
 
 Nothing else. Not `~/.config/yazi`, not `~/.vimrc`, not `~/.bashrc`, not your
-global git config. bothy renders its configs into its own tree and launches
-each tool pointed there, with environment variables scoped to that session, so
-your shell keeps its own `PATH` and `EDITOR`.
+git config. bothy writes its configs into its own folder and points each tool
+there when it launches, using environment variables that apply only to that
+session. Your shell keeps its own `PATH` and `EDITOR`.
 
-That second directory is your setup: put it in git, clone it on a new machine,
-run `bothy`.
+The second folder is your setup. Put it in git, clone it on a new machine, run
+`bothy`, and you have the same workspace.
 
 ### Using your own config instead
+
+If you already have a Yazi setup you like, keep it:
 
 ```toml
 # ~/.config/bothy/config.toml
 passthrough = ["yazi"]
 ```
 
-That points the tool at your directory rather than bothy's. To adjust bothy's
-config instead of replacing it, drop a file in
-`~/.config/bothy/overrides/<tool>/<file>` — it is appended after the template,
-so your setting wins.
+bothy then points Yazi at your config rather than its own. To adjust bothy's
+config rather than replace it, put a file in
+`~/.config/bothy/overrides/<tool>/<file>`. bothy adds it to the end of its own,
+so your settings take priority.
 
-## Slots and profiles
+## Swapping parts
 
-Every component is a slot with interchangeable providers:
+Every part of the workspace can be changed:
 
-| slot | default | also |
+| part | default | alternatives |
 |---|---|---|
-| terminal | ghostty | advised, never installed |
-| mux | zellij | — |
-| browser | yazi | none |
+| terminal | ghostty | kitty, wezterm (bothy never installs these) |
+| multiplexer | zellij | none yet |
+| file browser | yazi | turn it off |
 | editor | vim | nano, helix |
-| agent | claude-code | any command |
-| theme | dracula | any palette, via a file of your own |
+| agent | claude-code | any command you name |
+| theme | dracula | any palette you write |
 
 ```sh
 bothy config set slots.editor helix
 ```
 
-Three layouts ship. `cockpit` is the default — browser on top, agent and shell
-below. `editor` puts an editor, agent and shell in three columns. `minimal` is
-an agent and a shell, for small screens and SSH. Profiles are small TOML files;
-drop your own in `~/.config/bothy/profiles/`.
+Three layouts come with bothy, called profiles. `cockpit` is the default, with
+the file browser on top and the agent and shell below. `editor` gives you an
+editor, agent and shell side by side. `minimal` is just an agent and a shell,
+for small screens and SSH.
+
+```sh
+bothy config set profile minimal
+```
+
+Profiles are short TOML files, so you can write your own and put it in
+`~/.config/bothy/profiles/`.
 
 ## Theming
 
-bothy ships the open [Dracula](https://github.com/dracula/dracula-theme)
-palette and themes every tool from the same eleven colour tokens — including a
-generated vim colorscheme. Any other palette is a file on your machine:
+bothy comes with the [Dracula](https://github.com/dracula/dracula-theme)
+palette and colours every tool from the same eleven values, including a vim
+colour scheme it generates for you. To use a different palette, write your own:
 
 ```sh
 bothy theme example > ~/.config/bothy/my-palette.toml
@@ -166,39 +178,41 @@ $EDITOR ~/.config/bothy/my-palette.toml
 bothy config set theme.palette ~/.config/bothy/my-palette.toml
 ```
 
-This is also how to use a palette you have licensed. bothy ships no colour
-values but its own, so what you paid for stays on your machine.
+This is also how to use a palette you have paid for. bothy contains no colours
+except its own, so anything you licensed stays on your machine.
 
 ## Where it runs
 
-In a terminal that can draw inline images — Ghostty, Kitty, WezTerm — bothy
-runs there. Otherwise it opens a Ghostty window with its own config, because
-image previews need a terminal that can draw them and degrading quietly is
-worse. `--in-place` and `--window` force either behaviour; with no display it
-always runs in place.
+If your terminal can draw images (Ghostty, Kitty, WezTerm), bothy runs there.
+If it cannot, bothy opens a Ghostty window instead, so that image previews
+still work rather than silently turning into text art. Use `--in-place` or
+`--window` to force either one. With no graphical display, such as over SSH, it
+always runs where you are.
 
-Inside Toolbx or Distrobox, bothy records which container it installed its
-tools in and hops back there when launched from the host. Install from a
-container that has none of the tools and the result is self-contained, working
-from anywhere.
+Inside a Toolbx or Distrobox container, bothy remembers which container it
+installed its tools in and returns there when you launch it from the host. If
+you install from a container that has none of the tools, bothy downloads all of
+them into its own folder, and the result then works from anywhere.
 
 ## What bothy is not
 
-- A native Windows tool without WSL
+- A Windows tool, unless you use WSL
 - A tmux setup
 - A plugin marketplace or extension API
-- A vendor of the tools — it installs upstream releases and verifies them
+- A bundle of the tools. It downloads official releases and verifies them
 - An LSP or debugger manager
-- A background service, auto-updater, or telemetry pipeline
-- A manager of your agent's config, keys or hooks
-- A Flatpak. Flathub excludes console software, and bothy fetches tools at
-  runtime, which the manifest model exists to prevent
+- A background service, auto-updater, or telemetry collector
+- A manager for your agent's config, keys or hooks
+- A Flatpak. Flathub does not accept command-line software, and bothy
+  downloads its tools as it runs, which Flatpak packaging is designed to avoid
 
 ## Contributing
 
-[`docs/adding-a-provider.md`](docs/adding-a-provider.md) — a provider is a data
-file and templates, not Go code. Design rationale is in
-[`docs/decisions.md`](docs/decisions.md); the working agreement is in
+See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding support
+for a new tool means writing a config file and some templates, not Go code.
+
+Why things are the way they are is recorded in
+[`docs/decisions.md`](docs/decisions.md), and the plan for the project is in
 [`PLAN.md`](PLAN.md).
 
 ## Credits and licence
@@ -206,6 +220,6 @@ file and templates, not Go code. Design rationale is in
 MIT — see [`LICENSE`](LICENSE).
 
 The built-in palette is [Dracula](https://github.com/dracula/dracula-theme)
-(MIT). bothy vendors no tool: it downloads official release binaries, verifies
-them against `bothy.lock`, and each stays under its own licence.
-[`NOTICE`](NOTICE) has the full list.
+(MIT). bothy does not bundle any of the tools it installs. It downloads their
+official releases, checks them, and each keeps its own licence.
+[`NOTICE`](NOTICE) lists them all.
