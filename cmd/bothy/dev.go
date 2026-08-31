@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -22,7 +23,7 @@ func cmdDev(args []string) error {
 		return cmdAttach(args[1:])
 	}
 
-	fs := newFlagSet("dev")
+	fs := flag.NewFlagSet("dev", flag.ExitOnError)
 	dir := fs.String("dir", "", "directory to open in (default: the current one)")
 	profile := fs.String("profile", "", "layout profile (default: the configured one)")
 	window := fs.Bool("window", false, "always open a new Ghostty window")
@@ -71,9 +72,6 @@ func cmdDev(args []string) error {
 		name = cfg.Profile
 	}
 
-	// Open a terminal that can do the job, if this one cannot. Decided before
-	// the container hop so the window opens once, on the host, rather than the
-	// hop happening first and the spawn being attempted from inside.
 	// Set up on first run rather than refusing and naming another command.
 	// Before the layout is rendered, so a cancelled or failed setup leaves no
 	// debris behind.
@@ -81,6 +79,9 @@ func cmdDev(args []string) error {
 		return err
 	}
 
+	// Open a terminal that can do the job, if this one cannot. Decided before
+	// the container hop so the window opens once, on the host, rather than the
+	// hop happening first and the spawn being attempted from inside.
 	if mode := decideLaunch(p, force); mode.Spawn {
 		if err := spawnTerminal(p, target, name); err != nil {
 			// A terminal that will not open is a reason to carry on here, not
@@ -150,7 +151,7 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	if mux == "" {
 		mux = "zellij"
 	}
-	bin, err := lookPathIn(mux, p.BinDir())
+	bin, err := lookPathIn(p, mux)
 	if err != nil {
 		return fmt.Errorf("%s is not installed — run 'bothy install'", mux)
 	}
@@ -162,9 +163,8 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 }
 
 // lookPathIn prefers bothy's own bin, then falls back to the system PATH.
-func lookPathIn(name, binDir string) (string, error) {
-	own := filepath.Join(binDir, name)
-	if fi, err := os.Stat(own); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+func lookPathIn(p platform.Info, name string) (string, error) {
+	if own, ok := install.InstalledBinary(p, name); ok {
 		return own, nil
 	}
 	return exec.LookPath(name)

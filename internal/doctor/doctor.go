@@ -123,8 +123,7 @@ type Env struct {
 // meant the doctor announcing "0 from your system, 9 supplied by bothy" and
 // "zellij is not installed" in the same report.
 func (e Env) lookPath(name string) (string, error) {
-	own := filepath.Join(e.Platform.BinDir(), name)
-	if fi, err := os.Stat(own); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+	if own, ok := install.InstalledBinary(e.Platform, name); ok {
 		return own, nil
 	}
 	return exec.LookPath(name)
@@ -367,9 +366,6 @@ func checkWatermarkImage(env Env) Result {
 	return pass("watermark image is in place")
 }
 
-// checkTerminalCapability reports where bothy will run. A terminal that cannot
-// draw images is not an error — it is a reason previews will be off, and
-// saying so beats letting someone wonder why their config "did not work".
 // checkYaziPlugins reports plugins bothy's config wants and does not have.
 //
 // This is a warning rather than a failure because the generated config is
@@ -423,6 +419,9 @@ func checkProfileRenders(env Env) Result {
 	return pass(fmt.Sprintf("profile %q renders (%d panes)", name, prof.PaneCount()))
 }
 
+// checkTerminalCapability reports where bothy will run. A terminal that cannot
+// draw images is not an error — it is a reason previews will be off, and
+// saying so beats letting someone wonder why their config "did not work".
 func checkTerminalCapability(env Env) Result {
 	term := env.Platform.Terminal
 	if term == "" {
@@ -681,10 +680,6 @@ func checkAgent(env Env) Result {
 	return pass(bin + " is on PATH")
 }
 
-// shadowable are the tools whose duplicate copies cause the most confusion when
-// an unrelated package repository puts an older one earlier on PATH.
-var shadowable = []string{"rg", "fd", "fzf", "jq", "delta"}
-
 func checkThemePalette(env Env) Result {
 	path := env.Config.PalettePath(env.Platform)
 	if path == "" {
@@ -701,16 +696,4 @@ func checkThemePalette(env Env) Result {
 			"fix the file, or fall back: bothy config set theme.palette \"\"")
 	}
 	return pass("palette " + pal.Name + " reads cleanly")
-}
-
-// whichAll returns every copy of a binary on PATH, in order.
-func whichAll(name string) []string {
-	var out []string
-	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
-		p := filepath.Join(dir, name)
-		if fi, err := os.Stat(p); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
-			out = append(out, p)
-		}
-	}
-	return out
 }

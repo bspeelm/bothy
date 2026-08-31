@@ -6,7 +6,8 @@
 // own. Under isolation (ADR-009) none of that applies: every config bothy
 // generates lives inside its own tree, so removing the tree removes them, and
 // the only thing worth recording is which *binaries* were installed — those go
-// in bothy's bin/ and Phase B needs their versions and checksums.
+// in bothy's bin/, and what is worth recording about them is the version and
+// checksum each was installed at.
 package state
 
 import (

@@ -353,10 +353,6 @@ func slug(name string) string {
 	return out
 }
 
-// assetBytes reads one embedded asset. Used by tests to compare what was
-// written against what was shipped.
-func assetBytes(path string) ([]byte, error) { return bothy.Templates.ReadFile(path) }
-
 // SessionEnv builds the environment for bothy's process tree.
 //
 // This is where isolation actually takes effect: the configs were written into

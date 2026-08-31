@@ -170,8 +170,8 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// Palette resolves the configured theme, expanding ~ in the pack path so that
-// a hand-edited config.toml behaves the way its author expected.
+// Palette resolves the configured theme, expanding ~ in the palette path so
+// that a hand-edited config.toml behaves the way its author expected.
 func (c Config) Palette(p platform.Info) (theme.Palette, error) {
 	return theme.Resolve(c.Theme.Provider, c.PalettePath(p))
 }
@@ -188,7 +188,7 @@ func (c Config) PassesThrough(slot string) bool {
 
 // PalettePath is the expanded custom palette file, or "" when none is set.
 func (c Config) PalettePath(p platform.Info) string {
-	return expand(c.Theme.Palette, p.Home)
+	return Expand(c.Theme.Palette, p.Home)
 }
 
 // ContainerFor returns the container to enter, preferring an explicit setting,
@@ -259,19 +259,17 @@ func (c *Config) Set(key, value string) error {
 		return fmt.Errorf("config: unknown key %q", key)
 	}
 	// Only the assigned value is validated here, not the configuration as a
-	// whole. Cross-field rules — a PRO variant needing a pack — are checked at
-	// install time instead, because enforcing them per-assignment makes the
-	// natural ordering impossible: you cannot set the variant before the pack,
-	// and you cannot set the pack for a variant you were not allowed to select.
+	// whole. Cross-field rules are checked at install time instead, because
+	// enforcing them per-assignment would make some orderings impossible to
+	// type: a pair of keys that are only valid together cannot both be set
+	// first.
 	return nil
 }
 
-// Incomplete returns the cross-field problem with a configuration, if any, as
-// something to report rather than refuse. Callers that must have a usable
-// configuration should use Validate.
-func (c Config) Incomplete() error { return c.Validate() }
-
-func expand(path, home string) string {
+// Expand resolves a leading ~ against home. Exported because the CLI has to
+// do the same thing to a --dir argument, and two spellings of tilde expansion
+// is one more than this project needs.
+func Expand(path, home string) string {
 	if path == "~" {
 		return home
 	}

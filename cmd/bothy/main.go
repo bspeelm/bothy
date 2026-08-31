@@ -290,7 +290,7 @@ func cmdConfig(args []string) error {
 			return err
 		}
 		fmt.Printf("set %s = %s\n", args[1], args[2])
-		if err := cfg.Incomplete(); err != nil {
+		if err := cfg.Validate(); err != nil {
 			fmt.Printf("\nnot ready yet:\n%v\n", err)
 			return nil
 		}
@@ -362,23 +362,17 @@ func tilde(path, home string) string {
 	return path
 }
 
+// expandDir is config.Expand plus an absolute path, which a --dir argument
+// needs and a configured path does not.
 func expandDir(dir, home string) string {
-	if dir == "~" {
-		return home
-	}
-	if strings.HasPrefix(dir, "~/") {
-		return filepath.Join(home, dir[2:])
+	if expanded := config.Expand(dir, home); expanded != dir {
+		return expanded
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return dir
 	}
 	return abs
-}
-
-// newFlagSet keeps flag handling uniform across subcommands.
-func newFlagSet(name string) *flag.FlagSet {
-	return flag.NewFlagSet(name, flag.ExitOnError)
 }
 
 // printTools reports the fill-gaps decisions. Saying *why* a tool was fetched
