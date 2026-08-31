@@ -359,11 +359,30 @@ and arm64 under the names `bootstrap/install.sh` already expected. The
 one-liner in the README was then run against the real release and installs a
 working binary.
 
-Remaining before v0.2.0: run it on a distro that is not Fedora. Everything is
-verified on Fedora Silverblue, a Fedora toolbox, and a bare
-`fedora-toolbox:44` — which is three environments and one distribution.
+**Phase F — Ubuntu, and the code worth porting. Done.** The sentence that used
+to sit here said the remaining work before v0.2.0 was to run bothy on a distro
+that was not Fedora. It now does, and CI keeps it that way: a container job
+installs into `fedora:44` and `ubuntu:24.04`, checks the whole doctor report
+against a table of expected severities, and uninstalls, asserting the tree is
+empty afterwards. See `docs/plan-0.1.3.md` for the milestone and ADR-011/012
+for the two decisions it forced.
+
+Four things were wrong and only ever visible on Fedora: every named podman
+container was detected as a Toolbx, `bothy attach` could not hop into a
+distrobox, the `xdg-open` shim was written into containers with no host to
+forward to (and then passed its own check), and `checkTerminfo` named a package
+that does not exist. The cleanup that preceded the port removed five
+declarations with no callers and five comments describing code that had been
+deleted, and split the two files that had outgrown themselves.
+
+The container job also found what the unit tests structurally could not:
+`SessionEnv` set no XDG directories, so the tools bothy runs wrote outside its
+tree at every command except `install`.
 
 Deferred, unchanged: macOS, WSL2/Windows, tmux, `bothy update`.
+
+Next, in 0.1.4: an apt path via goreleaser's `nfpms:`, and a weekly job that
+opens a tracking issue when a pinned tool has a newer release.
 
 ---
 
