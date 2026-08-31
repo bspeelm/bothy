@@ -1,0 +1,92 @@
+name: outdated
+
+# bothy.lock pins nine tools by version and checksum, and nothing noticed when
+# one of them moved. The pins are only correct on the day they are written.
+#
+# This opens or updates one tracking issue. Not a pull request, and never an
+# automatic bump: PLAN.md §11 lists auto-updaters as a non-goal, and
+# internal/fetch/lock.go says why the lockfile is regenerated deliberately --
+# "an installer that quietly moves its own pins is an installer whose output
+# nobody can reproduce". A bot that opens a PR is one merge away from being
+# that installer.
+on:
+  schedule:
+    # Mondays, early. Nothing here is urgent; weekly is often enough to catch
+    # a release and rare enough that the issue does not become wallpaper.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  outdated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - run: make build
+
+      - name: ask each forge for its latest release
+        id: check
+        env:
+          # Lifts the sixty-an-hour unauthenticated limit, which a shared
+          # runner IP otherwise burns through on someone else's behalf.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          ./bothy outdated --json > updates.json
+          ./bothy outdated | tee report.txt
+
+      - name: open or update the tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # The label is how the one tracking issue is found again. Creating
+          # it here rather than by hand means this workflow works in a fork
+          # without setup.
+          gh label create tool-updates \
+            --description "A pinned tool has a newer release upstream" \
+            --color ededed 2>/dev/null || true
+
+          stale=$(jq '[.updates[] | select(.reason == null and .latest != null and .latest != .pinned)] | length' updates.json)
+          unknown=$(jq '[.updates[] | select(.reason != null)] | length' updates.json)
+
+          # One issue, updated -- not one per week, which would fill the
+          # tracker with near-identical issues nobody closes.
+          existing=$(gh issue list --state open --label tool-updates \
+            --json number --jq '.[0].number // empty')
+
+          if [ "$stale" -eq 0 ] && [ "$unknown" -eq 0 ]; then
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "All nine tools are at their latest release. Closing."
+              gh issue close "$existing"
+            fi
+            echo "nothing to report"
+            exit 0
+          fi
+
+          {
+            echo "\`bothy outdated\` as of $(date -u +%Y-%m-%d):"
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+            echo
+            echo "Run \`bothy lock\` to take them, then review the diff — it"
+            echo "re-downloads every asset to compute checksums from the real"
+            echo "bytes, so it takes a few minutes and is worth watching."
+          } > body.md
+
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file body.md
+            echo "updated #$existing"
+          else
+            gh issue create --title "Tool updates available" \
+              --label tool-updates --body-file body.md
+          fi
