@@ -51,11 +51,7 @@ const LockPath = "bothy.lock"
 // than read from disk because an installed bothy has no repository to read
 // from, and the pins are part of what a given bothy release *is*.
 func LoadLock() (*Lockfile, error) {
-	src, err := bothy.Lock()
-	if err != nil {
-		return nil, fmt.Errorf("fetch: %w", err)
-	}
-	return ParseLock(src)
+	return ParseLock(bothy.Lock())
 }
 
 // ParseLock reads a lockfile from bytes.

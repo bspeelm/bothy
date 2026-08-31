@@ -32,8 +32,8 @@ type Profile struct {
 	Description string `toml:"description"`
 
 	// TabBar and StatusBar are Zellij's own plugin panes. They are fixed line
-	// counts, not percentages, which is why they are flags rather than rows —
-	// see SizeNote in Render.
+	// counts, not percentages, which is why they are flags rather than rows:
+	// a row carries a percentage, and these cannot.
 	TabBar    *bool `toml:"tab_bar"`
 	StatusBar *bool `toml:"status_bar"`
 

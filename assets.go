@@ -35,4 +35,4 @@ var Slots embed.FS
 var lockFile []byte
 
 // Lock returns the embedded lockfile.
-func Lock() ([]byte, error) { return lockFile, nil }
+func Lock() []byte { return lockFile }

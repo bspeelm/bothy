@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/render"
@@ -291,7 +292,7 @@ func TestWatermarkAssetIsCopiedIntact(t *testing.T) {
 	if len(got) < 8 || string(got[1:4]) != "PNG" {
 		t.Fatal("watermark is not a PNG — a header was prepended")
 	}
-	want, err := assetBytes("templates/extras/watermark/tux.png")
+	want, err := bothy.Templates.ReadFile("templates/extras/watermark/tux.png")
 	if err != nil {
 		t.Fatal(err)
 	}

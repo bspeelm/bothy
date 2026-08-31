@@ -23,8 +23,12 @@ SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
 all: check
 
+# CGO_ENABLED=0 to match .goreleaser.yaml. Without it the binary `budgets`
+# weighs against the 10 MB cap is not the binary that ships, and one built here
+# and carried into another distro's container is linked against this machine's
+# glibc -- which would test glibc compatibility rather than bothy.
 build:
-	go build -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/bothy
+	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/bothy
 
 test:
 	go test ./...
