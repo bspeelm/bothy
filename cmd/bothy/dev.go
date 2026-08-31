@@ -18,11 +18,6 @@ import (
 // cmdDev launches the workspace. This is the command the `dev` shell function
 // calls, and the one moment the whole project exists to make good.
 func cmdDev(args []string) error {
-	// `dev attach` reattaches rather than starting a second session.
-	if len(args) > 0 && args[0] == "attach" {
-		return cmdAttach(args[1:])
-	}
-
 	fs := flag.NewFlagSet("dev", flag.ExitOnError)
 	dir := fs.String("dir", "", "directory to open in (default: the current one)")
 	profile := fs.String("profile", "", "layout profile (default: the configured one)")
@@ -30,6 +25,14 @@ func cmdDev(args []string) error {
 	inPlace := fs.Bool("in-place", false, "always run in the current terminal")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	// `dev attach` reattaches rather than starting a second session. After
+	// flag parsing, not before: checking args[0] first meant
+	// `bothy dev --profile x attach` saw "--profile" and fell through to a
+	// fresh launch, silently ignoring the word the user ended the line with.
+	if fs.NArg() > 0 && fs.Arg(0) == "attach" {
+		return cmdAttach(fs.Args()[1:])
 	}
 	if *window && *inPlace {
 		return fmt.Errorf("--window and --in-place contradict each other")
@@ -204,20 +207,73 @@ func cmdAttach(args []string) error {
 	if err != nil {
 		return err
 	}
+	plan, err := planAttach(p, cfg, args)
+	if err != nil {
+		return err
+	}
+	if plan.Container != "" {
+		return containerHop(plan.Container, plan.Command)
+	}
+	return runWithEnv(plan.Env, plan.Bin, plan.Args...)
+}
+
+// attachPlan is what `bothy attach` will do: hop into the container the
+// workspace lives in, or run the multiplexer here.
+//
+// It exists as a value because attach was the one command with no tests, and
+// it had collected four bugs that a test would have caught the moment it was
+// written. Resolution is now something you can hold and assert about.
+type attachPlan struct {
+	// Container is the container the session lives in, and Command the shell
+	// line to run there. Both empty when attaching here.
+	Container string
+	Command   string
+	// Bin, Args and Env are the multiplexer to run in this shell.
+	Bin  string
+	Args []string
+	Env  []string
+}
+
+func planAttach(p platform.Info, cfg config.Config, args []string) (attachPlan, error) {
 	mux := cfg.Slots.Mux
 	if mux == "" {
 		mux = "zellij"
 	}
 	if !p.InContainer() {
 		if container := install.ContainerFor(p, cfg); container != "" {
-			return containerHop(container, mux+" attach "+strings.Join(args, " "))
+			return attachPlan{Container: container, Command: attachCommand(mux, args)}, nil
 		}
 	}
-	bin, err := exec.LookPath(mux)
+	// lookPathIn, not exec.LookPath: bothy's own bin comes first. Resolving
+	// through the ambient PATH meant that on a machine where bothy had
+	// supplied zellij -- the gap-filling case this project exists for --
+	// attach reported "zellij is not installed" while `bothy` launched fine.
+	bin, err := lookPathIn(p, mux)
 	if err != nil {
-		return fmt.Errorf("%s is not installed", mux)
+		return attachPlan{}, fmt.Errorf("%s is not installed", mux)
 	}
-	return runInteractive(bin, append([]string{"attach"}, args...)...)
+	return attachPlan{
+		Bin:  bin,
+		Args: append([]string{"attach"}, args...),
+		// The client reads config too -- keybindings in particular -- so an
+		// attach without this reads your zellij config while the session it
+		// joins was launched with bothy's.
+		Env: install.SessionEnv(p, cfg),
+	}, nil
+}
+
+// attachCommand builds the shell line for the container hop.
+//
+// Quoted, because this is interpolated into `bash -lc`. hopIntoContainer
+// three functions below has always quoted what it embeds; this joined raw,
+// so a session name with a space in it split into two arguments.
+func attachCommand(mux string, args []string) string {
+	parts := make([]string, 0, len(args)+2)
+	parts = append(parts, shellQuote(mux), "attach")
+	for _, a := range args {
+		parts = append(parts, shellQuote(a))
+	}
+	return strings.Join(parts, " ")
 }
 
 // nestedAgent reports whether this shell is already inside an agent session.

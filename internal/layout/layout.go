@@ -239,7 +239,9 @@ func writePane(b *strings.Builder, p Pane, cmds Commands, depth int) error {
 	}
 
 	b.WriteString(" {\n")
-	writeCommand(b, indent+"    ", cmd)
+	if err := writeCommand(b, indent+"    ", cmd); err != nil {
+		return fmt.Errorf("layout: pane %q: %w", p.Name, err)
+	}
 	b.WriteString(indent + "}\n")
 	return nil
 }
@@ -248,8 +250,14 @@ func writePane(b *strings.Builder, p Pane, cmds Commands, depth int) error {
 // Zellij execs the command directly rather than through a shell, so
 // "claude --continue" as a single string would look for a binary with a space
 // in its name.
-func writeCommand(b *strings.Builder, indent, cmd string) {
-	parts := strings.Fields(cmd)
+func writeCommand(b *strings.Builder, indent, cmd string) error {
+	parts, err := splitCommand(cmd)
+	if err != nil {
+		return err
+	}
+	if len(parts) == 0 {
+		return fmt.Errorf("the command is empty")
+	}
 	fmt.Fprintf(b, "%scommand %q\n", indent, parts[0])
 	if len(parts) > 1 {
 		b.WriteString(indent + "args")
@@ -258,6 +266,62 @@ func writeCommand(b *strings.Builder, indent, cmd string) {
 		}
 		b.WriteString("\n")
 	}
+	return nil
+}
+
+// splitCommand splits a command line into words the way a shell would, which
+// is to say honouring quotes.
+//
+// strings.Fields was used here, and the README promises the agent slot takes
+// "any command you name" -- so `claude --append-system-prompt "be terse"`
+// became the two arguments `"be` and `terse"`, and Zellij passed both on
+// literally. An empty command indexed parts[0] and panicked.
+//
+// This is deliberately not a shell. There is no expansion, no globbing and no
+// operators; quotes group words and a backslash escapes the next character,
+// which is the whole of what a command line in a config file needs. PLAN.md
+// §13 caps dependencies at go-toml, and thirty lines beats a parser.
+func splitCommand(s string) ([]string, error) {
+	var (
+		parts []string
+		cur   strings.Builder
+		began bool // distinguishes "" as an argument from no argument
+		quote rune // 0, '\'' or '"'
+	)
+	for i, r := range s {
+		switch {
+		case r == '\\' && quote != '\'' && i+1 < len(s):
+			// A backslash escapes the next character, except inside single
+			// quotes, where a shell treats it literally.
+			continue
+		case i > 0 && s[i-1] == '\\' && quote != '\'':
+			cur.WriteRune(r)
+			began = true
+		case quote != 0 && r == quote:
+			quote = 0
+		case quote != 0:
+			cur.WriteRune(r)
+		case r == '\'' || r == '"':
+			quote = r
+			began = true
+		case r == ' ' || r == '\t':
+			if began {
+				parts = append(parts, cur.String())
+				cur.Reset()
+				began = false
+			}
+		default:
+			cur.WriteRune(r)
+			began = true
+		}
+	}
+	if quote != 0 {
+		return nil, fmt.Errorf("unbalanced %c quote in %q", quote, s)
+	}
+	if began {
+		parts = append(parts, cur.String())
+	}
+	return parts, nil
 }
 
 // quoteSize quotes percentages but leaves bare line counts unquoted, matching
