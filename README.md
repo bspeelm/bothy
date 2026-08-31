@@ -76,49 +76,52 @@ check runs — does not execute `init.lua`.
 
 ## Install
 
+Pick one. Same program and same version either way — they differ in who
+builds it and where it lands.
+
+| | for | |
+|---|---|---|
+| **Script** | anyone on Linux or macOS | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
+| **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
+| **Go** | you already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+| **Source** | contributors | `make install-binary` |
+
+Then, from any directory:
+
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
 bothy
 ```
 
-Two commands, and the second is the one you keep using. The script puts a
-single binary on your `PATH`; the first `bothy` sets the workspace up —
+That is the command you keep using. The first run sets the workspace up —
 installing only the tools you are missing, after telling you which and asking —
-and then launches it.
+and then launches it. `bothy install` exists for re-applying after
+`bothy config set`, and for scripts; you do not need it to start.
 
-`bothy install` exists too, and you want it after changing a setting with
-`bothy config set`. You do not need it to start.
+### Notes on each
 
-### On Fedora
+**Script.** Downloads the release binary for your platform into
+`~/.local/bin`, and tells you if that is not on your `PATH`. No Go, no package
+manager, nothing to build.
 
-```sh
-sudo dnf copr enable bspeelman/bothy
-sudo dnf install bothy
-bothy
-```
+**dnf.** Built from source in [Copr](https://copr.fedorainfracloud.org/coprs/bspeelman/bothy/)
+for Fedora 43, 44 and Rawhide on x86_64, and Fedora 44 on aarch64. The whole
+test suite runs in the build, so what is published is what passed.
 
-Built from source in Copr for Fedora 43, 44 and Rawhide, x86_64 and aarch64.
-On Silverblue and other image-based hosts this needs `rpm-ostree install` and a
-reboot, so the one-liner above is usually the better route there.
+> On Silverblue, Kinoite, Bazzite and other image-based hosts, `dnf` layering
+> means `rpm-ostree install` and a **reboot**. The script has neither cost and
+> is the better route there — which is most of the point of bothy installing
+> into your home rather than your system.
 
-### With Go
+**Go.** `@latest` resolves to the newest tag. The binary knows its own version
+either way: the release build stamps it, and a `go install` build reads it from
+the module metadata Go embeds.
 
-```sh
-go install github.com/bspeelm/bothy/cmd/bothy@latest
-bothy
-```
-
-Resolves to the latest tag. No release download, but you need Go.
-
-### From source
-
-For contributors. Needs Go and `make`, which a fresh container or a clean
-machine will not have — the one-liner above is the path for everyone else.
+**Source.** Needs Go and `make`, which a fresh container or a clean machine has
+neither of.
 
 ```sh
 git clone https://github.com/bspeelm/bothy && cd bothy
 make install-binary     # builds ./bothy, copies it to ~/.local/bin/bothy
-bothy
 ```
 
 `make install-binary` installs the *binary*. `bothy install` sets up the
