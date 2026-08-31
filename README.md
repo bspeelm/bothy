@@ -77,7 +77,7 @@ check runs — does not execute `init.lua`.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bothy-dev/bothy/main/bootstrap/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
 bothy
 ```
 
@@ -92,7 +92,7 @@ telling you which and asking — and then launches it.
 container or a clean machine will not have.
 
 ```sh
-git clone https://github.com/bothy-dev/bothy && cd bothy
+git clone https://github.com/bspeelm/bothy && cd bothy
 make install-binary     # builds ./bothy and copies it to ~/.local/bin
 bothy
 ```
