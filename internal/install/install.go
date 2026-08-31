@@ -135,7 +135,9 @@ func GhosttyConf(p platform.Info) string {
 func plan(p platform.Info, cfg config.Config, data Data) []file {
 	var out []file
 
-	if cfg.Slots.Mux == "zellij" {
+	// A slot passed through uses the user's own config directory, so writing
+	// bothy's version of it would leave files nothing ever reads.
+	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
 		z := ZellijDir(p)
 		out = append(out,
 			file{Dest: filepath.Join(z, "config.kdl"), Tool: "zellij",
@@ -145,7 +147,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 		)
 	}
 
-	if cfg.Slots.Browser == "yazi" {
+	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
 		y := YaziDir(p)
 		out = append(out,
 			file{Dest: filepath.Join(y, "yazi.toml"), Tool: "yazi",
@@ -170,7 +172,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// The editor is yours. bothy sets $EDITOR for its own session and stops
 	// there — unless you have no config and want one, which is the same
 	// gap-filling rule the binaries follow.
-	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig {
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
 		out = append(out,
 			file{Dest: VimRC(p), Tool: "vim",
 				Template: "templates/editor/vim/vimrc.tmpl"},
@@ -182,7 +184,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// Ghostty's config carries the palette inline rather than naming a theme:
 	// theme *lookup* paths are not relocatable, so a `theme = x` reference
 	// would send it hunting in ~/.config/ghostty/themes and defeat the point.
-	if cfg.Slots.Terminal == "ghostty" {
+	if cfg.Slots.Terminal == "ghostty" && !cfg.PassesThrough("ghostty") {
 		out = append(out, file{
 			Dest: GhosttyConf(p), Tool: "ghostty",
 			Template: "templates/terminal/ghostty/config.tmpl",
@@ -343,33 +345,69 @@ func assetBytes(path string) ([]byte, error) { return bothy.Templates.ReadFile(p
 // different config than the launcher will is worse than no check, because it
 // reports confidently about the wrong file.
 func SessionEnv(p platform.Info, cfg config.Config) []string {
-	env := os.Environ()
-	set := func(k, v string) { env = append(env, k+"="+v) }
+	env := newEnv(os.Environ())
 
 	// bothy's own bin first, so a tool it had to supply is used here and only
 	// here. Nothing it installs changes what a command means in your shell.
-	set("PATH", p.BinDir()+string(os.PathListSeparator)+os.Getenv("PATH"))
+	env.set("PATH", p.BinDir()+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
-		set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
+		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
 	}
 	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
-		set("YAZI_CONFIG_HOME", YaziDir(p))
+		env.set("YAZI_CONFIG_HOME", YaziDir(p))
 	}
 
 	// Fedora's nano-default-editor exports EDITOR=nano from /etc/profile.d,
 	// and that is what yazi, lazygit and git shell out to. Setting it here
 	// covers bothy's panes without touching the user's shell config.
 	editor := editorBinary(cfg.Slots.Editor)
-	set("EDITOR", editor)
-	set("VISUAL", editor)
+	env.set("EDITOR", editor)
+	env.set("VISUAL", editor)
 
 	// VIMINIT takes precedence over ~/.vimrc, so it is only set when bothy is
 	// providing a vim config. Otherwise vim is yours and loads yours.
 	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
-		set("VIMINIT", "source "+VimRC(p))
+		env.set("VIMINIT", "source "+VimRC(p))
 	}
 
-	set("BOTHY_SESSION", "1")
-	return env
+	env.set("BOTHY_SESSION", "1")
+	return env.slice()
+}
+
+// env is an environment being assembled.
+//
+// It replaces rather than appends, which is not a detail: an environment with
+// two PATH entries is ambiguous — which one a process sees depends on the libc
+// and on whether anything deduplicated it on the way through. Appending a
+// second PATH looked right and left the original one first in the list, so the
+// tools bothy supplied were not actually found.
+type env struct {
+	keys   []string
+	values map[string]string
+}
+
+func newEnv(existing []string) *env {
+	e := &env{values: map[string]string{}}
+	for _, kv := range existing {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			e.set(k, v)
+		}
+	}
+	return e
+}
+
+func (e *env) set(k, v string) {
+	if _, seen := e.values[k]; !seen {
+		e.keys = append(e.keys, k)
+	}
+	e.values[k] = v
+}
+
+func (e *env) slice() []string {
+	out := make([]string, 0, len(e.keys))
+	for _, k := range e.keys {
+		out = append(out, k+"="+e.values[k])
+	}
+	return out
 }

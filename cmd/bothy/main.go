@@ -36,6 +36,7 @@ Usage:
   bothy layout  [--profile P]   print the layout that would be launched
   bothy theme   example         print a blank palette file to fill in
   bothy tools                   show which tools are used and where they came from
+  bothy desktop-entry           print a .desktop launcher (--install to write it)
   bothy uninstall [--dry-run]   put the machine back the way it was
   bothy version
 
@@ -77,6 +78,8 @@ func main() {
 		err = cmdLock(args)
 	case "tools":
 		err = cmdTools(args)
+	case "desktop-entry":
+		err = cmdDesktop(args)
 	case "uninstall":
 		err = cmdUninstall(args)
 	case "version", "--version", "-v":
@@ -336,7 +339,17 @@ func cmdUninstall(args []string) error {
 	for _, f := range rep.Kept {
 		fmt.Printf("  kept %s\n", tilde(f, p.Home))
 	}
+	// The desktop entry is the one thing bothy writes outside its tree, so it
+	// is the one thing uninstall has to mention rather than silently leave.
+	if entry := desktopEntryPath(p.DataDir); fileExists(entry) {
+		fmt.Printf("  kept %s — remove with 'bothy desktop-entry --remove'\n", tilde(entry, p.Home))
+	}
 	return nil
+}
+
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
 }
 
 func tilde(path, home string) string {

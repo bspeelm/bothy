@@ -81,6 +81,7 @@ Then run `bothy`.
 | `bothy doctor` | Report what is broken and how to fix it (`--json` for CI) |
 | `bothy` | Launch the workspace |
 | `bothy attach` | Reattach to a running session |
+| `bothy desktop-entry` | Print a `.desktop` launcher (`--install` to write it) |
 | `bothy config set <key> <value>` | Change a slot, theme, or workspace setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file to fill in |
@@ -105,6 +106,26 @@ bothy config set slots.editor helix
 bothy config set slots.agent none
 bothy install
 ```
+
+## Where it runs
+
+If you are already in a terminal that can draw images — Ghostty, Kitty, WezTerm
+— `bothy` runs there. If you are not, or you launched it from a desktop icon,
+it opens a Ghostty window with its own config and runs there instead.
+
+That is not a preference about terminals. Inline image previews need a terminal
+that speaks the Kitty graphics protocol; run bothy inside GNOME Terminal and
+Yazi quietly degrades to block art. Opening a window that works beats
+pretending the one you have is fine.
+
+`--in-place` and `--window` force either behaviour. With no graphical display —
+SSH, a bare TTY — it always runs in place, because a window that cannot open is
+worse than a workspace without image previews.
+
+`bothy desktop-entry --install` writes a launcher so bothy appears in your
+application menu. It is the one file bothy writes outside its own tree, which
+is why it is a separate command that tells you where it went, and why
+`bothy desktop-entry --remove` exists.
 
 ## Profiles
 

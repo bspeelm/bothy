@@ -298,3 +298,77 @@ func TestWatermarkAssetIsCopiedIntact(t *testing.T) {
 		t.Error("watermark bytes differ from the shipped asset")
 	}
 }
+
+// A slot passed through uses the user's own config directory, so bothy must
+// not write its version — files nothing reads are clutter, and worse, they
+// look authoritative to whoever finds them later.
+func TestPassthroughSkipsThatSlotsConfigs(t *testing.T) {
+	p := sandbox(t)
+	cfg := config.Default()
+	cfg.Passthrough = []string{"yazi"}
+
+	res, err := Run(p, cfg, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range res.Written {
+		if strings.Contains(f, string(filepath.Separator)+"yazi"+string(filepath.Separator)) {
+			t.Errorf("wrote %s for a passed-through slot", f)
+		}
+	}
+	// The slots that were not passed through are still bothy's.
+	var sawZellij bool
+	for _, f := range res.Written {
+		if strings.Contains(f, "zellij") {
+			sawZellij = true
+		}
+	}
+	if !sawZellij {
+		t.Error("passing yazi through should not affect zellij")
+	}
+}
+
+// Passthrough is one variable's value, not a second code path: the launcher
+// simply does not point the tool at bothy's directory.
+func TestPassthroughOmitsTheEnvironmentVariable(t *testing.T) {
+	p := sandbox(t)
+	cfg := config.Default()
+
+	env := SessionEnv(p, cfg)
+	if !hasEnvPrefix(env, "YAZI_CONFIG_HOME=") {
+		t.Fatal("YAZI_CONFIG_HOME should be set when bothy manages yazi")
+	}
+
+	cfg.Passthrough = []string{"yazi"}
+	env = SessionEnv(p, cfg)
+	if hasEnvPrefix(env, "YAZI_CONFIG_HOME=") {
+		t.Error("YAZI_CONFIG_HOME must be left alone when yazi is passed through")
+	}
+	if !hasEnvPrefix(env, "ZELLIJ_CONFIG_DIR=") {
+		t.Error("passing yazi through should not affect zellij")
+	}
+}
+
+// The session must put bothy's own bin first, so a tool it supplied is used
+// here — and only here.
+func TestSessionPathPrefersBothysBin(t *testing.T) {
+	p := sandbox(t)
+	for _, kv := range SessionEnv(p, config.Default()) {
+		if strings.HasPrefix(kv, "PATH=") {
+			if !strings.HasPrefix(strings.TrimPrefix(kv, "PATH="), p.BinDir()+string(os.PathListSeparator)) {
+				t.Errorf("PATH does not start with bothy's bin: %s", kv)
+			}
+			return
+		}
+	}
+	t.Fatal("no PATH in the session environment")
+}
+
+func hasEnvPrefix(env []string, prefix string) bool {
+	for _, kv := range env {
+		if strings.HasPrefix(kv, prefix) {
+			return true
+		}
+	}
+	return false
+}

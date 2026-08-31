@@ -25,8 +25,19 @@ func cmdDev(args []string) error {
 	fs := newFlagSet("dev")
 	dir := fs.String("dir", "", "directory to open in (default: the current one)")
 	profile := fs.String("profile", "", "layout profile (default: the configured one)")
+	window := fs.Bool("window", false, "always open a new Ghostty window")
+	inPlace := fs.Bool("in-place", false, "always run in the current terminal")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *window && *inPlace {
+		return fmt.Errorf("--window and --in-place contradict each other")
+	}
+	force := ""
+	if *window {
+		force = "window"
+	} else if *inPlace {
+		force = "in-place"
 	}
 
 	p, cfg, err := load()
@@ -58,6 +69,19 @@ func cmdDev(args []string) error {
 	name := *profile
 	if name == "" {
 		name = cfg.Profile
+	}
+
+	// Open a terminal that can do the job, if this one cannot. Decided before
+	// the container hop so the window opens once, on the host, rather than the
+	// hop happening first and the spawn being attempted from inside.
+	if mode := decideLaunch(p, force); mode.Spawn {
+		if err := spawnTerminal(p, target, name); err != nil {
+			// A terminal that will not open is a reason to carry on here, not
+			// to refuse: the workspace still works, it just cannot draw images.
+			fmt.Fprintf(os.Stderr, "bothy: %v\n         running in this terminal instead\n", err)
+		} else {
+			return nil
+		}
 	}
 
 	// On the host with a container configured, hop in: the multiplexer and the
@@ -128,7 +152,9 @@ func lookPathIn(name, binDir string) (string, error) {
 
 // hopIntoContainer runs `bothy dev` again, inside the container.
 func hopIntoContainer(container, dir, profile string) error {
-	inner := fmt.Sprintf("cd %s && bothy dev --dir %s --profile %s",
+	// --in-place: whatever decided to hop already settled the terminal
+	// question, and the copy inside the container must not reopen it.
+	inner := fmt.Sprintf("cd %s && bothy dev --in-place --dir %s --profile %s",
 		shellQuote(dir), shellQuote(dir), shellQuote(profile))
 
 	if bin, err := exec.LookPath("toolbox"); err == nil {

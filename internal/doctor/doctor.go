@@ -321,9 +321,15 @@ func checkTerminalCapability(env Env) Result {
 	if g.Supported {
 		return pass("running in " + term + ", which can draw images")
 	}
-	return warn("this terminal cannot draw inline images",
-		g.Reason,
-		"launch from Ghostty, or let bothy open one for you")
+	// Not a failure: bothy opens a Ghostty window when the current terminal
+	// cannot draw, so this is a statement of what will happen rather than a
+	// problem to fix. It becomes one only if there is no Ghostty to open.
+	if _, err := exec.LookPath("ghostty"); err != nil {
+		return warn("this terminal cannot draw inline images, and ghostty is not installed",
+			g.Reason+"; previews will fall back to block art",
+			"install ghostty, or accept block-art previews")
+	}
+	return pass("this terminal cannot draw images, so bothy will open a Ghostty window — " + g.Reason)
 }
 
 // checkPassthrough states plainly which slots use your configs rather than

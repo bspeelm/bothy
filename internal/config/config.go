@@ -218,6 +218,14 @@ func (c *Config) Set(key, value string) error {
 		c.Workspace.Container = value
 	case "workspace.project_dir":
 		c.Workspace.ProjectDir = value
+	case "passthrough":
+		// A comma-separated list, or "" to clear it.
+		c.Passthrough = nil
+		for _, slot := range strings.Split(value, ",") {
+			if slot = strings.TrimSpace(slot); slot != "" {
+				c.Passthrough = append(c.Passthrough, slot)
+			}
+		}
 	case "editor.provide_config":
 		c.Editor.ProvideConfig = value == "true" || value == "1" || value == "yes"
 	case "workspace.watermark":

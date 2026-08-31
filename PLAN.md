@@ -301,9 +301,13 @@ archive layouts upstream actually uses. `bothy tools` shows the decisions.
 Not covered: tar.xz, which the standard library cannot unpack and which is why
 helix is not yet a tool definition.
 
-**Phase C — terminal launch and passthrough.** Capability detection, Ghostty
-spawn with `--config-file`, run-in-place fallback. Per-slot passthrough. A
-`.desktop` entry so `bothy` is launchable from a desktop.
+**Phase C — terminal launch and passthrough. Done.** Capability detection with
+an explicit reason for every decision; Ghostty spawned with `--config-file`,
+via `flatpak-spawn --host` from inside a container; run-in-place whenever a
+window cannot work (no display, no ghostty, already inside a spawned one).
+Per-slot passthrough skips both the config write and the environment variable.
+The `.desktop` entry is a separate opt-in command, because it is the one file
+that must live outside bothy's tree to work at all.
 
 **Phase D — doctor revision.** The §8 changes, including the pane-count check
 that revision 1 specified and never built.
