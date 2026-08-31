@@ -224,7 +224,14 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// where it was on the host's PATH too and needed a guard against the host
 	// executing it and recursing into itself. Scoping removes that hazard; the
 	// guard stays anyway, because it is three lines and PATH is fickle.
-	if p.InContainer() {
+	//
+	// SharedHome rather than InContainer: the shim forwards through
+	// flatpak-spawn, which exists in Toolbx and Distrobox and nowhere else. A
+	// plain podman or docker container has no host session to reach, so
+	// writing it there produced a shim that could not work -- and then passed
+	// the opener check, because that check only asks whether xdg-open
+	// resolves and this put something on PATH that answered to the name.
+	if p.SharedHome {
 		out = append(out, file{
 			Dest: filepath.Join(p.BinDir(), "xdg-open"), Tool: "shell",
 			Template: "templates/shell/xdg-open.tmpl",

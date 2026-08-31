@@ -32,7 +32,7 @@ func checkTerminalCapability(env Env) Result {
 		fix := "install a terminal that can draw images, or accept block-art previews"
 		if a, err := advice.Get("ghostty"); err == nil {
 			fix = a.Command(env.Platform)
-			if w := a.Warnings(); w != "" {
+			if w := a.Warnings(env.Platform); w != "" {
 				fix += "\n         " + w
 			}
 		}
@@ -70,24 +70,50 @@ func checkTerminfo(env Env) Result {
 	if term == "" {
 		return warn("$TERM is not set", "", "")
 	}
+	// Without infocmp there is no way to answer the question. Saying so is
+	// better than reporting the entry missing, which is a different problem
+	// with a different fix.
+	if _, err := exec.LookPath("infocmp"); err != nil {
+		return skip("infocmp is not installed, so terminfo cannot be checked")
+	}
 	if err := exec.Command("infocmp", term).Run(); err != nil {
-		fix := "install the terminfo entry for " + term
-		if env.Platform.InContainer() {
-			fix = "copy it in from the host: mkdir -p ~/.terminfo/" + term[:1] +
-				" && cp /run/host/usr/share/terminfo/" + term[:1] + "/" + term + " ~/.terminfo/" + term[:1] + "/"
-		}
 		return fail("no terminfo entry for $TERM ("+term+")",
-			"the terminal will fall back to a degraded mode", fix)
+			"the terminal will fall back to a degraded mode", terminfoFix(env, term))
 	}
 	return pass("terminfo entry for " + term + " is present")
 }
 
+// terminfoFix names a way to get the entry that works where it is offered.
+//
+// The host copy is only there under Toolbx and Distrobox, which mount the host
+// root at /run/host. Everywhere else -- a plain container, or any machine whose
+// distribution has no package for this terminal, which on Ubuntu is every
+// machine -- the portable answer is to carry the compiled entry over from
+// somewhere that has it. "install the terminfo entry for xterm-ghostty", which
+// is what this used to say, names no package that exists.
+func terminfoFix(env Env, term string) string {
+	sub := term[:1]
+	if env.Platform.SharedHome {
+		return "copy it in from the host: mkdir -p ~/.terminfo/" + sub +
+			" && cp /run/host/usr/share/terminfo/" + sub + "/" + term + " ~/.terminfo/" + sub + "/"
+	}
+	return "carry it over from a machine that has it: 'infocmp -x " + term +
+		" > " + term + ".src' there, then 'tic -x " + term + ".src' here"
+}
+
 func checkOpener(env Env) Result {
 	if _, err := env.lookPath("xdg-open"); err != nil {
-		if env.Platform.InContainer() {
+		if env.Platform.SharedHome {
 			return fail("xdg-open is not on PATH",
 				"pressing Enter on a file in yazi will report 'No such file or directory'",
 				"run 'bothy install' to place the host-forwarding shim in bothy's bin")
+		}
+		if env.Platform.InContainer() {
+			// No host session to forward to, so there is no shim to suggest
+			// and nothing bothy can do about it.
+			return warn("xdg-open is not on PATH",
+				"this container has no desktop to open files with, and no host to forward to",
+				"")
 		}
 		return warn("xdg-open is not on PATH", "", "install xdg-utils")
 	}

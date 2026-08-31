@@ -36,6 +36,10 @@ type Advice struct {
 type Avoid struct {
 	Repo string `toml:"repo"`
 	Why  string `toml:"why"`
+	// Distros limits the warning to the distributions it is about. Empty
+	// means everywhere. Without it bothy told Ubuntu users to avoid a Copr,
+	// which is advice about a repository they cannot enable.
+	Distros []string `toml:"distros"`
 }
 
 // Get loads advice by name.
@@ -57,7 +61,9 @@ func Get(name string) (Advice, error) {
 // reboot, and getting it wrong is expensive — exactly the case a generic
 // "install ghostty" leaves someone to work out alone.
 func (a Advice) Command(p platform.Info) string {
-	keys := []string{p.DistroID, p.OS, "default"}
+	// DistroLike after DistroID: a derivative gets its own entry if one
+	// exists, and its parent's otherwise.
+	keys := []string{p.DistroID, p.DistroLike, p.OS, "default"}
 	if p.Immutable {
 		keys = append([]string{p.DistroID + "-ostree"}, keys...)
 	}
@@ -69,14 +75,27 @@ func (a Advice) Command(p platform.Info) string {
 	return "see the project's own install instructions"
 }
 
-// Warnings renders the repositories to stay away from.
-func (a Advice) Warnings() string {
-	if len(a.Avoid) == 0 {
-		return ""
-	}
+// Warnings renders the repositories to stay away from, keeping only those
+// that apply to this machine.
+func (a Advice) Warnings(p platform.Info) string {
 	var out []string
 	for _, w := range a.Avoid {
+		if !w.appliesTo(p) {
+			continue
+		}
 		out = append(out, "avoid "+w.Repo+" — "+w.Why)
 	}
 	return strings.Join(out, "; ")
+}
+
+func (w Avoid) appliesTo(p platform.Info) bool {
+	if len(w.Distros) == 0 {
+		return true
+	}
+	for _, d := range w.Distros {
+		if d == p.DistroID || d == p.DistroLike || d == p.OS {
+			return true
+		}
+	}
+	return false
 }
