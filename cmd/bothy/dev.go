@@ -74,6 +74,13 @@ func cmdDev(args []string) error {
 	// Open a terminal that can do the job, if this one cannot. Decided before
 	// the container hop so the window opens once, on the host, rather than the
 	// hop happening first and the spawn being attempted from inside.
+	// Set up on first run rather than refusing and naming another command.
+	// Before the layout is rendered, so a cancelled or failed setup leaves no
+	// debris behind.
+	if err := ensureInstalled(p, cfg); err != nil {
+		return err
+	}
+
 	if mode := decideLaunch(p, force); mode.Spawn {
 		if err := spawnTerminal(p, target, name); err != nil {
 			// A terminal that will not open is a reason to carry on here, not
@@ -114,10 +121,12 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 		return err
 	}
 
-	// Refuse before writing anything. Launching on a machine that was never
-	// installed used to render the layout first and fail afterwards, leaving a
-	// directory tree behind on a machine whose owner had run one command and
-	// been told it did not work. Nothing bothy does should leave debris.
+	// The guard stays here, in the function that does the writing, even though
+	// cmdDev now sets up before calling it. A check that lives next to its
+	// caller protects that one caller; a check that lives next to the write
+	// protects the write. This one exists because launch used to render the
+	// layout first and fail afterwards, leaving a directory tree on a machine
+	// that had just been told nothing was installed.
 	if _, err := os.Stat(p.ConfigRoot()); err != nil {
 		return fmt.Errorf("no workspace configured yet\n"+
 			"      bothy keeps everything in one directory, derived from $HOME:\n"+

@@ -57,7 +57,7 @@ func decideLaunch(p platform.Info, force string) launchMode {
 
 	// Launched from a desktop icon or a script: there is no terminal to run
 	// in, so one has to be opened whatever the graphics situation.
-	if !stdoutIsTerminal() {
+	if !isTerminal(os.Stdout) {
 		return launchMode{Spawn: true, Reason: "started without a terminal"}
 	}
 
@@ -67,11 +67,24 @@ func decideLaunch(p platform.Info, force string) launchMode {
 	return launchMode{Reason: "this terminal can draw images; running here"}
 }
 
-// stdoutIsTerminal reports whether stdout is a character device. This is the
-// stdlib-only way to ask, and PLAN.md §13 caps dependencies at go-toml.
-func stdoutIsTerminal() bool {
-	fi, err := os.Stdout.Stat()
-	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+// isTerminal reports whether a stream is attached to something that can be
+// interacted with — stdout to decide whether there is a terminal to run in,
+// stdin to decide whether anyone is there to answer a prompt.
+//
+// The character-device test alone is not enough: /dev/null is a character
+// device, so `bothy </dev/null` printed a prompt to nobody and then answered
+// it itself. Excluding /dev/null covers the cases that actually arise —
+// redirects, cron, systemd units — without reaching for an ioctl or a
+// dependency PLAN.md §13 does not permit.
+func isTerminal(f *os.File) bool {
+	fi, err := f.Stat()
+	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+		return false
+	}
+	if null, err := os.Stat(os.DevNull); err == nil && os.SameFile(fi, null) {
+		return false
+	}
+	return true
 }
 
 // ghosttyCommand returns how to run ghostty, which is not always directly.

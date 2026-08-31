@@ -78,18 +78,24 @@ check runs — does not execute `init.lua`.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bothy-dev/bothy/main/bootstrap/install.sh | sh
-bothy install
+bothy
 ```
 
-Or from source:
+That is the whole thing. The script puts one binary on your `PATH`; the first
+`bothy` sets the workspace up — fetching only the tools you are missing, after
+telling you which and asking — and then launches it.
+
+`bothy install` exists too, and you need it after changing a setting with
+`bothy config set`. You do not need it to start.
+
+**From source** (contributors): this needs Go and `make`, which a fresh
+container or a clean machine will not have.
 
 ```sh
 git clone https://github.com/bothy-dev/bothy && cd bothy
-make install-local
-bothy install
+make install-binary     # builds ./bothy and copies it to ~/.local/bin
+bothy
 ```
-
-Then run `bothy`.
 
 ## Commands
 

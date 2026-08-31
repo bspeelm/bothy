@@ -83,7 +83,7 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, progress func
 			continue
 		}
 		if progress != nil {
-			progress(fmt.Sprintf("  ↓ %s %s — %s", d.Tool.Name, entry.Version, d.Reason))
+			progress(fmt.Sprintf("  ↓ %s %s", d.Tool.Name, entry.Version))
 		}
 		res, err := fetch.Install(d.Tool, p, entry, p.BinDir())
 		if err != nil {

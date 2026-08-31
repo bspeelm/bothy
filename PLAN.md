@@ -102,8 +102,20 @@ manifest of files scattered across your home.
    providers described by data. Adding a provider must not require core changes.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
-6. **Budgets are real.** Binary ≤ 10 MB, core source ≤ ~5k lines, workspace idle
-   RSS ≤ 200 MB excluding the agent. Asserted in CI. Currently 4.4 MB / 3.3k.
+6. **Budgets are real.** Binary ≤ 10 MB, core source ≤ 5.5k lines, workspace
+   idle RSS ≤ 200 MB excluding the agent. Asserted in CI.
+
+   The source budget was 5k in revision 1, when bothy was "an installer, a
+   config writer, a layout launcher and a doctor". It has since gained a
+   checksum-verifying binary fetcher with a lockfile, terminal spawning, plugin
+   management and first-run setup — all asked for, none of it in the original
+   accounting. The number did not move; the scope did.
+
+   Raised to 5.5k rather than trimmed to fit, because the alternative was
+   already producing worse code: the last 30 lines were bought by replacing a
+   named helper with an inline closure, which is not engineering. A budget that
+   makes the code worse has stopped measuring what it was meant to measure.
+   The binary budget is untouched and still has headroom.
 7. **Simplicity beats cleverness.** Prefer a documented manual step to an
    automated one that fails silently.
 8. **One palette ships.** Open Dracula, MIT. Every other palette is a file on
@@ -337,8 +349,13 @@ ran. And the README claimed the doctor detected traps whose checks Phase A had
 deliberately removed; prose has no compiler, so a test now checks the command
 table against `main.go`.
 
-Remaining before tagging v0.1.0: run it on a machine that is not the one it was
-built on.
+`bothy` now sets the workspace up on its first run rather than refusing and
+naming another command, so getting from nothing to a working workspace is two
+commands — fetch the binary, then run it. That is the same shape as
+`flatpak install` followed by running the app, and it is the shape it should
+always have had.
+
+Remaining before tagging v0.1.0: run it on a distro that is not Fedora.
 
 Deferred, unchanged: macOS, WSL2/Windows, tmux, `bothy update`.
 

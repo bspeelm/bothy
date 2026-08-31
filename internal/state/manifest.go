@@ -10,12 +10,9 @@
 package state
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -101,35 +98,4 @@ func (m *Manifest) RecordBinary(b Binary) {
 		}
 	}
 	m.Binaries = append(m.Binaries, b)
-}
-
-// BinaryFor returns the recorded entry for a tool.
-func (m *Manifest) BinaryFor(name string) (Binary, bool) {
-	for _, b := range m.Binaries {
-		if b.Name == name {
-			return b, true
-		}
-	}
-	return Binary{}, false
-}
-
-// HashFile returns the hex SHA-256 of a file's contents.
-func HashFile(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
-// HashBytes returns the hex SHA-256 of a byte slice.
-func HashBytes(b []byte) string {
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
 }

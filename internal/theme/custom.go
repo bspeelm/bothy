@@ -58,7 +58,6 @@ func Load(path string) (Palette, error) {
 
 	p := Palette{
 		Name:      f.Name,
-		Variant:   "custom",
 		Light:     f.Light,
 		Fg:        strings.ToUpper(f.Fg),
 		Bg:        strings.ToUpper(f.Bg),

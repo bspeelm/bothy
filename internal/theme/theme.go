@@ -26,9 +26,8 @@ var paletteTokens = []string{
 // Keep it at these eleven tokens: a template that needs a twelfth colour is a
 // sign the template is doing design work that belongs in the palette.
 type Palette struct {
-	Name    string // display name, e.g. "dracula"; names the generated theme files
-	Variant string // "open", "pro", "blade", …
-	Light   bool   // true for light palettes (alucard); tools that need to know
+	Name  string // display name, e.g. "dracula"; names the generated theme files
+	Light bool   // true for light palettes (alucard); tools that need to know
 
 	Fg        string
 	Bg        string
@@ -49,7 +48,6 @@ type Palette struct {
 func Open() Palette {
 	return Palette{
 		Name:      "dracula",
-		Variant:   "open",
 		Fg:        "#F8F8F2",
 		Bg:        "#282A36",
 		Comment:   "#6272A4",

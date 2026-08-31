@@ -117,48 +117,9 @@ func cmdInstall(args []string) error {
 	if err != nil {
 		return err
 	}
-
-	// Tools first: the graphics probe that decides how yazi.toml is written
-	// asks the multiplexer its version, so a zellij fetched now is the one the
-	// config is rendered for.
-	if !*dryRun {
-		treport, err := install.EnsureTools(p, cfg, *offline, func(line string) {
-			fmt.Println(line)
-		})
-		if err != nil {
-			return err
-		}
-		printTools(treport)
-	}
-
-	res, err := install.Run(p, cfg, install.Options{DryRun: *dryRun, Offline: *offline})
-	if err != nil {
+	if err := setup(p, cfg, setupOptions{DryRun: *dryRun, Offline: *offline}); err != nil {
 		return err
 	}
-
-	verb := "wrote"
-	if *dryRun {
-		verb = "would write"
-	}
-	fmt.Printf("%s %d file(s), %d already current, under %s\n",
-		verb, len(res.Written), len(res.Unchanged), tilde(res.Root, p.Home))
-	for _, f := range res.Written {
-		fmt.Printf("  + %s\n", tilde(f, p.Home))
-	}
-
-	if pr := res.Plugins; pr != nil {
-		for _, pl := range pr.Installed {
-			fmt.Printf("  + yazi plugin %s — %s\n", pl.Name, pl.Gives)
-		}
-		for _, f := range pr.Failed {
-			fmt.Printf("  ! yazi plugin %s unavailable (%v) — %s is off\n",
-				f.Plugin.Name, f.Err, f.Plugin.Gives)
-		}
-	}
-
-	fmt.Printf("\nimage previews: %v — %s\n", res.Data.ImagePreviews, res.Data.GraphicsReason)
-	fmt.Println("nothing outside that directory was touched.")
-
 	if *dryRun {
 		return nil
 	}
@@ -369,11 +330,6 @@ func cmdUninstall(args []string) error {
 	return nil
 }
 
-func fileExists(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && !fi.IsDir()
-}
-
 func tilde(path, home string) string {
 	if home != "" && strings.HasPrefix(path, home) {
 		return "~" + strings.TrimPrefix(path, home)
@@ -453,4 +409,10 @@ func pids(rs []install.Running) string {
 		out = append(out, strconv.Itoa(r.PID))
 	}
 	return strings.Join(out, " ")
+}
+
+// fileExists reports whether a path is a regular file.
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
 }
