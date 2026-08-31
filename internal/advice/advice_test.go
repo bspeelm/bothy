@@ -39,12 +39,31 @@ func TestGhosttyAdviceCarriesTheRepositoryWarnings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w := a.Warnings()
+	w := a.Warnings(platform.Info{OS: "linux", DistroID: "fedora"})
 	if !strings.Contains(w, "pgdev") {
 		t.Error("the warning about the repo that blocks rpm-ostree upgrades is missing")
 	}
 	if !strings.Contains(w, "rpm-ostree") {
 		t.Error("the warning should say what it actually breaks")
+	}
+
+	// Both warnings are about Copr repositories, so anywhere that cannot
+	// enable one should hear nothing.
+	if w := a.Warnings(platform.Info{OS: "linux", DistroID: "ubuntu"}); w != "" {
+		t.Errorf("Ubuntu was warned about a Copr it cannot enable: %s", w)
+	}
+}
+
+// Derivatives say which distribution to treat them as, and bothy should
+// listen: without it Mint and Pop!_OS got the generic advice.
+func TestDerivativesInheritTheirParentsAdvice(t *testing.T) {
+	a, err := Get("ghostty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mint := a.Command(platform.Info{OS: "linux", DistroID: "linuxmint", DistroLike: "ubuntu"})
+	if mint != a.Command(platform.Info{OS: "linux", DistroID: "ubuntu"}) {
+		t.Errorf("Mint did not inherit Ubuntu's advice: %s", mint)
 	}
 }
 

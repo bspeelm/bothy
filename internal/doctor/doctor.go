@@ -130,8 +130,11 @@ func (e Env) elsewhere() (Result, bool) {
 	if e.RunsIn == "" {
 		return Result{}, false
 	}
-	return skip("the workspace runs in " + e.RunsIn + "; check there with " +
-		"'toolbox run -c " + e.RunsIn + " bothy doctor'"), true
+	enter := "toolbox run -c " + e.RunsIn + " bothy doctor"
+	if e.Platform.Container == platform.Distrobox {
+		enter = "distrobox enter " + e.RunsIn + " -- bothy doctor"
+	}
+	return skip("the workspace runs in " + e.RunsIn + "; check there with '" + enter + "'"), true
 }
 
 // tool builds a command that runs the way bothy's session would.

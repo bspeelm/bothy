@@ -16,12 +16,15 @@ func TestAssetArchUsesUnameSpelling(t *testing.T) {
 }
 
 func TestOsReleaseParsesQuotedValues(t *testing.T) {
-	id, ver := osRelease()
+	id, like, ver := osRelease()
 	if id == "" {
 		t.Skip("no /etc/os-release on this machine")
 	}
 	if id[0] == '"' || (ver != "" && ver[0] == '"') {
 		t.Errorf("quotes not stripped: ID=%q VERSION_ID=%q", id, ver)
+	}
+	if strings.ContainsAny(like, `" `) {
+		t.Errorf("ID_LIKE should be one bare word, got %q", like)
 	}
 }
 
@@ -64,9 +67,15 @@ func TestXDGHonoursEnv(t *testing.T) {
 
 // The container name is what lets `dev` hop back into the right container from
 // the host. Losing it is how a setup ends up hardcoding someone's box name.
+//
+// Keyed on /run/.toolboxenv rather than /run/.containerenv: the latter is
+// podman's file and is present in any podman container, where there is no name
+// worth having. An earlier version of this test skipped on .containerenv and
+// then asserted SharedHome -- a precondition every named podman container
+// satisfies, so it asserted the misdetection was correct.
 func TestContainerNameParsed(t *testing.T) {
-	if _, err := os.Stat("/run/.containerenv"); err != nil {
-		t.Skip("not in a container")
+	if _, err := os.Stat("/run/.toolboxenv"); err != nil {
+		t.Skip("not in a toolbox")
 	}
 	i := Detect()
 	if !i.InContainer() {
@@ -77,5 +86,62 @@ func TestContainerNameParsed(t *testing.T) {
 	}
 	if !i.SharedHome {
 		t.Error("SharedHome = false; Toolbx/Distrobox always share the host home")
+	}
+}
+
+// What each combination of marker files means. This is the whole of container
+// detection, and until detectContainerIn took a root none of it could be
+// tested without being inside the thing under test.
+func TestDetectContainerFromMarkers(t *testing.T) {
+	// Set here so the ambient environment of whatever runs the tests -- which
+	// may itself be a distrobox -- cannot reach the cases below.
+	t.Setenv("DISTROBOX_ENTER_PATH", "")
+	t.Setenv("CONTAINER_ID", "")
+
+	const podmanEnv = "engine=\"podman-5.8.4\"\nname=\"bothy-test\"\nrootless=1\n"
+
+	for _, tc := range []struct {
+		name     string
+		files    map[string]string
+		wantKind ContainerKind
+		wantName string
+	}{
+		{"bare host", nil, NotContainer, ""},
+		{"docker", map[string]string{".dockerenv": ""}, Generic, ""},
+		{
+			// The case that was wrong: podman names every container it runs,
+			// so a name here is evidence of podman and of nothing else.
+			"named podman container is not a toolbox",
+			map[string]string{"run/.containerenv": podmanEnv},
+			Generic, "",
+		},
+		{
+			"toolbox",
+			map[string]string{"run/.containerenv": podmanEnv, "run/.toolboxenv": ""},
+			Toolbx, "bothy-test",
+		},
+		{
+			"distrobox",
+			map[string]string{"run/.distrobox-enter-path": "", "run/.containerenv": podmanEnv},
+			Distrobox, "bothy-test",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			for name, body := range tc.files {
+				path := filepath.Join(root, name)
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			kind, name := detectContainerIn(root)
+			if kind != tc.wantKind || name != tc.wantName {
+				t.Errorf("detectContainerIn() = (%q, %q), want (%q, %q)",
+					kind, name, tc.wantKind, tc.wantName)
+			}
+		})
 	}
 }
