@@ -92,8 +92,23 @@ release:
 	@echo "tagged v$(VERSION); GitHub Actions is building the release."
 	@echo "once it is green:  make copr"
 
-# Publish the current spec version to Copr. Kept separate from `release` so it
-# runs after the GitHub release exists rather than racing it.
-copr: srpm
+# Publish the tag to Copr. The package is an SCM package, so this hands Copr a
+# ref and Copr does the rest: clone, .copr/Makefile, build. Nothing is built or
+# uploaded from here, which is what keeps the published rpm honest -- it can
+# only ever be the tag, never whatever happened to be in ~/rpmbuild.
+#
+# Kept separate from `release` so it follows the GitHub release rather than
+# racing it.
+copr:
 	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); \
-	copr-cli build $(BINARY) $$HOME/rpmbuild/SRPMS/$(BINARY)-$$v-1.*.src.rpm
+	git rev-parse -q --verify "refs/tags/v$$v" >/dev/null || \
+	    { echo "no tag v$$v -- run 'make release VERSION=$$v' first"; exit 1; }; \
+	git cat-file -e "v$$v:.copr/Makefile" 2>/dev/null || \
+	    { echo "tag v$$v has no .copr/Makefile, so Copr has nothing to run."; \
+	      echo "tags cut before it was added cannot be built this way."; exit 1; }; \
+	copr-cli buildscm $(BINARY) \
+	    --clone-url https://github.com/bspeelm/$(BINARY) \
+	    --commit "v$$v" \
+	    --spec packaging/$(BINARY).spec \
+	    --type git \
+	    --method make_srpm

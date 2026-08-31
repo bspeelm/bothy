@@ -39,21 +39,52 @@ copr-cli create bothy \
 ### Cutting a release
 
 ```sh
-make release VERSION=0.2.0
+make release VERSION=0.2.0   # tests, bumps the spec, commits, tags, pushes
+make copr                    # once the GitHub release is green
 ```
 
-That runs the tests, sets `Version` in the spec, adds a changelog entry,
-commits, tags, and pushes. The tag is what GitHub Actions watches, so the
-release archives — and with them `curl | sh` and `go install @latest` — follow
-on their own.
+The tag is what GitHub Actions watches, so the release archives — and with
+them `curl | sh` and `go install @latest` — follow on their own.
 
-Copr does not watch anything. Once the GitHub release is green:
+`make copr` hands Copr a tag and nothing else. Copr clones the repo at that
+tag and runs `.copr/Makefile`, so what gets published can only ever be the
+tag; there is no locally built SRPM that could drift from it. Tags cut before
+`.copr/Makefile` existed (v0.1.2 and earlier) cannot be built this way, and
+`make copr` says so rather than letting Copr discover it.
 
-```sh
-make copr
-```
+### Making Copr build on its own
 
-which rebuilds the SRPM from the spec and submits it.
+Copr can watch the repo, which removes `make copr` entirely. It is not set up,
+and the setup is fiddly in a way worth writing down.
+
+Copr's webhook does **not** decide what to do from the GitHub event name. It
+reads a `ref_type` field that appears only in GitHub's *"Branch or tag
+creation"* event and never in *Push*. A tag arriving via Push is therefore
+treated as an ordinary commit push and filtered against the package's
+committish with `ref.endswith(committish)` — `"refs/tags/v0.2.0".endswith("main")`
+is false, so nothing builds, silently. Subscribing to Push is the intuitive
+choice and it is the wrong one.
+
+To set it up:
+
+1. Copr → project → Settings → Integrations, and copy the webhook secret.
+2. GitHub → repo → Settings → Webhooks → Add webhook.
+   - Payload URL: `https://copr.fedorainfracloud.org/webhooks/github/255721/<SECRET>/bothy/`
+   - Content type: `application/json`
+   - Events: *Let me select individual events* → **Branch or tag creation**
+     only. Uncheck Push.
+
+The trailing `/bothy/` matters. Without it Copr matches the tag name against
+the package name and expects `bothy-0.2.0`; with it, any tag matches, which is
+what lets `v0.2.0` work. Branch creations arrive on the same subscription but
+carry no commits, so they never trigger a build.
+
+Copr builds the pushed tag, not the package's stored committish — the stored
+value is only a filter for webhook builds and a default for manual ones.
+
+This is read from Copr's source rather than tested here, because the webhook
+needs repository settings access. Verify it on the first tag: if nothing shows
+up in Copr within a minute, `make copr` still works.
 
 ### Why the build is offline
 
