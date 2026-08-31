@@ -1,9 +1,11 @@
 package render
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -191,5 +193,53 @@ func TestRenderReportsATemplateThatDoesNotParse(t *testing.T) {
 	if _, err := NewWriter(root, "").Render(
 		filepath.Join(root, "c.toml"), "yazi", "broken", "{{ .Unclosed", nil); err == nil {
 		t.Error("a template that does not parse rendered anyway")
+	}
+}
+
+// #21. Both atomic writers used dest+".bothy-tmp", so two writers to the same
+// destination shared one temporary name and could rename each other's
+// half-written file into place -- defeating the atomicity the function exists
+// to provide. Concurrent writes must now leave the destination holding one of
+// the inputs whole, never a mixture, and no debris behind.
+func TestConcurrentWritesDoNotCorruptEachOther(t *testing.T) {
+	root := t.TempDir()
+	w := NewWriter(root, "")
+	dest := filepath.Join(root, "c.toml")
+
+	a := []byte(strings.Repeat("a", 4096) + "\n")
+	b := []byte(strings.Repeat("b", 4096) + "\n")
+
+	var wg sync.WaitGroup
+	for i := 0; i < 24; i++ {
+		content := a
+		if i%2 == 1 {
+			content = b
+		}
+		wg.Add(1)
+		go func(c []byte) {
+			defer wg.Done()
+			if _, err := w.Write(dest, c); err != nil {
+				t.Errorf("Write: %v", err)
+			}
+		}(content)
+	}
+	wg.Wait()
+
+	got, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, a) && !bytes.Equal(got, b) {
+		t.Errorf("the file is neither input whole; got %d bytes starting %q", len(got), got[:min(16, len(got))])
+	}
+
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.Contains(e.Name(), ".bothy-") {
+			t.Errorf("%s was left behind", e.Name())
+		}
 	}
 }

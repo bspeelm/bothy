@@ -14,6 +14,10 @@ import (
 
 // MaxFile caps a single extracted file, guarding against a decompression bomb
 // in an archive whose checksum we trust but whose contents we have not seen.
+// The two are independent guards rather than a ratio -- MaxFile is smaller
+// than MaxAsset, which reads oddly because a compressed archive is normally
+// smaller than its contents. Neither number is near anything real; they exist
+// so a malformed or hostile archive cannot exhaust memory.
 const MaxFile = 128 << 20 // 128 MiB
 
 // Extract pulls the wanted binaries out of a downloaded asset.
@@ -23,6 +27,21 @@ const MaxFile = 128 << 20 // 128 MiB
 // archive at all. Rather than encode each layout as data — one more thing per
 // tool to get wrong — this matches on basename anywhere in the archive, which
 // is true of every asset bothy fetches.
+// archiveExt names the archive format an asset appears to be, or "" when it
+// looks like a bare binary. Refusing by name beats guessing: a format bothy
+// cannot unpack should fail at install with the reason, not at exec.
+func archiveExt(name string) string {
+	for _, ext := range []string{
+		".tar.bz2", ".tbz2", ".tar.zst", ".tzst", ".tar.lz", ".tar.lzma",
+		".tar", ".7z", ".rar", ".gz", ".bz2", ".zst", ".xz",
+	} {
+		if strings.HasSuffix(name, ext) {
+			return strings.TrimPrefix(ext, ".")
+		}
+	}
+	return ""
+}
+
 func Extract(body []byte, assetName string, want []string) (map[string][]byte, error) {
 	wanted := map[string]bool{}
 	for _, w := range want {
@@ -40,7 +59,15 @@ func Extract(body []byte, assetName string, want []string) (map[string][]byte, e
 		// tar.xz; helix does, which is why it is not in slots/tools yet.
 		return nil, fmt.Errorf("%s is tar.xz, which bothy cannot unpack without a new dependency", assetName)
 	default:
-		// A bare binary, like jq's.
+		// A bare binary, like jq's -- but only when the name does not look
+		// like an archive at all. This branch used to accept anything it did
+		// not recognise, so an asset shipped as .tar.bz2 or .tar.zst would
+		// have had the *compressed archive* written out as the executable,
+		// mode 0755. The checksum cannot catch that: the archive is exactly
+		// what was pinned. It would surface as a mystery at exec time.
+		if ext := archiveExt(assetName); ext != "" {
+			return nil, fmt.Errorf("%s is %s, which bothy cannot unpack", assetName, ext)
+		}
 		if len(wanted) != 1 {
 			return nil, fmt.Errorf("%s looks like a bare binary but %d were wanted", assetName, len(wanted))
 		}

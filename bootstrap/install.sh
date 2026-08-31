@@ -29,25 +29,66 @@ case "$(uname -m)" in
 esac
 
 if [ "$VERSION" = latest ]; then
-    url="$BASE/latest/download/bothy_${os}_${arch}.tar.gz"
+    base="$BASE/latest/download"
 else
-    url="$BASE/download/$VERSION/bothy_${os}_${arch}.tar.gz"
+    base="$BASE/download/$VERSION"
 fi
+archive="bothy_${os}_${arch}.tar.gz"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# fetch <url> <destination>. Either curl or wget; both are told to fail loudly
+# on an HTTP error rather than writing the error page to the file.
+fetch() {
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$1" -o "$2"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "$2" "$1"
+    else
+        echo "bothy: need curl or wget" >&2
+        exit 1
+    fi
+}
+
 echo "bothy: downloading $os/$arch"
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url" -o "$tmp/bothy.tar.gz"
-elif command -v wget >/dev/null 2>&1; then
-    wget -qO "$tmp/bothy.tar.gz" "$url"
-else
-    echo "bothy: need curl or wget" >&2
-    exit 1
+fetch "$base/$archive" "$tmp/$archive"
+
+# Every tool bothy installs is checksum-verified before it is written. For a
+# long time the one unverified download in the whole system was bothy's own
+# binary, which is a poor advertisement for the argument.
+#
+# This is not a signature and does not pretend to be: checksums.txt comes from
+# the same release as the archive, so it catches corruption and a truncated
+# download, not a compromised release. That is worth having and worth being
+# precise about.
+if command -v sha256sum >/dev/null 2>&1; then
+    sha_cmd="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+    sha_cmd="shasum -a 256"
 fi
 
-tar -xzf "$tmp/bothy.tar.gz" -C "$tmp"
+if [ -n "${sha_cmd:-}" ] && fetch "$base/checksums.txt" "$tmp/checksums.txt" 2>/dev/null; then
+    want="$(awk -v f="$archive" '$2 == f || $2 == "*" f { print $1 }' "$tmp/checksums.txt")"
+    if [ -z "$want" ]; then
+        echo "bothy: $archive is not listed in checksums.txt" >&2
+        exit 1
+    fi
+    got="$($sha_cmd "$tmp/$archive" | cut -d" " -f1)"
+    if [ "$want" != "$got" ]; then
+        echo "bothy: checksum mismatch for $archive" >&2
+        echo "       expected $want" >&2
+        echo "       got      $got" >&2
+        exit 1
+    fi
+    echo "bothy: checksum verified"
+else
+    # Old releases predate checksums.txt, and a machine may have no sha256
+    # tool at all. Say so rather than implying a check that did not happen.
+    echo "bothy: no checksum available; skipping verification" >&2
+fi
+
+tar -xzf "$tmp/$archive" -C "$tmp"
 mkdir -p "$BINDIR"
 install -m 755 "$tmp/bothy" "$BINDIR/bothy"
 
