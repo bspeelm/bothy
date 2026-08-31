@@ -204,3 +204,63 @@ func stripHeader(kdl string) string {
 }
 
 func ptr(b bool) *bool { return &b }
+
+// The README promises the agent slot takes "any command you name". It did not:
+// strings.Fields split on whitespace with no quote awareness, so
+// `claude --append-system-prompt "be terse"` became the arguments `"be` and
+// `terse"`, which Zellij passed on literally. An empty command panicked.
+func TestSplitCommandHonoursQuotes(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{"plain", "claude", []string{"claude"}},
+		{"flags", "claude --continue", []string{"claude", "--continue"}},
+		{"double quotes", `claude --append-system-prompt "be terse"`,
+			[]string{"claude", "--append-system-prompt", "be terse"}},
+		{"single quotes", `sh -c 'echo hi'`, []string{"sh", "-c", "echo hi"}},
+		{"quote inside a word", `git commit -m"a b"`, []string{"git", "commit", "-ma b"}},
+		{"an empty argument", `sh -c ""`, []string{"sh", "-c", ""}},
+		{"escaped space", `vim a\ b`, []string{"vim", "a b"}},
+		{"a quote inside double quotes", `echo "it's"`, []string{"echo", "it's"}},
+		{"runs of whitespace", "  claude   --continue  ", []string{"claude", "--continue"}},
+		{"empty", "", nil},
+		{"only spaces", "   ", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := splitCommand(tc.in)
+			if err != nil {
+				t.Fatalf("splitCommand(%q) = %v", tc.in, err)
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("splitCommand(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("splitCommand(%q)[%d] = %q, want %q", tc.in, i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+func TestSplitCommandRejectsAnUnbalancedQuote(t *testing.T) {
+	if _, err := splitCommand(`claude --prompt "unterminated`); err == nil {
+		t.Error("an unbalanced quote was accepted; the argument would silently swallow the rest of the line")
+	}
+}
+
+// An empty command indexed parts[0] and took the whole program down with an
+// index-out-of-range, from nothing worse than a stray line in a profile.
+func TestAnEmptyCommandIsAnErrorNotAPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("rendering an empty command panicked: %v", r)
+		}
+	}()
+	p := Profile{Name: "x", Rows: []Row{{Panes: []Pane{{Name: "a", Command: "   "}}}}}
+	if _, err := Render(p, Commands{}); err == nil {
+		t.Error("an empty command rendered without complaint")
+	}
+}
