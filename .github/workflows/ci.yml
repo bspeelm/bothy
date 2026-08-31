@@ -127,4 +127,7 @@ jobs:
           # machine of someone who wanted one static binary.
           test -z "$(dpkg-deb -f "$deb" Depends)"
           sudo apt-get remove -y bothy
-          ! command -v bothy
+          # Test the file, not the name. `command -v` consults bash's hash
+          # table, which still held /usr/bin/bothy from running it above, so
+          # it reported the binary present after apt had removed it.
+          test ! -e /usr/bin/bothy
