@@ -95,7 +95,7 @@ func cmdDev(args []string) error {
 	// tools live inside, home is shared, so $PWD means the same thing on both
 	// sides. This is the case a plain shell alias cannot handle.
 	if !p.InContainer() {
-		if container := cfg.ContainerFor(p); container != "" {
+		if container := install.ContainerFor(p, cfg); container != "" {
 			return hopIntoContainer(container, target, name)
 		}
 	}
@@ -197,7 +197,7 @@ func cmdAttach(args []string) error {
 		mux = "zellij"
 	}
 	if !p.InContainer() {
-		if container := cfg.ContainerFor(p); container != "" {
+		if container := install.ContainerFor(p, cfg); container != "" {
 			if bin, err := exec.LookPath("toolbox"); err == nil {
 				return runInteractive(bin, "run", "--container", container,
 					"bash", "-lc", mux+" attach "+strings.Join(args, " "))

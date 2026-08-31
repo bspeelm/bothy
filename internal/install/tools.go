@@ -48,18 +48,29 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, progress func
 		return nil, err
 	}
 
+	// The manifest is written on every path, offline included. An earlier
+	// version returned early when offline and never recorded where the install
+	// happened, so `bothy` launched from the host could not find its way back
+	// to the container holding the tools. Skipping downloads is not a reason
+	// to skip bookkeeping — and this is the third short-circuit in this project
+	// to swallow a step someone added after it.
+	m, err := state.Load(p.StateDir())
+	if err != nil {
+		return nil, err
+	}
+	m.InstalledIn = p.ContainerName
+
 	if offline {
 		for _, d := range decisions {
 			if d.Action == tools.UseSystem {
 				rep.Used = append(rep.Used, d)
+				m.RecordBinary(state.Binary{
+					Name: d.Tool.Name, Path: d.Path,
+					Version: d.Version.String(), Source: "system",
+				})
 			}
 		}
-		return rep, nil
-	}
-
-	m, err := state.Load(p.StateDir())
-	if err != nil {
-		return nil, err
+		return rep, m.Save(p.StateDir())
 	}
 	lock, err := fetch.LoadLock()
 	if err != nil {
@@ -130,4 +141,20 @@ func InstalledBinary(p platform.Info, name string) (string, bool) {
 		return path, true
 	}
 	return "", false
+}
+
+// InstalledIn is the container bothy resolved its tools in, from the manifest.
+// Empty when bothy has not been installed, or was installed on the host.
+func InstalledIn(p platform.Info) string {
+	m, err := state.Load(p.StateDir())
+	if err != nil {
+		return ""
+	}
+	return m.InstalledIn
+}
+
+// ContainerFor is cfg.ContainerFor with the recorded install container filled
+// in, which is what every caller actually wants.
+func ContainerFor(p platform.Info, cfg config.Config) string {
+	return cfg.ContainerFor(p, InstalledIn(p))
 }

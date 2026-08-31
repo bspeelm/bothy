@@ -25,6 +25,7 @@ import (
 	"github.com/bothy-dev/bothy/internal/layout"
 	"github.com/bothy-dev/bothy/internal/platform"
 	"github.com/bothy-dev/bothy/internal/probe"
+	"github.com/bothy-dev/bothy/internal/state"
 	"github.com/bothy-dev/bothy/internal/theme"
 	"github.com/bothy-dev/bothy/internal/tools"
 )
@@ -163,6 +164,7 @@ func Checks() []Check {
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},
 		{ID: "agent", Run: checkAgent},
 		{ID: "tool-provenance", Run: checkToolProvenance},
+		{ID: "tools-reachable", Run: checkToolsReachable},
 		{ID: "theme-palette", Run: checkThemePalette},
 	}
 }
@@ -568,6 +570,43 @@ func checkToolProvenance(env Env) Result {
 	}
 	return pass(fmt.Sprintf("%d tool(s) from your system, %d supplied by bothy",
 		len(system), len(supplied)))
+}
+
+// checkToolsReachable catches tools recorded at one side of a container
+// boundary and looked for at the other.
+//
+// Home is shared between a host and its toolboxes; PATH is not. An install run
+// inside a container records yazi at /usr/bin/yazi, which simply does not
+// exist on the host — so launching from the host opened a pane that died with
+// "command not found: yazi", with nothing to suggest why. The launcher now
+// hops back to where the tools are; this reports the case where it cannot.
+func checkToolsReachable(env Env) Result {
+	m, err := state.Load(env.Platform.StateDir())
+	if err != nil || len(m.Binaries) == 0 {
+		return skip("nothing installed to check")
+	}
+
+	var unreachable []string
+	for _, b := range m.Binaries {
+		if b.Source != "system" || b.Path == "" {
+			continue // bothy's own, inside its tree, reachable from anywhere
+		}
+		if _, err := os.Stat(b.Path); err != nil {
+			unreachable = append(unreachable, b.Name+" ("+b.Path+")")
+		}
+	}
+	if len(unreachable) == 0 {
+		return pass("every recorded tool is reachable from here")
+	}
+
+	where := m.InstalledIn
+	if where == "" {
+		where = "the host"
+	}
+	return fail(fmt.Sprintf("%d tool(s) recorded at install time are not here", len(unreachable)),
+		strings.Join(unreachable, "; ")+" — bothy was installed in "+where+
+			", and home is shared between there and here but PATH is not",
+		"run 'bothy install' from here, or let bothy hop back: bothy config set workspace.container "+m.InstalledIn)
 }
 
 func checkAgent(env Env) Result {

@@ -246,7 +246,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		ImagePreviews:    g.Supported,
 		GraphicsReason:   g.Reason,
 		Container:        p.InContainer(),
-		ContainerName:    cfg.ContainerFor(p),
+		ContainerName:    ContainerFor(p, cfg),
 		EditorBin:        editorBinary(cfg.Slots.Editor),
 		AgentBin:         agentBinary(cfg.Slots.Agent),
 		BrowserBin:       cfg.Slots.Browser,

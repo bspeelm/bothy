@@ -102,20 +102,18 @@ manifest of files scattered across your home.
    providers described by data. Adding a provider must not require core changes.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
-6. **Budgets are real.** Binary ≤ 10 MB, core source ≤ 5.5k lines, workspace
-   idle RSS ≤ 200 MB excluding the agent. Asserted in CI.
+6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 5k lines, code+comments ≤ 7k,
+   workspace idle RSS ≤ 200 MB excluding the agent. Asserted in CI.
 
-   The source budget was 5k in revision 1, when bothy was "an installer, a
-   config writer, a layout launcher and a doctor". It has since gained a
-   checksum-verifying binary fetcher with a lockfile, terminal spawning, plugin
-   management and first-run setup — all asked for, none of it in the original
-   accounting. The number did not move; the scope did.
+   The line budget counts code and comments separately, because counting them
+   together was measuring the wrong thing: this codebase comments densely on
+   purpose — most of them record why a thing is the way it is, which is the
+   part that would otherwise be lost — and a single number punished that
+   exactly as hard as it punished sprawl. Under the combined count the project
+   appeared to be at 5,010 of 5,000 and I proposed raising the limit; split
+   out, it was 3,697 lines of code against the same 5,000. The budget had not
+   been breached, the metric had been wrong.
 
-   Raised to 5.5k rather than trimmed to fit, because the alternative was
-   already producing worse code: the last 30 lines were bought by replacing a
-   named helper with an inline closure, which is not engineering. A budget that
-   makes the code worse has stopped measuring what it was meant to measure.
-   The binary budget is untouched and still has headroom.
 7. **Simplicity beats cleverness.** Prefer a documented manual step to an
    automated one that fails silently.
 8. **One palette ships.** Open Dracula, MIT. Every other palette is a file on

@@ -602,3 +602,50 @@ func TestUninstallIsIdempotentAndFinishes(t *testing.T) {
 		t.Error("a second uninstall left bothy installed")
 	}
 }
+
+// Home is shared between a host and its toolboxes; PATH is not. An install run
+// inside a container resolves tools to /usr/bin paths that do not exist on the
+// host, so `bothy` launched from the host opened a pane that died with
+// "command not found: yazi". The container it was installed in is recorded so
+// the launch can go back to where the tools actually are.
+func TestLaunchGoesBackToTheContainerItWasInstalledIn(t *testing.T) {
+	p := sandbox(t)
+	p.Container = platform.Toolbx
+	p.ContainerName = "aip"
+
+	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := EnsureTools(p, config.Default(), true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := InstalledIn(p); got != "aip" {
+		t.Fatalf("InstalledIn() = %q, want aip — recorded even offline", got)
+	}
+
+	// Now the same tree, seen from the host: no container detected.
+	host := p
+	host.Container = platform.NotContainer
+	host.ContainerName = ""
+	if got := ContainerFor(host, config.Default()); got != "aip" {
+		t.Errorf("from the host, ContainerFor() = %q, want aip", got)
+	}
+}
+
+// Precedence: an explicit setting beats the current container, which beats
+// where the install happened.
+func TestContainerPrecedence(t *testing.T) {
+	cfg := config.Default()
+	inContainer := platform.Info{Container: platform.Toolbx, ContainerName: "here"}
+
+	if got := cfg.ContainerFor(inContainer, "installed"); got != "here" {
+		t.Errorf("got %q, want the current container", got)
+	}
+	cfg.Workspace.Container = "chosen"
+	if got := cfg.ContainerFor(inContainer, "installed"); got != "chosen" {
+		t.Errorf("got %q, want the explicit setting", got)
+	}
+	if got := config.Default().ContainerFor(platform.Info{}, "installed"); got != "installed" {
+		t.Errorf("got %q, want the install container as the fallback", got)
+	}
+}

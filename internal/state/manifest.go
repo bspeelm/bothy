@@ -27,7 +27,13 @@ type Manifest struct {
 	Version   int       `json:"version"`
 	UpdatedAt time.Time `json:"updated_at"`
 	BothyVer  string    `json:"bothy_version"`
-	Binaries  []Binary  `json:"binaries"`
+	// InstalledIn is the container bothy resolved its tools in, or "" for the
+	// host. It matters because home is shared but PATH is not: tools found at
+	// /usr/bin inside a container are simply absent on the host, so a launch
+	// from the other side finds nothing. Recorded so `bothy` can go back to
+	// where its tools actually are.
+	InstalledIn string   `json:"installed_in,omitempty"`
+	Binaries    []Binary `json:"binaries"`
 }
 
 // Binary is one tool bothy supplied because the system's was missing or too

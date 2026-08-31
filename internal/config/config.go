@@ -191,13 +191,22 @@ func (c Config) PalettePath(p platform.Info) string {
 	return expand(c.Theme.Palette, p.Home)
 }
 
-// ContainerFor returns the container `dev` should enter, preferring an explicit
-// setting over detection.
-func (c Config) ContainerFor(p platform.Info) string {
+// ContainerFor returns the container to enter, preferring an explicit setting,
+// then the current one, then wherever the install happened.
+//
+// That last fallback is the one that matters. Home is shared between host and
+// container but PATH is not: an install run inside a toolbox resolves its tools
+// to /usr/bin paths that do not exist on the host, so launching from the host
+// finds nothing and a pane dies with "command not found". installedIn is
+// recorded at install time precisely so the launch can go back.
+func (c Config) ContainerFor(p platform.Info, installedIn string) string {
 	if c.Workspace.Container != "" {
 		return c.Workspace.Container
 	}
-	return p.ContainerName
+	if p.ContainerName != "" {
+		return p.ContainerName
+	}
+	return installedIn
 }
 
 // Set applies a dotted key assignment, as used by `bothy config set`.
