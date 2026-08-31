@@ -55,10 +55,12 @@ Usage:
   bothy tools                   show which tools are used and where they came from
   bothy desktop-entry           print a .desktop launcher (--install to write it)
   bothy uninstall [--dry-run]   remove bothy's directory and its binary
+  bothy lock    [--tool T]      re-pin the tools in bothy.lock (maintainers)
   bothy version
 
 Every generated file says it is bothy's and names where to put your own
-changes. Nothing is written without first backing up what was there.
+changes. Everything bothy writes lives under ~/.local/share/bothy, and
+'bothy uninstall' removes that one directory.
 `
 
 func main() {

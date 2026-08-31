@@ -62,7 +62,11 @@ func TestEveryCommandIsInTheUsage(t *testing.T) {
 		if undocumented[cmd] {
 			continue
 		}
-		if !strings.Contains(usage, cmd) {
+		// Whole words, not substrings. This checked strings.Contains, and
+		// `bothy lock` -- which was genuinely missing from the usage text --
+		// was satisfied by the word "unlocked" in the first line. The one
+		// command the test existed to catch was the one it could not see.
+		if !regexp.MustCompile(`\bbothy ` + cmd + `\b`).MatchString(usage) {
 			t.Errorf("`bothy %s` exists but is not in the usage text", cmd)
 		}
 	}
