@@ -1,0 +1,46 @@
+bothy
+Copyright (c) 2026 Bryan Speelman
+Licensed under the MIT License; see LICENSE.
+
+--------------------------------------------------------------------------
+Third-party material included in this repository
+--------------------------------------------------------------------------
+
+Dracula (the open theme)
+    https://github.com/dracula/dracula-theme
+    Copyright (c) 2016 Dracula Theme
+    MIT License
+
+    bothy's built-in palette is Dracula's published colour values. They are
+    the only colour values in this repository, and internal/theme/theme.go is
+    the only place they appear. Every other palette — including any that is
+    commercially licensed — is read from a file on the user's own machine and
+    is never carried here. See docs/decisions.md ADR-006.
+
+Dracula PRO is a separate, paid product and no part of it is included,
+reproduced, or derived from in this repository.
+
+--------------------------------------------------------------------------
+Tools bothy installs
+--------------------------------------------------------------------------
+
+bothy does not bundle, vendor, or redistribute any of the tools it sets up.
+It downloads official release binaries from their own projects and verifies
+them against checksums recorded in bothy.lock. Each remains under its own
+licence, held by its own authors:
+
+    zellij      https://github.com/zellij-org/zellij
+    yazi        https://github.com/sxyazi/yazi
+    lazygit     https://github.com/jesseduffield/lazygit
+    delta       https://github.com/dandavison/delta
+    ripgrep     https://github.com/BurntSushi/ripgrep
+    fd          https://github.com/sharkdp/fd
+    fzf         https://github.com/junegunn/fzf
+    zoxide      https://github.com/ajeetdsouza/zoxide
+    jq          https://github.com/jqlang/jq
+
+Yazi plugins are installed with Yazi's own package manager from
+https://github.com/yazi-rs/plugins and likewise are not vendored here.
+
+Ghostty (https://ghostty.org) is never installed by bothy; it is a host
+application bothy detects, advises on, and hands a config file to.

@@ -323,8 +323,22 @@ check could not see it because `yazi --clear-cache` does not execute
 `init.lua`. Plugins are now installed with `ya pkg` into bothy's tree, and the
 generated config is written to match what is actually present.
 
-**Phase E — docs and v0.1.0.** README rewrite around the isolation model,
-`docs/adding-a-provider.md` refresh, goreleaser, bootstrap pinned to the release.
+**Phase E — docs and v0.1.0. Done bar the tag.** README rewritten around the
+isolation model; `docs/adding-a-provider.md` covers the three kinds of thing
+you can now add; `NOTICE` credits Dracula and states plainly that no tool is
+vendored. goreleaser builds linux/darwin x amd64/arm64 under names
+`bootstrap/install.sh` already expects, and a release workflow re-runs the
+gates at the tag rather than trusting the branch.
+
+Two CI problems fixed here rather than shipped: the round-trip job filtered on
+a test name Phase A had renamed, and `go test -run` exits 0 when its filter
+matches nothing — green, and testing nothing. It now asserts how many tests
+ran. And the README claimed the doctor detected traps whose checks Phase A had
+deliberately removed; prose has no compiler, so a test now checks the command
+table against `main.go`.
+
+Remaining before tagging v0.1.0: run it on a machine that is not the one it was
+built on.
 
 Deferred, unchanged: macOS, WSL2/Windows, tmux, `bothy update`.
 

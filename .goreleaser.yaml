@@ -1,0 +1,69 @@
+# Release build. The archive names here must match what bootstrap/install.sh
+# downloads: bothy_<os>_<arch>.tar.gz, with no version in the name, so that the
+# /releases/latest/download/ URL works without the script knowing a version.
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: bothy
+    main: ./cmd/bothy
+    binary: bothy
+    env:
+      - CGO_ENABLED=0
+    # -s -w strips the symbol table and DWARF; the binary is close enough to
+    # the 10 MB budget in PLAN.md §3 that this is not optional.
+    ldflags:
+      - -s -w -X main.Version={{ .Version }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: bothy
+    formats: [tar.gz]
+    # No version: bootstrap/install.sh resolves through /releases/latest/.
+    name_template: "bothy_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat'
+      order: 0
+    - title: Fixes
+      regexp: '^fix'
+      order: 1
+    - title: Documentation
+      regexp: '^docs'
+      order: 2
+  filters:
+    exclude:
+      - '^chore'
+      - '^test'
+
+release:
+  footer: |
+    ## Install
+
+    ```sh
+    curl -fsSL https://raw.githubusercontent.com/bothy-dev/bothy/main/bootstrap/install.sh | sh
+    bothy install
+    ```
+
+    Then run `bothy`.
+
+    bothy writes only into `~/.local/share/bothy`. Your dotfiles are neither
+    read nor written, and `bothy uninstall` removes that one directory.

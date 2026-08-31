@@ -32,33 +32,47 @@ cd ~/some-project
 bothy
 ```
 
-bothy installs the tools, writes their configs, lays out the panes, and then
-tells you what is wrong and how to fix it. That last part is the point.
+bothy supplies any tool you are missing, writes its own configs, lays out the
+panes, and then tells you what is wrong and how to fix it. That last part is
+the point.
+
+It does not touch your dotfiles. Everything it writes lives in one directory,
+and `bothy uninstall` removes it.
 
 ## Why
 
 AI IDEs over-bake execution: an Electron shell, a plugin marketplace, a
 background daemon, and 800 MB of RAM to show a text file. bothy is the opposite
 bet — **a thin orchestrator over best-in-class terminal tools**. The IDE *is* the
-tools. bothy only installs them, configures them, and arranges them.
+tools. bothy arranges them, configures them in its own tree, and gets out of
+the way.
 
 It grew out of one working setup on Fedora Silverblue, whose cheat sheet is
 included here as [`docs/origin-cheatsheet.md`](docs/origin-cheatsheet.md). Every
-trap in that document is now a `doctor` check, because every one of them fails
-*silently*:
+trap in that document is dealt with, because every one of them fails *silently*
+— and a tool that fails silently is worse than one that crashes.
+
+Some are **detected**, because they can still happen to you:
 
 | What you see | What actually happened |
 |---|---|
 | Your Yazi settings "didn't take" | Yazi rejected one key and discarded **the entire config** |
-| vim comes up in default colours | The colorscheme is on `runtimepath` only *after* `.vimrc` is sourced |
-| Your terminal config does nothing | Ghostty reads `config`, and yours is named `config.ghostty` |
-| A phantom "Find next" on every image | The multiplexer mangled a capability reply; the bytes became keystrokes |
+| Previews are blocky, and a phantom "Find next" fires | The multiplexer could not pass the graphics protocol, and its mangled reply was parsed as keystrokes |
+| A file browser feature just isn't there | A plugin the config references was never installed |
+| Your workspace opens with the wrong panes | The multiplexer read the layout differently than it was written |
 
-`bothy doctor` finds all four, and prints the one-line fix for each. It grew a
-fifth while this was being built: bothy's own Yazi config required plugins it
-never installed, and nothing noticed, because `yazi --clear-cache` — what the
-config check runs — does not execute `init.lua`. The config now matches the
-plugins actually present, and a check reports any that are missing.
+Others are **avoided**, because bothy no longer does the thing that caused them:
+
+| The original trap | Why it cannot happen here |
+|---|---|
+| vim ignores a colorscheme in `pack/*/start` | bothy does not write your `.vimrc` at all |
+| Ghostty silently ignores `config.ghostty` | bothy hands Ghostty its own file with `--config-file` |
+| A host-forwarding `xdg-open` recurses into itself | The shim lives in bothy's bin, on `PATH` for bothy's session only |
+
+`bothy doctor` prints a one-line fix under every failure. The list grew while
+this was being built: bothy's own Yazi config required plugins it never
+installed, and nothing noticed, because `yazi --clear-cache` — what the config
+check runs — does not execute `init.lua`.
 
 ## Install
 
@@ -277,6 +291,13 @@ be a data file and templates, never new Go code. Design rationale lives in
 [`docs/decisions.md`](docs/decisions.md), and the working agreement in
 [`PLAN.md`](PLAN.md). Every bug fix ships with a doctor check and a test.
 
-## Licence
+## Credits and licence
 
-MIT.
+bothy is MIT. See [`LICENSE`](LICENSE).
+
+The built-in palette is [Dracula](https://github.com/dracula/dracula-theme)
+(MIT) — thank you. It is the only palette in this repository; everything else
+bothy uses belongs to someone else and stays where it is. bothy vendors no
+tool: it downloads official release binaries and verifies them against
+`bothy.lock`, and each tool remains under its own licence. [`NOTICE`](NOTICE)
+has the full list.

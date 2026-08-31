@@ -16,14 +16,36 @@ jobs:
       # `make check` runs lint, the tests, and the PLAN.md §0 budget assertions.
       - run: make check
 
-  round-trip:
-    # Installing and then uninstalling must leave the filesystem as it was.
-    # That is the reversibility promise in PLAN.md §0, and it is only a promise
-    # if something checks it.
+  isolation:
+    # ADR-009 as a gate. Installing must write nothing outside bothy's own
+    # directory, in any configuration.
+    #
+    # This job previously filtered on a test name that no longer existed, and
+    # `go test -run` exits 0 when its filter matches nothing — so it was green
+    # and testing nothing. The filter is now asserted to match.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-      - run: go test ./... -run RoundTrip -v
+      - name: isolation tests actually ran
+        run: |
+          out=$(go test ./internal/install/ -run 'Isolation|WritesNothingOutside|NeverWrites|Passthrough|Uninstall' -v)
+          echo "$out"
+          ran=$(echo "$out" | grep -c '^--- PASS' || true)
+          echo "isolation tests passed: $ran"
+          if [ "$ran" -lt 5 ]; then
+            echo "::error::expected at least 5 isolation tests, ran $ran — the filter has drifted"
+            exit 1
+          fi
+
+  no-paid-palette:
+    # ADR-006. The only colour values in this repository are open Dracula's.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - run: go test ./internal/theme/ -run OnlyOpenDracula -v
