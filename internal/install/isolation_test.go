@@ -335,6 +335,13 @@ func TestPassthroughOmitsTheEnvironmentVariable(t *testing.T) {
 	p := sandbox(t)
 	cfg := config.Default()
 
+	// Set them in the ambient environment first. A bothy session launched from
+	// inside another one inherits exactly this, and "decline to set" would
+	// leave the inherited value in place — which is how this test found a real
+	// bug rather than a test bug.
+	t.Setenv("YAZI_CONFIG_HOME", "/inherited/yazi")
+	t.Setenv("ZELLIJ_CONFIG_DIR", "/inherited/zellij")
+
 	env := SessionEnv(p, cfg)
 	if !hasEnvPrefix(env, "YAZI_CONFIG_HOME=") {
 		t.Fatal("YAZI_CONFIG_HOME should be set when bothy manages yazi")

@@ -98,6 +98,11 @@ type Env struct {
 	// Profile is the layout profile in use, for the pane-count check.
 	ProfileName string
 	PaneCount   int
+	// RunsIn is the container bothy will hop into to launch the workspace, or
+	// "" when it runs here. Set on the host when an install happened inside a
+	// toolbox: the tools live there, so checking for them here reports every
+	// one of them missing and every report is wrong.
+	RunsIn string
 	// MuxBin is the multiplexer binary bothy will actually launch, resolved
 	// through its own bin first. Checking the system's copy instead reports
 	// confidently about a binary that is not the one being used.
@@ -123,6 +128,22 @@ func (e Env) lookPath(name string) (string, error) {
 		return own, nil
 	}
 	return exec.LookPath(name)
+}
+
+// elsewhere reports that the workspace runs in another container, so a check
+// that inspects tools here would be inspecting the wrong machine.
+//
+// This is the fifth time in this project that something looked at one
+// environment and reported on another. The pattern is worth naming: bothy
+// straddles a host and a container that share a home directory, so "where am I"
+// and "where does the work happen" are different questions, and any check that
+// conflates them is confidently wrong.
+func (e Env) elsewhere() (Result, bool) {
+	if e.RunsIn == "" {
+		return Result{}, false
+	}
+	return skip("the workspace runs in " + e.RunsIn + "; check there with " +
+		"'toolbox run -c " + e.RunsIn + " bothy doctor'"), true
 }
 
 // tool builds a command that runs the way bothy's session would.
@@ -195,6 +216,9 @@ var staleTable = regexp.MustCompile(`(?m)^\s*\[manager\]`)
 var staleFiletypeRule = regexp.MustCompile(`(?m)^\s*name\s*=\s*"[*/]`)
 
 func checkYaziConfigDiscarded(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
@@ -222,6 +246,9 @@ func checkYaziConfigDiscarded(env Env) Result {
 var MinYaziForPlugins = probe.Version{Major: 26}
 
 func checkYaziVersion(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
@@ -253,6 +280,9 @@ func checkYaziVersion(env Env) Result {
 // 25.x still parses around — [manager] became [mgr], and filetype rules and
 // fetchers take `url` where they used to take `name` and `id`.
 func checkYaziConfigKeys(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
 		return skip("bothy is not managing yazi's config")
 	}
@@ -467,6 +497,9 @@ func checkIsolation(env Env) Result {
 }
 
 func checkZellijConfig(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	if env.Config.Slots.Mux != "zellij" {
 		return skip("mux slot is not zellij")
 	}
@@ -546,6 +579,9 @@ func checkXdgOpenShimGuard(env Env) Result {
 // supplied to cover it, which is a workspace that will misbehave in a way the
 // individual tool never complains about.
 func checkToolProvenance(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	names, err := tools.Required(env.Config.Slots.Mux, env.Config.Slots.Browser, env.Config.Extras)
 	if err != nil {
 		return warn("could not read the tool definitions", err.Error(), "")
@@ -588,6 +624,9 @@ func checkToolProvenance(env Env) Result {
 // "command not found: yazi", with nothing to suggest why. The launcher now
 // hops back to where the tools are; this reports the case where it cannot.
 func checkToolsReachable(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	m, err := state.Load(env.Platform.StateDir())
 	if err != nil || len(m.Binaries) == 0 {
 		return skip("nothing installed to check")
@@ -617,6 +656,9 @@ func checkToolsReachable(env Env) Result {
 }
 
 func checkAgent(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
 	slot := env.Config.Slots.Agent
 	if slot == "" || slot == "none" {
 		return skip("no agent slot configured")

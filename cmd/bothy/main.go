@@ -144,6 +144,7 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	env := doctor.Env{
 		Platform: p, Config: cfg, ProfileName: cfg.Profile,
 		MuxBin: install.ToolPath(p, cfg.Slots.Mux),
+		RunsIn: hopTarget(p, cfg),
 		// Check the tools the way bothy will actually run them.
 		ToolEnv: install.SessionEnv(p, cfg),
 	}
@@ -415,4 +416,13 @@ func pids(rs []install.Running) string {
 func fileExists(path string) bool {
 	fi, err := os.Stat(path)
 	return err == nil && !fi.IsDir()
+}
+
+// hopTarget is the container the workspace will run in, or "" when it runs
+// here. Only meaningful from outside a container: inside one, this is it.
+func hopTarget(p platform.Info, cfg config.Config) string {
+	if p.InContainer() {
+		return ""
+	}
+	return install.ContainerFor(p, cfg)
 }

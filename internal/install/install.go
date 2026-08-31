@@ -374,11 +374,21 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// here. Nothing it installs changes what a command means in your shell.
 	env.set("PATH", p.BinDir()+string(os.PathListSeparator)+os.Getenv("PATH"))
 
+	// Passthrough must *unset*, not merely decline to set. The session inherits
+	// the current environment, so if one of these is already exported — by a
+	// bothy session this was launched from, or by hand — declining to set it
+	// leaves the inherited value in place and the tool quietly uses bothy's
+	// config anyway. Found by the test suite failing when run from inside a
+	// bothy session, which is the only place the difference shows.
 	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
 		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
+	} else {
+		env.unset("ZELLIJ_CONFIG_DIR")
 	}
 	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
+	} else {
+		env.unset("YAZI_CONFIG_HOME")
 	}
 
 	// Fedora's nano-default-editor exports EDITOR=nano from /etc/profile.d,
@@ -425,6 +435,20 @@ func (e *env) set(k, v string) {
 		e.keys = append(e.keys, k)
 	}
 	e.values[k] = v
+}
+
+// unset removes a key entirely, so the child does not inherit it.
+func (e *env) unset(k string) {
+	if _, seen := e.values[k]; !seen {
+		return
+	}
+	delete(e.values, k)
+	for i, key := range e.keys {
+		if key == k {
+			e.keys = append(e.keys[:i], e.keys[i+1:]...)
+			return
+		}
+	}
 }
 
 func (e *env) slice() []string {
