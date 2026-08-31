@@ -88,9 +88,20 @@ carry no commits, so they never trigger a build.
 Copr builds the pushed tag, not the package's stored committish — the stored
 value is only a filter for webhook builds and a default for manual ones.
 
-This is read from Copr's source rather than tested here, because the webhook
-needs repository settings access. Verify it on the first tag: if nothing shows
-up in Copr within a minute, `make copr` still works.
+Both defaults in that form are wrong, and both fail quietly-ish:
+
+| Symptom | Cause |
+|---|---|
+| No delivery listed in GitHub at all | Subscribed to Push. Copr keys tag handling off a field only "Branch or tag creation" sends. |
+| Delivery returns **415** | Content type left as `x-www-form-urlencoded`. Copr parses JSON only. |
+| Delivery returns **404** | Secret truncated, or the URL is missing the `/bothy/` suffix or its trailing slash. |
+| Delivery returns 200, no build | Package is not `scm`, `webhook_rebuild` is off, or the stored `clone_url` does not match. |
+
+GitHub's *Recent Deliveries* tab on the hook shows the response code, which
+is the fastest way to tell these apart. There is no Redeliver button on a
+failed delivery, so retry by pushing a throwaway tag and deleting it after.
+
+Verified working: a tag push produced a Copr build nine seconds later.
 
 ### Why the build is offline
 
