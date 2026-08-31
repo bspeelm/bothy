@@ -98,6 +98,11 @@ func fromTarGz(body []byte, wanted map[string]bool) (map[string][]byte, error) {
 		if h.Typeflag != tar.TypeReg {
 			continue
 		}
+		// Base strips any directory component, so an entry named
+		// "../../etc/passwd" is reduced to "passwd" -- and then has to match
+		// a name from slots/tools to be kept at all. Nothing here is written
+		// to a path the archive chose: the bytes go into a map keyed by the
+		// name that was asked for, and the caller decides where it lands.
 		name := path.Base(h.Name)
 		if !wanted[name] || found[name] != nil {
 			continue
@@ -122,7 +127,7 @@ func fromZip(body []byte, wanted map[string]bool) (map[string][]byte, error) {
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		name := filepath.Base(f.Name)
+		name := filepath.Base(f.Name) // as in fromTarGz above
 		if !wanted[name] || found[name] != nil {
 			continue
 		}
