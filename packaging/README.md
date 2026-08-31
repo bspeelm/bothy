@@ -39,18 +39,41 @@ copr-cli create bothy \
 ### Cutting a release
 
 ```sh
-make release VERSION=0.2.0   # tests, bumps the spec, commits, tags, pushes
-make copr                    # once the GitHub release is green
+make release VERSION=0.2.0   # tests, bumps the spec, opens the PR
+# merge the PR, then:
+git switch main && git pull
+make release-tag             # tags the merged bump
 ```
 
-The tag is what GitHub Actions watches, so the release archives — and with
-them `curl | sh` and `go install @latest` — follow on their own.
+Two steps because main requires a pull request. That is not only a rule to
+satisfy: Copr reads `Version:` from the spec at the tagged commit, so tagging
+a commit that still carries the old version would publish an rpm under the
+wrong number. The bump has to be on main before the tag exists.
 
-`make copr` hands Copr a tag and nothing else. Copr clones the repo at that
-tag and runs `.copr/Makefile`, so what gets published can only ever be the
-tag; there is no locally built SRPM that could drift from it. Tags cut before
-`.copr/Makefile` existed (v0.1.2 and earlier) cannot be built this way, and
-`make copr` says so rather than letting Copr discover it.
+The tag is the trigger for everything downstream — GitHub Actions builds the
+release archives, and the Copr webhook builds the rpms. Branch rules do not
+cover tags, so `release-tag` needs no PR of its own.
+
+`make release` needs `gh` installed and logged in with the `repo` scope; a
+fine-grained token without *Pull requests: write* fails at the last step,
+after the bump commit has already been made.
+
+`release-tag` refuses if main is behind origin, if the spec version is already
+tagged (which means the PR was never merged), or if `.copr/Makefile` is
+missing from the checkout.
+
+### Publishing to Copr by hand
+
+```sh
+make copr
+```
+
+Only needed if the webhook misses one. It hands Copr a tag and nothing else:
+Copr clones the repo at that tag and runs `.copr/Makefile`, so what gets
+published can only ever be the tag — there is no locally built SRPM that could
+drift from it. Tags cut before `.copr/Makefile` existed (v0.1.2 and earlier)
+cannot be built this way, and `make copr` says so rather than letting Copr
+discover it five minutes into a build.
 
 ### Making Copr build on its own
 

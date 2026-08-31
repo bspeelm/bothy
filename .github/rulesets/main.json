@@ -4,23 +4,36 @@
   "enforcement": "active",
   "conditions": {
     "ref_name": {
-      "include": ["~DEFAULT_BRANCH"],
-      "exclude": []
+      "exclude": [],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ]
     }
   },
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "required_linear_history" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "required_linear_history"
+    },
     {
       "type": "pull_request",
       "parameters": {
         "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": true,
+        "required_reviewers": [],
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": false,
-        "allowed_merge_methods": ["squash", "rebase"]
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": [
+          "squash",
+          "rebase"
+        ]
       }
     },
     {
@@ -29,9 +42,33 @@
         "strict_required_status_checks_policy": true,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "check" },
-          { "context": "isolation" },
-          { "context": "no-paid-palette" }
+          {
+            "context": "check"
+          },
+          {
+            "context": "isolation"
+          },
+          {
+            "context": "no-paid-palette"
+          }
+        ]
+      }
+    },
+    {
+      "type": "code_quality",
+      "parameters": {
+        "severity": "errors"
+      }
+    },
+    {
+      "type": "code_scanning",
+      "parameters": {
+        "code_scanning_tools": [
+          {
+            "tool": "CodeQL",
+            "security_alerts_threshold": "high_or_higher",
+            "alerts_threshold": "errors"
+          }
         ]
       }
     }
