@@ -70,6 +70,19 @@ func (i Info) BinDir() string { return filepath.Join(i.BothyDir(), "bin") }
 // StateDir holds the manifest of what bothy installed.
 func (i Info) StateDir() string { return filepath.Join(i.BothyDir(), "state") }
 
+// CacheDir is where the tools bothy runs are pointed with XDG_CACHE_HOME, so
+// that what they cache lands inside bothy's tree like everything else.
+func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
+
+// ShareDir is what XDG_DATA_HOME points at for bothy's session.
+//
+// Deliberately a level below BothyDir rather than BothyDir itself: bothy
+// derives DataDir from XDG_DATA_HOME and BothyDir from DataDir, so pointing
+// that variable at BothyDir would make a bothy run inside a bothy session
+// resolve a different tree. One level down, a nested bothy lands at
+// <bothy>/share/bothy -- still inside the tree, which is all isolation asks.
+func (i Info) ShareDir() string { return filepath.Join(i.BothyDir(), "share") }
+
 // UserConfigDir is ~/.config/bothy: the user's own settings, palette and
 // overrides. bothy reads it and writes only config.toml there.
 func (i Info) UserConfigDir() string { return filepath.Join(i.ConfigDir, "bothy") }
