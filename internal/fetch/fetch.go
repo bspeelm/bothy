@@ -85,7 +85,16 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 		return nil, fmt.Errorf("fetch: %w", err)
 	}
 	var installed []string
-	for name, content := range found {
+	// Iterate the tool's own declared binaries, not the map's keys. Both are
+	// the same set by now -- Extract keeps only what was asked for -- but the
+	// names here come from slots/tools rather than from the archive, so the
+	// path being written is not derived from downloaded data at all. The
+	// previous form was safe for reasons a reader had to assemble from two
+	// places: that path.Base cannot return a separator, and that the
+	// allowlist had already filtered the key. Emergent safety is the kind
+	// that a later edit removes without noticing.
+	for _, name := range t.Binaries() {
+		content := found[name]
 		dest := filepath.Join(destDir, name)
 		if err := writeExecutable(dest, content); err != nil {
 			return nil, fmt.Errorf("fetch: %s: %w", dest, err)
