@@ -188,9 +188,10 @@ func TestChecksResolveBinariesThroughBothysBin(t *testing.T) {
 		if !strings.Contains(line, "exec.LookPath") {
 			continue
 		}
-		// The one legitimate use: ghostty is a host application that bothy
-		// never installs, so it is never in bothy's bin.
-		if strings.Contains(line, `"ghostty"`) {
+		// The legitimate uses: things bothy never installs, so they are never
+		// in its bin. ghostty is a host application; git is a prerequisite
+		// (`ya pkg` clones plugins from GitHub with it).
+		if strings.Contains(line, `"ghostty"`) || strings.Contains(line, `"git"`) {
 			continue
 		}
 		// The definition of lookPath itself.

@@ -393,9 +393,12 @@ func checkYaziPlugins(env Env) Result {
 		}
 	}
 	if len(missing) > 0 {
+		fix := "run 'bothy install' with a network connection"
+		if _, err := exec.LookPath("git"); err != nil {
+			fix = "install git — 'ya pkg' clones these from GitHub — then run 'bothy install'"
+		}
 		return warn(fmt.Sprintf("%d yazi plugin(s) are not installed", len(missing)),
-			strings.Join(missing, "; "),
-			"run 'bothy install' with a network connection")
+			strings.Join(missing, "; "), fix)
 	}
 	return pass(fmt.Sprintf("all %d yazi plugins installed", len(plugins)))
 }

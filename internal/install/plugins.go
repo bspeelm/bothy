@@ -80,6 +80,12 @@ func EnsureYaziPlugins(p platform.Info, offline bool) (*PluginReport, error) {
 	// bothy's bin and nowhere the ambient PATH would find it.
 	ya := ToolPath(p, "ya")
 	_, lookErr := os.Stat(ya)
+
+	// `ya pkg add` clones from GitHub, so it needs git — and says only
+	// "Failed to execute `git` command" when it is missing, which does not
+	// point at anything actionable. Checking here means the failure names the
+	// thing to install rather than the thing that failed.
+	_, gitErr := exec.LookPath("git")
 	for _, pl := range plugins {
 		if PluginInstalled(p, pl.Name) {
 			rep.Present = append(rep.Present, pl)
@@ -92,6 +98,11 @@ func EnsureYaziPlugins(p platform.Info, offline bool) (*PluginReport, error) {
 		if lookErr != nil {
 			rep.Failed = append(rep.Failed, PluginFailure{pl,
 				fmt.Errorf("ya is not installed; it ships with yazi")})
+			continue
+		}
+		if gitErr != nil {
+			rep.Failed = append(rep.Failed, PluginFailure{pl,
+				fmt.Errorf("git is not installed, and ya pkg clones from GitHub")})
 			continue
 		}
 

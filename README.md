@@ -34,6 +34,19 @@ your dotfiles: everything it manages lives in one directory, and
 
 ## Install
 
+### What you need
+
+| | |
+|---|---|
+| **git** | required — bothy installs its Yazi plugins with `ya pkg`, which clones them |
+| **curl** or **wget** | for the install script only |
+| **[Ghostty](https://ghostty.org)** | strongly recommended — without a terminal that speaks the Kitty graphics protocol (Ghostty, Kitty, WezTerm) image previews fall back to block art |
+| **an agent** | optional — the main pane runs `claude` by default and opens empty without it |
+| **Go** and **make** | for building from source only |
+
+bothy supplies everything else itself. `bothy doctor` reports any of these that
+are missing, with the command for the machine you are on.
+
 Pick one. Same program and same version either way.
 
 | | for | |
@@ -70,15 +83,12 @@ On a machine that already has current versions, bothy downloads nothing and
 says which it is using. Your package manager is never invoked, nothing needs
 root, and nothing is added to your `PATH`.
 
-### What does not
+### What it will not install
 
-**A terminal that can draw images.** Ghostty publishes no binaries and every
-install path needs root. Without one, previews fall back to block art.
-
-**The agent.** Without one the main pane opens empty; `bothy config set
-slots.agent none` turns it off.
-
-For both, `bothy doctor` prints the command for the machine you are on.
+Ghostty and the agent, both listed above. Ghostty publishes no release
+binaries and every install path needs root; managing an agent — its version,
+its auth, its config — is not bothy's business. `bothy doctor` prints the
+command for your machine in both cases.
 
 ## Commands
 
