@@ -9,7 +9,8 @@
 # set up the workspace.
 set -eu
 
-REPO="bspeelm/bothy"
+REPO="${BOTHY_REPO:-bspeelm/bothy}"
+BASE="${BOTHY_BASE_URL:-https://github.com/$REPO/releases}"
 VERSION="${BOTHY_VERSION:-latest}"
 BINDIR="${BOTHY_BINDIR:-$HOME/.local/bin}"
 
@@ -28,9 +29,9 @@ case "$(uname -m)" in
 esac
 
 if [ "$VERSION" = latest ]; then
-    url="https://github.com/$REPO/releases/latest/download/bothy_${os}_${arch}.tar.gz"
+    url="$BASE/latest/download/bothy_${os}_${arch}.tar.gz"
 else
-    url="https://github.com/$REPO/releases/download/$VERSION/bothy_${os}_${arch}.tar.gz"
+    url="$BASE/download/$VERSION/bothy_${os}_${arch}.tar.gz"
 fi
 
 tmp="$(mktemp -d)"
@@ -63,4 +64,4 @@ case ":$PATH:" in
 esac
 
 echo
-echo "next: bothy install"
+echo "next: bothy"
