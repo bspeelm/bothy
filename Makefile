@@ -19,7 +19,7 @@ MAX_TOTAL_LINES  := 7000
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
-.PHONY: all build test lint vet fmt budgets check clean install-binary vendor srpm
+.PHONY: all build test lint vet fmt budgets check clean install-binary vendor srpm release copr
 
 all: check
 
@@ -71,3 +71,29 @@ vendor:
 # tarball is, so what is tested locally is what Copr will build.
 srpm: vendor
 	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); 	rpmdev-setuptree; 	tmp=$$(mktemp -d); mkdir -p $$tmp/$(BINARY)-$$v; 	git ls-files | tar -cf - -T - | tar -xf - -C $$tmp/$(BINARY)-$$v; 	cp -r vendor $$tmp/$(BINARY)-$$v/; 	tar -czf $$HOME/rpmbuild/SOURCES/$(BINARY)-$$v.tar.gz -C $$tmp $(BINARY)-$$v; 	rm -rf $$tmp; 	rpmbuild -bs packaging/$(BINARY).spec
+
+# Cut a release: bump the spec, commit, tag, push. Tagging is what triggers the
+# GitHub release, which is what `curl | sh` and `go install @latest` both
+# follow, so this is the only step those two need.
+#
+#     make release VERSION=0.2.0
+release:
+	@test -n "$(VERSION)" || { echo "usage: make release VERSION=x.y.z"; exit 1; }
+	@echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "VERSION must be x.y.z"; exit 1; }
+	@git diff --quiet || { echo "working tree is dirty; commit first"; exit 1; }
+	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || { echo "v$(VERSION) already exists"; exit 1; }
+	$(MAKE) check
+	@scripts/bump-spec.sh "$(VERSION)"
+	git add packaging/$(BINARY).spec
+	git commit -m "build: $(VERSION)"
+	git tag v$(VERSION)
+	git push && git push origin v$(VERSION)
+	@echo
+	@echo "tagged v$(VERSION); GitHub Actions is building the release."
+	@echo "once it is green:  make copr"
+
+# Publish the current spec version to Copr. Kept separate from `release` so it
+# runs after the GitHub release exists rather than racing it.
+copr: srpm
+	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); \
+	copr-cli build $(BINARY) $$HOME/rpmbuild/SRPMS/$(BINARY)-$$v-1.*.src.rpm

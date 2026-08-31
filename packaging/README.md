@@ -36,19 +36,24 @@ copr-cli create bothy \
     --instructions "dnf copr enable bspeelman/bothy && dnf install bothy"
 ```
 
-### Building a release
+### Cutting a release
 
 ```sh
-copr-cli build bothy \
-    --srpm-url https://github.com/bspeelm/bothy/releases/download/v0.1.2/bothy-0.1.2-1.src.rpm
+make release VERSION=0.2.0
 ```
 
-Or build straight from the spec after bumping `Version` and adding a changelog
-entry:
+That runs the tests, sets `Version` in the spec, adds a changelog entry,
+commits, tags, and pushes. The tag is what GitHub Actions watches, so the
+release archives — and with them `curl | sh` and `go install @latest` — follow
+on their own.
+
+Copr does not watch anything. Once the GitHub release is green:
 
 ```sh
-make srpm && copr-cli build bothy ~/rpmbuild/SRPMS/bothy-*.src.rpm
+make copr
 ```
+
+which rebuilds the SRPM from the spec and submits it.
 
 ### Why the build is offline
 
