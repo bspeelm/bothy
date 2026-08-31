@@ -67,12 +67,15 @@ var onlineExpectation = map[string]doctor.Severity{
 	"watermark-image":       doctor.Skip, // off by default
 	"zellij-config":         doctor.Pass,
 	"terminfo":              doctor.Pass, // only because prep installed infocmp
-	"opener":                doctor.Pass, // the shim is not written here; a real xdg-open may be
-	"xdg-open-shim-guard":   doctor.Skip, // no shared home, so no shim to guard
-	"agent":                 doctor.Skip, // slots.agent none, see runOnline
-	"tool-provenance":       doctor.Pass,
-	"tools-reachable":       doctor.Pass,
-	"theme-palette":         doctor.Skip, // the built-in palette
+	// Warn, and correctly so: the forwarding shim is only written where there
+	// is a host to forward to, and neither base image ships xdg-open. There is
+	// nothing to open a file with here and nothing bothy can do about it.
+	"opener":              doctor.Warn,
+	"xdg-open-shim-guard": doctor.Skip, // no shared home, so no shim to guard
+	"agent":               doctor.Skip, // slots.agent none, see runOnline
+	"tool-provenance":     doctor.Pass,
+	"tools-reachable":     doctor.Pass,
+	"theme-palette":       doctor.Skip, // the built-in palette
 }
 
 func TestBothyInstallsInAContainer(t *testing.T) {
