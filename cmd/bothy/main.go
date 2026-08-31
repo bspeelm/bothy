@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bothy-dev/bothy/internal/config"
@@ -349,6 +350,14 @@ func cmdUninstall(args []string) error {
 	for _, f := range rep.Kept {
 		fmt.Printf("  kept %s\n", tilde(f, p.Home))
 	}
+	if len(rep.Orphaned) > 0 {
+		fmt.Printf("\n%d process(es) are still running binaries this removed:\n", len(rep.Orphaned))
+		for _, r := range rep.Orphaned {
+			fmt.Printf("  pid %d  %s\n", r.PID, r.Cmdline)
+		}
+		fmt.Println("they keep working but cannot be reattached, and their memory is")
+		fmt.Println("held until they exit. Close them, or: kill " + pids(rep.Orphaned))
+	}
 	// The desktop entry is the one thing bothy writes outside its tree, so it
 	// is the one thing uninstall has to mention rather than silently leave.
 	if entry := desktopEntryPath(p.DataDir); fileExists(entry) {
@@ -435,4 +444,13 @@ func cmdTools(args []string) error {
 		fmt.Printf("%s %-9s %s\n", mark, d.Tool.Name, d.Reason)
 	}
 	return nil
+}
+
+// pids renders a kill-able list.
+func pids(rs []install.Running) string {
+	out := make([]string, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, strconv.Itoa(r.PID))
+	}
+	return strings.Join(out, " ")
 }

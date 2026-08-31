@@ -13,6 +13,11 @@ type UninstallReport struct {
 	Removed []string
 	// Kept lists things deliberately left behind, with the reason.
 	Kept []string
+	// Orphaned lists processes that were still running binaries bothy
+	// removed. Reported rather than killed: they are the user's sessions,
+	// and killing someone's workspace to tidy up is not a trade uninstall
+	// gets to make on their behalf.
+	Orphaned []Running
 }
 
 // Uninstall removes bothy's tree.
@@ -28,6 +33,12 @@ type UninstallReport struct {
 // which is running this code.
 func Uninstall(p platform.Info, dryRun bool) (*UninstallReport, error) {
 	rep := &UninstallReport{}
+
+	// Look for these first, and regardless of whether there is anything left to
+	// remove. A process running from a tree an *earlier* uninstall deleted is
+	// exactly as stuck, and reporting nothing because there is nothing left to
+	// delete would hide the problem the deletion caused.
+	rep.Orphaned = StillRunning(p)
 
 	dir := p.BothyDir()
 	if _, err := os.Stat(dir); os.IsNotExist(err) {

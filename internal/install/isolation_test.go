@@ -2,6 +2,7 @@ package install
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -371,4 +372,70 @@ func hasEnvPrefix(env []string, prefix string) bool {
 		}
 	}
 	return false
+}
+
+// Uninstall removed a multiplexer out from under a live session: the process
+// kept running on a deleted inode, could never be reattached, and held its
+// memory until reboot. Uninstall must notice processes it is about to
+// invalidate — before removing the files, since afterwards the only evidence
+// is a /proc link marked "(deleted)".
+func TestUninstallReportsProcessesItWouldOrphan(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(p.BinDir(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// A real process running from bothy's bin: copy a binary in and start it.
+	sh, err := exec.LookPath("sleep")
+	if err != nil {
+		t.Skip("no sleep binary")
+	}
+	body, err := os.ReadFile(sh)
+	if err != nil {
+		t.Skip("cannot read sleep")
+	}
+	fake := filepath.Join(p.BinDir(), "sleep")
+	if err := os.WriteFile(fake, body, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(fake, "30")
+	if err := cmd.Start(); err != nil {
+		t.Skip("cannot start a process here")
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_, _ = cmd.Process.Wait()
+	}()
+
+	found := StillRunning(p)
+	if len(found) == 0 {
+		t.Skip("/proc is not readable in this environment")
+	}
+	var sawIt bool
+	for _, r := range found {
+		if r.PID == cmd.Process.Pid {
+			sawIt = true
+		}
+	}
+	if !sawIt {
+		t.Errorf("did not spot pid %d running from bothy's bin", cmd.Process.Pid)
+	}
+
+	// And uninstall must surface it rather than silently invalidating it.
+	rep, err := Uninstall(p, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Orphaned) == 0 {
+		t.Error("uninstall did not report the process it would orphan")
+	}
+}
+
+// A machine with nothing running must not report phantoms.
+func TestStillRunningIsQuietWhenNothingIs(t *testing.T) {
+	p := sandbox(t)
+	if got := StillRunning(p); len(got) != 0 {
+		t.Errorf("reported %d process(es) for an empty bin dir: %v", len(got), got)
+	}
 }
