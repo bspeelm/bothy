@@ -7,7 +7,11 @@
 # file is on the host's PATH too; without the check the host would exec itself
 # forever.
 if [ -f /run/.containerenv ] || [ -f /run/.dockerenv ]; then
-    exec flatpak-spawn --host xdg-open "$@"
+    # Only Toolbx and Distrobox have a host session to reach. Fall through
+    # rather than exec a binary that is not there.
+    if command -v flatpak-spawn >/dev/null 2>&1; then
+        exec flatpak-spawn --host xdg-open "$@"
+    fi
 fi
 
 for candidate in /usr/bin/xdg-open /usr/local/bin/xdg-open; do

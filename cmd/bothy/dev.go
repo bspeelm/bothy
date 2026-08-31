@@ -177,11 +177,23 @@ func hopIntoContainer(container, dir, profile string) error {
 	inner := fmt.Sprintf("cd %s && bothy dev --in-place --dir %s --profile %s",
 		shellQuote(dir), shellQuote(dir), shellQuote(profile))
 
+	return containerHop(container, inner)
+}
+
+// containerHop runs one shell command inside a container, through whichever of
+// toolbox and distrobox is installed.
+//
+// It exists because only one of its two callers used to do this. `bothy dev`
+// tried toolbox and then distrobox; `bothy attach` tried toolbox and stopped,
+// so on a host whose container is a distrobox -- which is the realistic case
+// anywhere that is not Fedora -- attach quietly skipped the hop and reported
+// that zellij was not installed. True of the host, and beside the point.
+func containerHop(container, command string) error {
 	if bin, err := exec.LookPath("toolbox"); err == nil {
-		return runInteractive(bin, "run", "--container", container, "bash", "-lc", inner)
+		return runInteractive(bin, "run", "--container", container, "bash", "-lc", command)
 	}
 	if bin, err := exec.LookPath("distrobox"); err == nil {
-		return runInteractive(bin, "enter", container, "--", "bash", "-lc", inner)
+		return runInteractive(bin, "enter", container, "--", "bash", "-lc", command)
 	}
 	return fmt.Errorf("container %q is configured but neither toolbox nor distrobox is installed\n"+
 		"      clear it with: bothy config set workspace.container \"\"", container)
@@ -198,10 +210,7 @@ func cmdAttach(args []string) error {
 	}
 	if !p.InContainer() {
 		if container := install.ContainerFor(p, cfg); container != "" {
-			if bin, err := exec.LookPath("toolbox"); err == nil {
-				return runInteractive(bin, "run", "--container", container,
-					"bash", "-lc", mux+" attach "+strings.Join(args, " "))
-			}
+			return containerHop(container, mux+" attach "+strings.Join(args, " "))
 		}
 	}
 	bin, err := exec.LookPath(mux)
