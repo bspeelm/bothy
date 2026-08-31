@@ -144,8 +144,11 @@ nothing; duplicating binaries costs disk. So bothy fills gaps rather than
 duplicating: a tool already on `PATH` that meets the minimum version is used
 as-is, and only a missing or too-old one is fetched, into bothy's own `bin/`
 which is prepended to `PATH` for its session only. A filled-in tool never
-shadows your everyday one. Filling in the entire toolset costs 48 MB of static
-binaries, measured from current releases.
+shadows your everyday one. Filling in the entire toolset costs about 124 MB of
+static binaries, measured on 2026-08-31 from the pins in `bothy.lock`. An
+earlier version of this paragraph said 48 MB, which was true of a smaller
+toolset and quietly stopped being true; the number is dated now so the next
+reader knows what they are looking at.
 
 The cost is that bothy does less. It no longer carries your `.vimrc` or your
 delta wiring to a new machine — but revision 1's own rule already said those

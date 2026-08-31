@@ -44,7 +44,7 @@ lint: vet
 	if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi
 
 budgets: build
-	@size=$$(stat -c%s $(BINARY)); \
+	@size=$$(wc -c < $(BINARY)); \
 	echo "binary: $$size bytes (budget $(MAX_BINARY_BYTES))"; \
 	if [ $$size -gt $(MAX_BINARY_BYTES) ]; then echo "over budget"; exit 1; fi
 	@code=$$(cat $(SOURCES) | grep -v '^[[:space:]]*//' | grep -vc '^[[:space:]]*$$'); \

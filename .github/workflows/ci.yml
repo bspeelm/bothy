@@ -80,6 +80,27 @@ jobs:
       # containers is the one goreleaser ships rather than one linked against
       # the runner's glibc.
       - run: make build
+
+      # Pulled here, with retries, rather than left to the test. Docker Hub
+      # returned a 502 on one run of this job and took three passing subtests
+      # down with the one that never got a container. As an advisory job that
+      # is noise; as a required check it would block every merge on a registry
+      # hiccup, so it has to be flaky-proofed before it can be required.
+      - name: pull the base images
+        run: |
+          set -euo pipefail
+          for image in fedora:44 ubuntu:24.04; do
+            for attempt in 1 2 3; do
+              if docker pull "$image"; then
+                continue 2
+              fi
+              echo "pull of $image failed (attempt $attempt)"
+              sleep $((attempt * 10))
+            done
+            echo "::error::could not pull $image after 3 attempts"
+            exit 1
+          done
+
       - name: install, verify and uninstall in each container
         # pipefail is not on by default, and without it `go test | tee` reports
         # tee's exit code -- so a failing test produced a green job. That is
