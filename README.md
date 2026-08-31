@@ -88,14 +88,60 @@ telling you which and asking — and then launches it.
 `bothy install` exists too, and you need it after changing a setting with
 `bothy config set`. You do not need it to start.
 
-**From source** (contributors): this needs Go and `make`, which a fresh
-container or a clean machine will not have.
+### What it installs
+
+On a machine with none of them: nine tools, about 131 MB, all inside
+`~/.local/share/bothy/` and each verified against `bothy.lock` before a byte
+is written to disk.
+
+| | | | |
+|---|---|---|---|
+| zellij 52.5 MB | yazi 24.1 MB | lazygit 19.5 MB | delta 7.2 MB |
+| ripgrep 5.4 MB | fzf 4.9 MB | fd 3.7 MB | jq 2.3 MB |
+| zoxide 1.2 MB | | | |
+
+Yazi's archive also carries `ya`, its own package manager (9.3 MB), which is
+what installs the four Yazi plugins bothy's config depends on. Inside a
+container a small `xdg-open` shim is added too, since there is no desktop
+there to hand a file to.
+
+On a machine that already has current versions, bothy downloads nothing — it
+uses what you have and says which. Your package manager is never invoked,
+nothing needs root, and nothing is added to your `PATH`.
+
+### Two things it will not install
+
+**A terminal that can draw images.** Ghostty publishes no release binaries, so
+there is nothing to fetch, and every install path runs a package manager as
+root — on an image-based host, with a reboot. bothy could start that and not
+finish it, which is worse than telling you the command. Without one, bothy
+still works; Yazi's image previews fall back to block art, and the doctor says
+so rather than leaving you to wonder.
+
+**The agent.** Install methods change, auth is not bothy's business, and a
+workspace tool that quietly installs an AI agent is doing something you did not
+ask for. Without one the main pane opens empty, and the doctor tells you.
+`bothy config set slots.agent none` if you would rather not have that pane.
+
+For both, `bothy doctor` prints the command for the machine you are actually
+on — the `rpm-ostree` one with its reboot on Silverblue, the `dnf` one on
+Fedora Workstation — along with the repositories to stay away from, including
+the one that blocks system upgrades until it is removed.
+
+### From source
+
+For contributors. Needs Go and `make`, which a fresh container or a clean
+machine will not have — the bootstrap script above is the path for everyone
+else.
 
 ```sh
 git clone https://github.com/bspeelm/bothy && cd bothy
 make install-binary     # builds ./bothy and copies it to ~/.local/bin
 bothy
 ```
+
+`make install-binary` installs the *binary*. `bothy install` sets up the
+*workspace*. Different things; the target is named for which.
 
 ## Commands
 
