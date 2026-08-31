@@ -34,54 +34,76 @@ type UninstallReport struct {
 func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, error) {
 	rep := &UninstallReport{}
 
-	// Look for these first, and regardless of whether there is anything left to
-	// remove. A process running from a tree an *earlier* uninstall deleted is
-	// exactly as stuck, and reporting nothing because there is nothing left to
-	// delete would hide the problem the deletion caused.
+	// Look for these first, and regardless of what is left to remove. A process
+	// running from a tree an *earlier* uninstall deleted is exactly as stuck,
+	// and reporting nothing because there is nothing left to delete would hide
+	// the problem the deletion caused.
 	rep.Orphaned = StillRunning(p)
 
+	// Each step is independent. An earlier version returned early when the tree
+	// was already gone, which meant a second `bothy uninstall` skipped every
+	// step after it — including removing the binary, so uninstalling twice left
+	// bothy installed. Nothing here may short-circuit anything else.
+	if err := removeTree(p, rep, dryRun); err != nil {
+		return nil, err
+	}
+	removeBinary(p, rep, dryRun, keepBinary)
+	noteUserConfig(p, rep)
+
+	return rep, nil
+}
+
+// removeTree removes bothy's directory, if it is there.
+func removeTree(p platform.Info, rep *UninstallReport, dryRun bool) error {
 	dir := p.BothyDir()
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		rep.Kept = append(rep.Kept, dir+" (nothing installed)")
-		return rep, nil
+		return nil // nothing to do, and nothing worth saying about it
 	} else if err != nil {
-		return nil, fmt.Errorf("uninstall: %s: %w", dir, err)
+		return fmt.Errorf("uninstall: %s: %w", dir, err)
 	}
-
 	if !dryRun {
 		if err := os.RemoveAll(dir); err != nil {
-			return nil, fmt.Errorf("uninstall: %s: %w", dir, err)
+			return fmt.Errorf("uninstall: %s: %w", dir, err)
 		}
 	}
 	rep.Removed = append(rep.Removed, dir)
+	return nil
+}
 
+// removeBinary removes bothy itself.
+//
+// A running process can unlink its own executable on Linux — the inode
+// survives until it exits — so "remove it by hand" was caution with nothing
+// behind it, and an uninstaller that leaves itself installed has not finished.
+//
+// Only at the path bothy's own bootstrap uses. A copy someone put in
+// /usr/local/bin, or one a package manager owns, is not bothy's to delete.
+func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool) {
+	self := filepath.Join(p.LocalBin, "bothy")
+	if !fileExists(self) {
+		return
+	}
+	switch {
+	case keepBinary:
+		rep.Kept = append(rep.Kept, self+" (--keep-binary)")
+	case dryRun:
+		rep.Removed = append(rep.Removed, self)
+	default:
+		if err := os.Remove(self); err != nil {
+			rep.Kept = append(rep.Kept, self+" (could not remove: "+err.Error()+")")
+		} else {
+			rep.Removed = append(rep.Removed, self)
+		}
+	}
+}
+
+// noteUserConfig mentions the settings directory, which is the user's and is
+// never removed — it is the one thing worth keeping in git.
+func noteUserConfig(p platform.Info, rep *UninstallReport) {
 	if _, err := os.Stat(p.UserConfigDir()); err == nil {
 		rep.Kept = append(rep.Kept,
 			p.UserConfigDir()+" (your settings — delete it yourself if you want it gone)")
 	}
-	// The binary goes too. A running process can unlink its own executable on
-	// Linux — the inode survives until it exits — so "remove it by hand" was
-	// caution with nothing behind it, and an uninstaller that leaves itself
-	// installed has not finished.
-	//
-	// Only at the path bothy's own bootstrap uses. A copy someone put in
-	// /usr/local/bin, or one a package manager owns, is not bothy's to delete.
-	self := filepath.Join(p.LocalBin, "bothy")
-	if fileExists(self) {
-		switch {
-		case keepBinary:
-			rep.Kept = append(rep.Kept, self+" (--keep-binary)")
-		case dryRun:
-			rep.Removed = append(rep.Removed, self)
-		default:
-			if err := os.Remove(self); err != nil {
-				rep.Kept = append(rep.Kept, self+" (could not remove: "+err.Error()+")")
-			} else {
-				rep.Removed = append(rep.Removed, self)
-			}
-		}
-	}
-	return rep, nil
 }
 
 func fileExists(path string) bool {

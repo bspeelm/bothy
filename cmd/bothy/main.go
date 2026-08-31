@@ -348,7 +348,7 @@ func cmdUninstall(args []string) error {
 		fmt.Printf("%s %s\n", verb, tilde(f, p.Home))
 	}
 	if len(rep.Removed) == 0 {
-		fmt.Println("nothing to remove")
+		fmt.Println("nothing left to remove — bothy is not installed here")
 	}
 	for _, f := range rep.Kept {
 		fmt.Printf("  kept %s\n", tilde(f, p.Home))

@@ -543,3 +543,62 @@ func walkFiles(t *testing.T, dir string) []string {
 	})
 	return out
 }
+
+// Uninstalling twice must still finish the job. An earlier version returned
+// early when the tree was already gone, so every step after that — including
+// removing the binary — was skipped, and `bothy uninstall` twice left bothy
+// installed. Each step has to be independent of the others.
+func TestUninstallWithNoTreeStillRemovesTheBinary(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(p.LocalBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	self := filepath.Join(p.LocalBin, "bothy")
+	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// No install: bothy's tree does not exist at all.
+	if _, err := os.Stat(p.BothyDir()); err == nil {
+		t.Fatal("precondition: the tree should not exist")
+	}
+
+	if _, err := Uninstall(p, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(self); err == nil {
+		t.Error("no tree to remove, so the binary was left behind too")
+	}
+}
+
+// The same thing, the way a user meets it: uninstall, then uninstall again.
+func TestUninstallIsIdempotentAndFinishes(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(p.LocalBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	self := filepath.Join(p.LocalBin, "bothy")
+	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	// First pass takes the tree. Pretend it did not take the binary, which is
+	// exactly the state the bug left behind.
+	if _, err := Uninstall(p, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(self); err != nil {
+		t.Fatal("precondition: --keep-binary should have kept it")
+	}
+
+	// Second pass has no tree left, and must still finish.
+	if _, err := Uninstall(p, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(self); err == nil {
+		t.Error("a second uninstall left bothy installed")
+	}
+}
