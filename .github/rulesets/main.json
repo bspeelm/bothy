@@ -50,6 +50,10 @@
           },
           {
             "context": "no-paid-palette"
+          },
+          {
+            "context": "container",
+            "integration_id": 15368
           }
         ]
       }
