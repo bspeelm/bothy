@@ -69,9 +69,20 @@ func LoadProfile(path string) (Profile, error) {
 	if err != nil {
 		return Profile{}, fmt.Errorf("layout: %w", err)
 	}
+	return ParseProfile(src, path)
+}
+
+// ParseProfile reads a profile from bytes. name is what an error calls the
+// source -- a path, or something like "profiles/cockpit.toml" for one of the
+// shipped profiles, which do not have a path.
+//
+// Separate from LoadProfile because the shipped profiles are embedded, and
+// reaching them through a file loader meant writing them to a temp file
+// purely to read them back.
+func ParseProfile(src []byte, name string) (Profile, error) {
 	var p Profile
 	if err := toml.Unmarshal(src, &p); err != nil {
-		return Profile{}, fmt.Errorf("layout: %s: %w", path, err)
+		return Profile{}, fmt.Errorf("layout: %s: %w", name, err)
 	}
 	return p, p.Validate()
 }

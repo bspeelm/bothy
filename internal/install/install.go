@@ -320,21 +320,12 @@ func LoadProfile(p platform.Info, name string) (layout.Profile, error) {
 	if _, err := os.Stat(user); err == nil {
 		return layout.LoadProfile(user)
 	}
-	src, err := bothy.Profiles.ReadFile("profiles/" + name + ".toml")
+	shipped := "profiles/" + name + ".toml"
+	src, err := bothy.Profiles.ReadFile(shipped)
 	if err != nil {
 		return layout.Profile{}, fmt.Errorf("install: no profile named %q", name)
 	}
-	tmp, err := os.CreateTemp("", "bothy-profile-*.toml")
-	if err != nil {
-		return layout.Profile{}, err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(src); err != nil {
-		tmp.Close()
-		return layout.Profile{}, err
-	}
-	tmp.Close()
-	return layout.LoadProfile(tmp.Name())
+	return layout.ParseProfile(src, shipped)
 }
 
 // slug makes a palette name safe as a filename and as a Zellij theme
