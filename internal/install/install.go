@@ -407,6 +407,23 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 		env.set("VIMINIT", "source "+VimRC(p))
 	}
 
+	// The XDG directories, pointed inside bothy's tree.
+	//
+	// ADR-009 says bothy writes nothing outside its own directory, and until
+	// now that covered only the files bothy writes itself. It said nothing
+	// about what the tools bothy *runs* decide to write -- and they write
+	// plenty: `yazi --clear-cache` clears ~/.cache/yazi, `zellij setup
+	// --check` touches zellij's own cache and data directories, and both are
+	// invoked by the doctor, which uses this same environment. So the promise
+	// held for install and quietly leaked at every other command.
+	//
+	// plugins.go said this gap "has to be closed one subprocess at a time".
+	// It does not: the tools all agree on where to look, so telling them once
+	// closes it for every subprocess at once, including the ones added later.
+	env.set("XDG_CACHE_HOME", p.CacheDir())
+	env.set("XDG_STATE_HOME", p.StateDir())
+	env.set("XDG_DATA_HOME", p.ShareDir())
+
 	env.set("BOTHY_SESSION", "1")
 	return env.slice()
 }
