@@ -119,8 +119,10 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	// directory tree behind on a machine whose owner had run one command and
 	// been told it did not work. Nothing bothy does should leave debris.
 	if _, err := os.Stat(p.ConfigRoot()); err != nil {
-		return fmt.Errorf("bothy is not installed on this machine\n"+
-			"      %s does not exist — run 'bothy install' first", p.ConfigRoot())
+		return fmt.Errorf("no workspace configured yet\n"+
+			"      bothy keeps everything in one directory, derived from $HOME:\n"+
+			"        %s\n"+
+			"      that directory does not exist. 'bothy install' creates it.", p.ConfigRoot())
 	}
 
 	// Zellij reads layouts from disk, so the rendered profile goes into

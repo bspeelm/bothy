@@ -31,7 +31,7 @@ type UninstallReport struct {
 // Two things are deliberately left: ~/.config/bothy, which is the user's own
 // settings and the thing worth keeping in git, and the bothy binary itself,
 // which is running this code.
-func Uninstall(p platform.Info, dryRun bool) (*UninstallReport, error) {
+func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, error) {
 	rep := &UninstallReport{}
 
 	// Look for these first, and regardless of whether there is anything left to
@@ -59,8 +59,27 @@ func Uninstall(p platform.Info, dryRun bool) (*UninstallReport, error) {
 		rep.Kept = append(rep.Kept,
 			p.UserConfigDir()+" (your settings — delete it yourself if you want it gone)")
 	}
-	if self := filepath.Join(p.LocalBin, "bothy"); fileExists(self) {
-		rep.Kept = append(rep.Kept, self+" (the bothy binary; remove it by hand)")
+	// The binary goes too. A running process can unlink its own executable on
+	// Linux — the inode survives until it exits — so "remove it by hand" was
+	// caution with nothing behind it, and an uninstaller that leaves itself
+	// installed has not finished.
+	//
+	// Only at the path bothy's own bootstrap uses. A copy someone put in
+	// /usr/local/bin, or one a package manager owns, is not bothy's to delete.
+	self := filepath.Join(p.LocalBin, "bothy")
+	if fileExists(self) {
+		switch {
+		case keepBinary:
+			rep.Kept = append(rep.Kept, self+" (--keep-binary)")
+		case dryRun:
+			rep.Removed = append(rep.Removed, self)
+		default:
+			if err := os.Remove(self); err != nil {
+				rep.Kept = append(rep.Kept, self+" (could not remove: "+err.Error()+")")
+			} else {
+				rep.Removed = append(rep.Removed, self)
+			}
+		}
 	}
 	return rep, nil
 }

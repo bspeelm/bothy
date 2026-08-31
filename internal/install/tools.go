@@ -34,7 +34,9 @@ type ToolFailure struct {
 // and an install that refuses to write any config because a fuzzy finder would
 // not download is worse than one that says so and carries on — the doctor will
 // say it again, with the fix.
-func EnsureTools(p platform.Info, cfg config.Config, offline bool) (*ToolReport, error) {
+// progress is called before each download, because an install that pulls tens
+// of megabytes in silence is indistinguishable from one that has hung.
+func EnsureTools(p platform.Info, cfg config.Config, offline bool, progress func(string)) (*ToolReport, error) {
 	rep := &ToolReport{Skipped: offline}
 
 	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
@@ -79,6 +81,9 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool) (*ToolReport,
 			rep.Failed = append(rep.Failed, ToolFailure{d,
 				fmt.Errorf("%s is not pinned in bothy.lock; run 'bothy lock'", d.Tool.Name)})
 			continue
+		}
+		if progress != nil {
+			progress(fmt.Sprintf("  ↓ %s %s — %s", d.Tool.Name, entry.Version, d.Reason))
 		}
 		res, err := fetch.Install(d.Tool, p, entry, p.BinDir())
 		if err != nil {

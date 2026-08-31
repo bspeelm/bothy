@@ -216,7 +216,7 @@ func TestUninstallRemovesTheTreeAndKeepsYourSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rep, err := Uninstall(p, false)
+	rep, err := Uninstall(p, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +423,7 @@ func TestUninstallReportsProcessesItWouldOrphan(t *testing.T) {
 	}
 
 	// And uninstall must surface it rather than silently invalidating it.
-	rep, err := Uninstall(p, true)
+	rep, err := Uninstall(p, true, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,4 +438,108 @@ func TestStillRunningIsQuietWhenNothingIs(t *testing.T) {
 	if got := StillRunning(p); len(got) != 0 {
 		t.Errorf("reported %d process(es) for an empty bin dir: %v", len(got), got)
 	}
+}
+
+// An uninstaller that leaves itself installed has not finished. A process can
+// unlink its own executable on Linux, so "remove it by hand" was caution with
+// nothing behind it.
+func TestUninstallRemovesTheBinary(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(p.LocalBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	self := filepath.Join(p.LocalBin, "bothy")
+	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Uninstall(p, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(self); err == nil {
+		t.Error("uninstall left its own binary behind")
+	}
+}
+
+func TestUninstallKeepsTheBinaryWhenAsked(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(p.LocalBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	self := filepath.Join(p.LocalBin, "bothy")
+	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(p, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(self); err != nil {
+		t.Error("--keep-binary removed the binary anyway")
+	}
+}
+
+// A copy somewhere else — /usr/local/bin, or one a package manager owns — is
+// not bothy's to delete.
+func TestUninstallOnlyRemovesItsOwnInstallPath(t *testing.T) {
+	p := sandbox(t)
+	elsewhere := filepath.Join(t.TempDir(), "bothy")
+	if err := os.WriteFile(elsewhere, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(p, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(elsewhere); err != nil {
+		t.Error("removed a bothy binary outside its own install path")
+	}
+}
+
+// The isolation guarantee covers what bothy writes; it does not automatically
+// cover what the tools bothy runs decide to write. `ya pkg add` clones the
+// whole yazi-rs/plugins repository into a package cache, and without
+// XDG_CACHE_HOME redirected that landed in ~/.cache/yazi — 1.1 MB and 91 files
+// outside bothy's tree, which uninstall could not reach.
+func TestPluginInstallCachesInsideBothysTree(t *testing.T) {
+	p := sandbox(t)
+	if _, err := exec.LookPath("ya"); err != nil {
+		t.Skip("ya is not installed")
+	}
+
+	home := p.Home
+	before := countFiles(t, filepath.Join(home, ".cache"))
+
+	if _, err := EnsureYaziPlugins(p, false); err != nil {
+		t.Fatal(err)
+	}
+
+	if after := countFiles(t, filepath.Join(home, ".cache")); after != before {
+		t.Errorf("plugin install wrote %d file(s) into ~/.cache, outside bothy's tree",
+			after-before)
+	}
+	// And everything it did write is inside the tree, where uninstall reaches.
+	for _, f := range walkFiles(t, home) {
+		if !strings.HasPrefix(f, p.BothyDir()) {
+			t.Errorf("wrote outside bothy's tree: %s", f)
+		}
+	}
+}
+
+func countFiles(t *testing.T, dir string) int {
+	t.Helper()
+	return len(walkFiles(t, dir))
+}
+
+func walkFiles(t *testing.T, dir string) []string {
+	t.Helper()
+	var out []string
+	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			out = append(out, path)
+		}
+		return nil
+	})
+	return out
 }

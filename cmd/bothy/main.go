@@ -38,7 +38,7 @@ Usage:
   bothy theme   example         print a blank palette file to fill in
   bothy tools                   show which tools are used and where they came from
   bothy desktop-entry           print a .desktop launcher (--install to write it)
-  bothy uninstall [--dry-run]   put the machine back the way it was
+  bothy uninstall [--dry-run]   remove bothy's directory and its binary
   bothy version
 
 Every generated file says it is bothy's and names where to put your own
@@ -122,7 +122,9 @@ func cmdInstall(args []string) error {
 	// asks the multiplexer its version, so a zellij fetched now is the one the
 	// config is rendered for.
 	if !*dryRun {
-		treport, err := install.EnsureTools(p, cfg, *offline)
+		treport, err := install.EnsureTools(p, cfg, *offline, func(line string) {
+			fmt.Println(line)
+		})
 		if err != nil {
 			return err
 		}
@@ -325,6 +327,7 @@ func cmdConfig(args []string) error {
 func cmdUninstall(args []string) error {
 	fs := flag.NewFlagSet("uninstall", flag.ExitOnError)
 	dryRun := fs.Bool("dry-run", false, "report what would be removed")
+	keepBinary := fs.Bool("keep-binary", false, "leave the bothy binary in place")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -333,7 +336,7 @@ func cmdUninstall(args []string) error {
 		return err
 	}
 
-	rep, err := install.Uninstall(p, *dryRun)
+	rep, err := install.Uninstall(p, *dryRun, *keepBinary)
 	if err != nil {
 		return err
 	}
@@ -403,9 +406,6 @@ func newFlagSet(name string) *flag.FlagSet {
 func printTools(r *install.ToolReport) {
 	if r.Skipped {
 		fmt.Println("offline: using only the tools already installed")
-	}
-	for _, d := range r.Fetched {
-		fmt.Printf("  ↓ %s — %s\n", d.Tool.Name, d.Reason)
 	}
 	for _, f := range r.Failed {
 		fmt.Printf("  ! %s could not be supplied: %v\n", f.Decision.Tool.Name, f.Err)
