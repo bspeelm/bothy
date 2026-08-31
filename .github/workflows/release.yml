@@ -20,6 +20,16 @@ jobs:
       # The gates run again here rather than trusting the branch: a tag can be
       # pushed at any commit, including one CI never saw.
       - run: make check
+      # The spec is the one place a version is written; the tag is derived from
+      # it by `make release-tag`. A hand-made tag can disagree, and then
+      # goreleaser stamps the binary and the .deb from the tag while Copr reads
+      # the spec -- two published versions of one release. Same sed expression
+      # release-tag, copr and .copr/Makefile already share.
+      - name: the tag matches the spec
+        run: |
+          v=$(sed -n 's/^Version:[[:space:]]*//p' packaging/bothy.spec)
+          test "v$v" = "${GITHUB_REF_NAME}" || {
+            echo "::error::tag ${GITHUB_REF_NAME} but the spec says $v"; exit 1; }
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'

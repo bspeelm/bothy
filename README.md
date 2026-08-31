@@ -50,12 +50,15 @@ says so and gives you the command to fix it on your system.
 
 ### Getting bothy
 
-Pick whichever suits you. You get the same program and version from all four.
+Pick whichever suits you. You get the same program and version from all five.
+Only the `.deb` is a file rather than a source your package manager can come
+back to, so upgrading it means downloading the next one.
 
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
+| **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest) then `sudo apt install ./bothy_*.deb` |
 | **Go** | if you already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors | `git clone` then `make install-binary` |
 
@@ -70,6 +73,10 @@ before downloading them, then launches.
 
 > On Silverblue and other image-based systems, installing with `dnf` requires
 > `rpm-ostree install` and a reboot. The script needs neither.
+
+> The `.deb` is a file, not a repository. `apt upgrade` will not bring you a new
+> bothy; download the next one when you want it. If you would rather updates
+> resolved themselves, use the script.
 
 ### What gets installed
 

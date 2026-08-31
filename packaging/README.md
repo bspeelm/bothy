@@ -1,5 +1,10 @@
 # Packaging
 
+Two packages, made two different ways. Fedora's rpm is built from source by
+Copr out of `bothy.spec`. Debian's `.deb` is built by goreleaser at release
+time from the binary it has just produced, and attached to the GitHub release
+as a file. Only one of them is a repository.
+
 ## Copr
 
 [Copr](https://copr.fedorainfracloud.org) is Fedora's build service for
@@ -149,3 +154,75 @@ On an image-based host a Copr package needs `rpm-ostree install` and a reboot,
 so for your own machine the install script is the better route. The Copr is for
 Fedora Workstation and anyone who would rather their package manager knew about
 this.
+
+## Debian and Ubuntu
+
+`.goreleaser.yaml` has an `nfpms:` block, so the tag that builds the release
+archives also builds `bothy_<version>_amd64.deb` and the arm64 one, attaches
+both to the GitHub release, and includes them in `checksums.txt` for the same
+reason the tarballs are. There is nothing extra to run: `make release-tag`
+pushes the tag and Actions does the rest.
+
+Install one with:
+
+    sudo apt install ./bothy_0.1.4_amd64.deb
+
+The leading `./` is not optional. Without it apt looks for a *package* by that
+name in your configured sources, fails to find one, and says so in a way that
+reads like the file is broken.
+
+### It is not a repository
+
+There is no apt source to add, no file in `sources.list.d`, and no signing key.
+That is the point, and it has one consequence a user will meet: **`apt upgrade`
+will never bring you a new bothy.** dpkg knows the package is installed and what
+version it is, so `apt list --installed` finds it and `sudo apt remove bothy`
+removes it, but nothing on the machine knows where a newer one would come from.
+Upgrading means going back to the releases page for the next `.deb` and running
+`apt install ./` on it again, which upgrades in place rather than objecting that
+the package is already there.
+
+Anyone who would rather that happened by itself is better served by the install
+script, which resolves `/releases/latest/` every time it runs. ADR-013 records
+why there is no PPA and no hosted repository.
+
+### It declares no dependencies
+
+Like the rpm, and for reasons of its own rather than by inheritance. bothy needs
+`git` at runtime to fetch its Yazi plugins, and `infocmp` for one doctor check;
+neither is declared. A missing one is not a broken install — `bothy doctor`
+names it and gives you the command, which is the thing bothy is for. Declaring
+them would trade that diagnostic for an apt error, and would pull perl onto the
+machine of someone who wanted one static binary in `/usr/bin`. Declaring them on
+one distribution and not the other would be worse: the answer to "what does this
+package require" would depend on which package you asked.
+
+`Recommends:` is the Debian-shaped middle ground and was considered. It is not
+taken because rpm has weak dependencies too, so doing it honestly means doing it
+in the spec as well — a decision about both packages, not about apt.
+
+The useful consequence is that `sudo dpkg -i bothy_*.deb` works on its own.
+There is nothing for apt to resolve, so the usual `apt -f install` follow-up is
+never needed.
+
+### Building one without cutting a release
+
+The `.deb` only exists once a release is published, which makes it awkward to
+check the way everything else here is checked. goreleaser will build the whole
+artifact set locally and publish none of it:
+
+    goreleaser release --snapshot --clean --skip=publish
+
+That writes `dist/bothy_<next>~next_amd64.deb` through exactly the config path
+CI uses. On a machine without `dpkg-deb` — a Fedora one, for instance — a `.deb`
+is an `ar` archive and reads fine without it:
+
+    ar x bothy_*.deb && tar -xzf control.tar.gz -O ./control
+
+That answers the questions that actually go wrong on a first package:
+architecture (`amd64`, not `linux-amd64`), a version dpkg will accept, a
+non-empty `Maintainer:`, and whether the binary landed in `/usr/bin`.
+
+Verified working: the snapshot deb carries `Architecture: amd64`, no `Depends:`
+field at all, `/usr/bin/bothy` as a statically linked ELF that runs, and the
+three doc files under `/usr/share/doc/bothy/`.
