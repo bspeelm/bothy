@@ -1,0 +1,65 @@
+# Packaging
+
+## Copr
+
+[Copr](https://copr.fedorainfracloud.org) is Fedora's build service for
+community packages. It suits bothy's audience — Fedora and Silverblue people —
+and gives them `dnf install bothy` rather than piping a script into a shell.
+
+`bothy.spec` builds from the GitHub source tag, not from the release binary. A
+distro package that repackages someone else's prebuilt binary is a distro
+package in name only, and rebuilding from source is what makes the `%check`
+section meaningful.
+
+### One-time setup
+
+```sh
+# Get an API token from https://copr.fedorainfracloud.org/api/
+# and save it to ~/.config/copr
+
+copr-cli create bothy \
+    --chroot fedora-rawhide-x86_64 \
+    --chroot fedora-44-x86_64 \
+    --chroot fedora-43-x86_64 \
+    --chroot fedora-44-aarch64 \
+    --description "A turn-key terminal workspace built from tools you already trust" \
+    --instructions "dnf copr enable bspeelm/bothy && dnf install bothy"
+```
+
+### Building a release
+
+```sh
+copr-cli build bothy \
+    --srpm-url https://github.com/bspeelm/bothy/releases/download/v0.1.1/bothy-0.1.1-1.src.rpm
+```
+
+Or build straight from the spec after bumping `Version` and adding a changelog
+entry:
+
+```sh
+make srpm && copr-cli build bothy ~/rpmbuild/SRPMS/bothy-*.src.rpm
+```
+
+### Why the build is offline
+
+Copr build roots have no network. The one dependency is vendored in the
+repository, and the spec sets `GOFLAGS=-mod=vendor` and `GOPROXY=off` — so if
+either were wrong the build fails there rather than silently reaching out for
+something.
+
+### What this does not change
+
+The package installs the *binary* to `/usr/bin/bothy`. Everything bothy manages
+at runtime still lives in `~/.local/share/bothy`, per user, exactly as with any
+other install method. There are deliberately no `Requires:` — bothy supplies
+whatever tool is missing into its own directory, checksum-verified, and never
+asks a package manager for anything (PLAN.md §4). Declaring dependencies here
+would be a second and contradictory opinion about how the workspace gets its
+tools.
+
+### A note for Silverblue
+
+On an image-based host a Copr package needs `rpm-ostree install` and a reboot,
+so for your own machine the install script is the better route. The Copr is for
+Fedora Workstation and anyone who would rather their package manager knew about
+this.

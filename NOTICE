@@ -21,6 +21,19 @@ Dracula PRO is a separate, paid product and no part of it is included,
 reproduced, or derived from in this repository.
 
 --------------------------------------------------------------------------
+Vendored Go dependency
+--------------------------------------------------------------------------
+
+go-toml v2
+    https://github.com/pelletier/go-toml
+    Copyright (c) 2013 - 2023 Thomas Pennec, Eric Anderton and contributors
+    MIT License
+
+    Present under vendor/ so the package can be built without network access,
+    which Fedora Copr build roots do not have. This is a build-time library,
+    not one of the tools bothy installs — those are never vendored.
+
+--------------------------------------------------------------------------
 Tools bothy installs
 --------------------------------------------------------------------------
 

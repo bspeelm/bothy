@@ -19,7 +19,7 @@ MAX_TOTAL_LINES  := 7000
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
-.PHONY: all build test lint vet fmt budgets check clean install-binary
+.PHONY: all build test lint vet fmt budgets check clean install-binary vendor srpm
 
 all: check
 
@@ -60,3 +60,14 @@ install-binary: build
 
 clean:
 	rm -f $(BINARY)
+
+# --- packaging ---------------------------------------------------------------
+# Copr build roots have no network, so the dependency is vendored and the spec
+# builds with -mod=vendor and GOPROXY=off.
+vendor:
+	go mod vendor
+
+# Build a source RPM from the working tree, laid out the way GitHub's tag
+# tarball is, so what is tested locally is what Copr will build.
+srpm: vendor
+	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); 	rpmdev-setuptree; 	tmp=$$(mktemp -d); mkdir -p $$tmp/$(BINARY)-$$v; 	git ls-files | tar -cf - -T - | tar -xf - -C $$tmp/$(BINARY)-$$v; 	cp -r vendor $$tmp/$(BINARY)-$$v/; 	tar -czf $$HOME/rpmbuild/SOURCES/$(BINARY)-$$v.tar.gz -C $$tmp $(BINARY)-$$v; 	rm -rf $$tmp; 	rpmbuild -bs packaging/$(BINARY).spec
