@@ -19,7 +19,7 @@ MAX_TOTAL_LINES  := 7000
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
-.PHONY: all build test lint vet fmt budgets check clean install-binary vendor srpm release copr
+.PHONY: all build test lint vet fmt budgets check clean install-binary vendor srpm release release-tag copr
 
 all: check
 
@@ -72,25 +72,57 @@ vendor:
 srpm: vendor
 	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); 	rpmdev-setuptree; 	tmp=$$(mktemp -d); mkdir -p $$tmp/$(BINARY)-$$v; 	git ls-files | tar -cf - -T - | tar -xf - -C $$tmp/$(BINARY)-$$v; 	cp -r vendor $$tmp/$(BINARY)-$$v/; 	tar -czf $$HOME/rpmbuild/SOURCES/$(BINARY)-$$v.tar.gz -C $$tmp $(BINARY)-$$v; 	rm -rf $$tmp; 	rpmbuild -bs packaging/$(BINARY).spec
 
-# Cut a release: bump the spec, commit, tag, push. Tagging is what triggers the
-# GitHub release, which is what `curl | sh` and `go install @latest` both
-# follow, so this is the only step those two need.
+# Step one of a release: open the PR that bumps the spec.
 #
 #     make release VERSION=0.2.0
+#
+# main requires a pull request, so the version bump cannot be pushed straight
+# to it. That is not just a rule to satisfy: Copr reads Version: from the spec
+# at the tagged commit, so a tag whose commit still says the old version
+# publishes an rpm under the wrong number. The bump has to land on main before
+# the tag exists, which is exactly what the PR does.
 release:
 	@test -n "$(VERSION)" || { echo "usage: make release VERSION=x.y.z"; exit 1; }
 	@echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "VERSION must be x.y.z"; exit 1; }
 	@git diff --quiet || { echo "working tree is dirty; commit first"; exit 1; }
+	@test "$$(git rev-parse --abbrev-ref HEAD)" = main || { echo "release starts from main"; exit 1; }
 	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || { echo "v$(VERSION) already exists"; exit 1; }
+	@! git rev-parse -q --verify "release/$(VERSION)" >/dev/null || { echo "branch release/$(VERSION) already exists"; exit 1; }
+	@command -v gh >/dev/null || { echo "gh is not installed"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "gh is not logged in; run 'gh auth login'"; exit 1; }
 	$(MAKE) check
+	git switch -c release/$(VERSION)
 	@scripts/bump-spec.sh "$(VERSION)"
 	git add packaging/$(BINARY).spec
 	git commit -m "build: $(VERSION)"
-	git tag v$(VERSION)
-	git push && git push origin v$(VERSION)
+	git push -u origin release/$(VERSION)
+	gh pr create --base main --head release/$(VERSION) \
+	    --title "build: $(VERSION)" \
+	    --body "Bumps the rpm spec to $(VERSION). Merging this, then \`make release-tag\`, cuts the release."
 	@echo
-	@echo "tagged v$(VERSION); GitHub Actions is building the release."
-	@echo "once it is green:  make copr"
+	@echo "PR opened. Merge it, then:  git switch main && git pull && make release-tag"
+
+# Step two: tag the merged bump. The tag is what everything downstream watches
+# -- GitHub Actions builds the archives, the Copr webhook builds the rpms.
+#
+# Branch rules do not cover tags, so this needs no PR.
+release-tag:
+	@test "$$(git rev-parse --abbrev-ref HEAD)" = main || { echo "tag from main"; exit 1; }
+	@git diff --quiet || { echo "working tree is dirty"; exit 1; }
+	git fetch --quiet origin main
+	@test "$$(git rev-parse HEAD)" = "$$(git rev-parse origin/main)" || \
+	    { echo "main is not level with origin/main; run 'git pull'"; exit 1; }
+	@v=$$(sed -n 's/^Version:[[:space:]]*//p' packaging/$(BINARY).spec); \
+	test -n "$$v" || { echo "no Version: in the spec"; exit 1; }; \
+	if git rev-parse -q --verify "refs/tags/v$$v" >/dev/null; then \
+	    echo "v$$v is already tagged -- did the bump PR get merged?"; exit 1; fi; \
+	test -f .copr/Makefile || { echo ".copr/Makefile is missing; Copr would have nothing to run"; exit 1; }; \
+	echo "tagging v$$v at $$(git rev-parse --short HEAD)"; \
+	git tag "v$$v" && git push origin "v$$v" && \
+	echo && \
+	echo "pushed v$$v. Actions is building the archives; the webhook is building the rpms." && \
+	echo "  https://github.com/bspeelm/$(BINARY)/actions" && \
+	echo "  https://copr.fedorainfracloud.org/coprs/bspeelman/$(BINARY)/builds/"
 
 # Publish the tag to Copr. The package is an SCM package, so this hands Copr a
 # ref and Copr does the rest: clone, .copr/Makefile, build. Nothing is built or
