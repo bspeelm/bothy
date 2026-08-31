@@ -89,6 +89,18 @@ and then launches it.
 `bothy install` exists too, and you want it after changing a setting with
 `bothy config set`. You do not need it to start.
 
+### On Fedora
+
+```sh
+sudo dnf copr enable bspeelman/bothy
+sudo dnf install bothy
+bothy
+```
+
+Built from source in Copr for Fedora 43, 44 and Rawhide, x86_64 and aarch64.
+On Silverblue and other image-based hosts this needs `rpm-ostree install` and a
+reboot, so the one-liner above is usually the better route there.
+
 ### With Go
 
 ```sh
