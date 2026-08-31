@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // envWithConfigDir builds a doctor Env pointed at a scratch config directory.

@@ -12,13 +12,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	bothy "github.com/bothy-dev/bothy"
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/layout"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/probe"
-	"github.com/bothy-dev/bothy/internal/render"
-	"github.com/bothy-dev/bothy/internal/theme"
+	bothy "github.com/bspeelm/bothy"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/render"
+	"github.com/bspeelm/bothy/internal/theme"
 )
 
 // Data is what every template sees.

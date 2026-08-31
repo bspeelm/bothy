@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/install"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/tools"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // setupOptions controls one install pass.

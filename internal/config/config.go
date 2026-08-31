@@ -14,8 +14,8 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/theme"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/theme"
 )
 
 // Config is ~/.config/bothy/config.toml.

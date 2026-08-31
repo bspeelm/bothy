@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/bothy-dev/bothy/internal/install"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
 )
 
 // InTerminalEnv marks a bothy that was started by a terminal bothy spawned.

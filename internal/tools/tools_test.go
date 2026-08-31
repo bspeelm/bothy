@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bothy-dev/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 func TestShippedDefinitionsAreComplete(t *testing.T) {

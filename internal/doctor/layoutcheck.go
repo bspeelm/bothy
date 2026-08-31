@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bothy-dev/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/install"
 )
 
 // checkLayoutBuilt compares the layout Zellij actually resolved against the

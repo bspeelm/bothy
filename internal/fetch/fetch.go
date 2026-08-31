@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/tools"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // Timeout is generous enough for a large binary on a poor connection and short

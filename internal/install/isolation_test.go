@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/render"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/render"
 )
 
 // sandbox builds a platform.Info rooted entirely in a temporary directory, so

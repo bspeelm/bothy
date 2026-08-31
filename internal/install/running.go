@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bothy-dev/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // Running is a process still executing a binary bothy supplied.

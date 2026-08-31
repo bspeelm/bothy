@@ -3,7 +3,7 @@ package fetch
 import (
 	"testing"
 
-	"github.com/bothy-dev/bothy/internal/tools"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // The lockfile is what makes an install reproducible and a tampered release a

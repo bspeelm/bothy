@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/install"
-	"github.com/bothy-dev/bothy/internal/layout"
-	"github.com/bothy-dev/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // cmdDev launches the workspace. This is the command the `dev` shell function

@@ -20,15 +20,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bothy-dev/bothy/internal/advice"
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/install"
-	"github.com/bothy-dev/bothy/internal/layout"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/probe"
-	"github.com/bothy-dev/bothy/internal/state"
-	"github.com/bothy-dev/bothy/internal/theme"
-	"github.com/bothy-dev/bothy/internal/tools"
+	"github.com/bspeelm/bothy/internal/advice"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/state"
+	"github.com/bspeelm/bothy/internal/theme"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // Severity distinguishes "this is broken" from "this is not what you asked for".

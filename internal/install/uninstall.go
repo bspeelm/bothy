@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bothy-dev/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // UninstallReport is what came off the machine.

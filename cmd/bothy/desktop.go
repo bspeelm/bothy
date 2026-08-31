@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	bothy "github.com/bothy-dev/bothy"
+	bothy "github.com/bspeelm/bothy"
 )
 
 // The desktop entry is the one file bothy will write outside its own tree, and

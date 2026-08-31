@@ -8,8 +8,8 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	bothy "github.com/bothy-dev/bothy"
-	"github.com/bothy-dev/bothy/internal/platform"
+	bothy "github.com/bspeelm/bothy"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // Plugin is a Yazi plugin bothy's generated config depends on.

@@ -12,10 +12,10 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	bothy "github.com/bothy-dev/bothy"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/probe"
-	"github.com/bothy-dev/bothy/internal/tools"
+	bothy "github.com/bspeelm/bothy"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // Lockfile pins the exact version and checksum of every tool bothy may

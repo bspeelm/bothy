@@ -21,9 +21,9 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	bothy "github.com/bothy-dev/bothy"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/probe"
+	bothy "github.com/bspeelm/bothy"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
 )
 
 // Tool is a declarative definition, loaded from slots/tools/<name>.toml.

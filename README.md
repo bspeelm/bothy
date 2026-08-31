@@ -89,6 +89,15 @@ and then launches it.
 `bothy install` exists too, and you want it after changing a setting with
 `bothy config set`. You do not need it to start.
 
+### With Go
+
+```sh
+go install github.com/bspeelm/bothy/cmd/bothy@latest
+bothy
+```
+
+Resolves to the latest tag. No release download, but you need Go.
+
 ### From source
 
 For contributors. Needs Go and `make`, which a fresh container or a clean

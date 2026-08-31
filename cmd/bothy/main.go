@@ -14,13 +14,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bothy-dev/bothy/internal/config"
-	"github.com/bothy-dev/bothy/internal/doctor"
-	"github.com/bothy-dev/bothy/internal/install"
-	"github.com/bothy-dev/bothy/internal/layout"
-	"github.com/bothy-dev/bothy/internal/platform"
-	"github.com/bothy-dev/bothy/internal/theme"
-	"github.com/bothy-dev/bothy/internal/tools"
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/doctor"
+	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/theme"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // Version is set at build time by the release process.
