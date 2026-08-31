@@ -150,3 +150,60 @@ func TestReleaseURL(t *testing.T) {
 		t.Errorf("got %s", got)
 	}
 }
+
+// An archive whose entries try to escape is not a release bothy should unpack,
+// whatever it is called. The bytes were never written to a path the archive
+// chose, so this was already harmless -- but quietly taking "passwd" out of
+// "../../etc/passwd" treats a hostile archive as an ordinary one.
+func TestExtractRefusesTraversingEntries(t *testing.T) {
+	for _, name := range []string{
+		"../../etc/passwd",
+		"../bothy",
+		"/etc/passwd",
+		"a/../../b/bothy",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			gz := gzip.NewWriter(&buf)
+			tw := tar.NewWriter(gz)
+			body := []byte("x")
+			if err := tw.WriteHeader(&tar.Header{
+				Name: name, Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			tw.Write(body)
+			tw.Close()
+			gz.Close()
+
+			if _, err := Extract(buf.Bytes(), "t.tar.gz", []string{"passwd", "bothy"}); err == nil {
+				t.Errorf("entry %q was accepted", name)
+			}
+		})
+	}
+}
+
+// And an ordinary nested path -- which is what every real release looks like --
+// still works.
+func TestExtractAcceptsOrdinaryNestedPaths(t *testing.T) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	body := []byte("#!/bin/sh\n")
+	if err := tw.WriteHeader(&tar.Header{
+		Name: "bothy-0.1.4/bin/bothy", Mode: 0o755, Size: int64(len(body)), Typeflag: tar.TypeReg,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	tw.Write(body)
+	tw.Close()
+	gz.Close()
+
+	got, err := Extract(buf.Bytes(), "t.tar.gz", []string{"bothy"})
+	if err != nil {
+		t.Fatalf("a normal nested entry was refused: %v", err)
+	}
+	if string(got["bothy"]) != string(body) {
+		t.Errorf("extracted %q", got["bothy"])
+	}
+}

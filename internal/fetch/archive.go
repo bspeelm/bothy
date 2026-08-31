@@ -27,6 +27,22 @@ const MaxFile = 128 << 20 // 128 MiB
 // archive at all. Rather than encode each layout as data — one more thing per
 // tool to get wrong — this matches on basename anywhere in the archive, which
 // is true of every asset bothy fetches.
+// safeEntry refuses an archive entry that tries to escape where it is put.
+//
+// Nothing here is written to a path the archive chose -- the bytes go into a
+// map keyed by the name that was *asked* for, and the caller decides where it
+// lands -- so a traversing entry was already harmless. But taking "passwd"
+// out of an entry called "../../etc/passwd" and carrying on treats a hostile
+// archive as an ordinary one. An asset that contains such a path is not a
+// release bothy should be unpacking, whatever it happens to be called.
+func safeEntry(name string) error {
+	clean := path.Clean(filepath.ToSlash(name))
+	if path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
+		return fmt.Errorf("entry %q escapes the archive", name)
+	}
+	return nil
+}
+
 // archiveExt names the archive format an asset appears to be, or "" when it
 // looks like a bare binary. Refusing by name beats guessing: a format bothy
 // cannot unpack should fail at install with the reason, not at exec.
@@ -98,11 +114,9 @@ func fromTarGz(body []byte, wanted map[string]bool) (map[string][]byte, error) {
 		if h.Typeflag != tar.TypeReg {
 			continue
 		}
-		// Base strips any directory component, so an entry named
-		// "../../etc/passwd" is reduced to "passwd" -- and then has to match
-		// a name from slots/tools to be kept at all. Nothing here is written
-		// to a path the archive chose: the bytes go into a map keyed by the
-		// name that was asked for, and the caller decides where it lands.
+		if err := safeEntry(h.Name); err != nil {
+			return nil, fmt.Errorf("tar: %w", err)
+		}
 		name := path.Base(h.Name)
 		if !wanted[name] || found[name] != nil {
 			continue
@@ -127,7 +141,10 @@ func fromZip(body []byte, wanted map[string]bool) (map[string][]byte, error) {
 		if f.FileInfo().IsDir() {
 			continue
 		}
-		name := filepath.Base(f.Name) // as in fromTarGz above
+		if err := safeEntry(f.Name); err != nil {
+			return nil, fmt.Errorf("zip: %w", err)
+		}
+		name := filepath.Base(f.Name)
 		if !wanted[name] || found[name] != nil {
 			continue
 		}
