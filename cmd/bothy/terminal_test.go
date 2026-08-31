@@ -97,8 +97,14 @@ func TestDevLeavesNothingBehindWhenNotInstalled(t *testing.T) {
 		ConfigDir: filepath.Join(home, "config"),
 		LocalBin:  filepath.Join(home, "bin"),
 	}
-	if err := launch(p, config.Default(), home, "cockpit"); err == nil {
+	err := launch(p, config.Default(), home, "cockpit")
+	if err == nil {
 		t.Fatal("expected a refusal when bothy is not installed")
+	}
+	// The refusal has to name the fix. "no such file or directory" would be
+	// technically true and useless.
+	if !strings.Contains(err.Error(), "bothy install") {
+		t.Errorf("the refusal does not say how to fix it: %v", err)
 	}
 	entries, err := os.ReadDir(data)
 	if err == nil && len(entries) > 0 {
