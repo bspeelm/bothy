@@ -1,5 +1,9 @@
 # Images
 
+`workspace.png` is a screenshot of the default `cockpit` layout: Yazi across the
+top with a file preview, an agent pane and a shell below, inside Zellij with
+full pane frames.
+
 `bothy-source.png` is the original artwork: a bothy in a landscape, rendered in
 ASCII. It is greyscale on an opaque white ground.
 

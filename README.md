@@ -18,18 +18,14 @@
 
 One command opens a persistent layout with a file browser, an agent and a shell:
 
-```
-┌──────────────────────────────────────────────────┐  tab bar
-│         browser — file tree + preview            │
-├─────────────────────────────┬────────────────────┤
-│      agent (focused)        │   shell            │
-├─────────────────────────────┴────────────────────┤  status bar
-```
-
 ```sh
 cd ~/some-project
 bothy
 ```
+
+<p align="center">
+  <img alt="the bothy workspace: a Yazi file browser across the top with a file preview, an agent pane and a shell below, inside Zellij" src="docs/images/workspace.png" width="900">
+</p>
 
 bothy installs any tool you are missing, writes its own configs, arranges the
 panes, and then tells you what is broken and how to fix it. It does not touch
