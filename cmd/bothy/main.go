@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -23,8 +24,31 @@ import (
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
-// Version is set at build time by the release process.
+// Version is stamped by the release build's -ldflags.
+//
+// It must stay a plain constant string: `-X` silently does nothing to a
+// variable initialised by a function call, so folding the fallback below into
+// this declaration disables the stamping it was meant to complement. Found by
+// checking that -X still worked, which it had quietly stopped doing.
 var Version = "dev"
+
+// version reports the build's version.
+//
+// A `go install` binary gets no ldflags, so without this it would report "dev"
+// and every bug report from that install path would name a version that does
+// not exist. Go embeds the module version in the build info of every binary,
+// which covers exactly that case.
+func version() string {
+	if Version != "dev" {
+		return Version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return strings.TrimPrefix(v, "v")
+		}
+	}
+	return Version
+}
 
 const usage = `bothy — a small, unlocked terminal workspace
 
@@ -84,7 +108,7 @@ func main() {
 	case "uninstall":
 		err = cmdUninstall(args)
 	case "version", "--version", "-v":
-		fmt.Printf("bothy %s\n", Version)
+		fmt.Printf("bothy %s\n", version())
 	case "help", "--help", "-h":
 		fmt.Print(usage)
 	default:

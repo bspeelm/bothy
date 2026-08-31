@@ -67,3 +67,19 @@ func TestEveryCommandIsInTheUsage(t *testing.T) {
 		}
 	}
 }
+
+// Version must stay a plain constant string.
+//
+// `-X main.Version=…` silently does nothing to a variable initialised by a
+// function call — no error, no warning, the release build just reports "dev".
+// An earlier attempt to fold the build-info fallback into this declaration did
+// exactly that, and only comparing the output of two builds caught it.
+func TestVersionStaysStampable(t *testing.T) {
+	src, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`(?m)^var Version = "[^"]*"$`).Match(src) {
+		t.Error(`Version is not a plain string literal; -X will silently stop working`)
+	}
+}
