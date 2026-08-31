@@ -78,6 +78,14 @@ type Workspace struct {
 	// Watermark enables the Ghostty background-image trick. Off by default:
 	// it is a nice touch, not a feature, and it needs per-layout measuring.
 	Watermark bool `toml:"watermark"`
+	// PaneFrames is "full", "titles" or "none".
+	//
+	// Zellij 0.45 added this and made "titles" the default, which draws a
+	// heading above each pane instead of a box around it. The origin setup
+	// predates that and had boxes, so bothy asks for "full" — the workspace
+	// should look the same on a machine that gets zellij 0.45 as on one that
+	// had 0.42, rather than quietly changing because an upstream default did.
+	PaneFrames string `toml:"pane_frames"`
 }
 
 // DefaultExtras is the set of small CLI tools the workspace assumes are there.
@@ -100,7 +108,8 @@ func Default() Config {
 		Theme: Theme{
 			Provider: "dracula",
 		},
-		Extras: append([]string(nil), DefaultExtras...),
+		Workspace: Workspace{PaneFrames: "full"},
+		Extras:    append([]string(nil), DefaultExtras...),
 	}
 }
 
@@ -228,6 +237,13 @@ func (c *Config) Set(key, value string) error {
 		}
 	case "editor.provide_config":
 		c.Editor.ProvideConfig = value == "true" || value == "1" || value == "yes"
+	case "workspace.pane_frames":
+		switch value {
+		case "full", "titles", "none":
+			c.Workspace.PaneFrames = value
+		default:
+			return fmt.Errorf("config: workspace.pane_frames must be full, titles or none")
+		}
 	case "workspace.watermark":
 		c.Workspace.Watermark = value == "true" || value == "1" || value == "yes"
 	default:

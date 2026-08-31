@@ -45,6 +45,7 @@ type Data struct {
 	Watermark        bool
 	WatermarkPath    string
 	WatermarkOpacity string
+	PaneFrames       string
 
 	// Plugins is the set of Yazi plugins actually installed. Templates key on
 	// it so a generated config never references something that is not there.
@@ -254,6 +255,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		Watermark:        cfg.Workspace.Watermark,
 		WatermarkPath:    filepath.Join(p.ConfigRoot(), "watermark.png"),
 		WatermarkOpacity: "0.05",
+		PaneFrames:       cfg.Workspace.PaneFrames,
 		Plugins:          InstalledPlugins(p),
 	}
 	d.VimColorscheme = cfg.Theme.VimColorscheme

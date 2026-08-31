@@ -25,6 +25,13 @@ func checkLayoutBuilt(env Env) Result {
 	if session == "" {
 		return skip("not inside a zellij session")
 	}
+	// Only a session bothy launched. Being inside *a* zellij session says
+	// nothing about whether its layout came from bothy's profile, and comparing
+	// someone else's layout against bothy's pane count would report a
+	// discrepancy that is nobody's bug. BOTHY_SESSION is set by SessionEnv.
+	if os.Getenv("BOTHY_SESSION") == "" {
+		return skip("this zellij session was not launched by bothy")
+	}
 	path, err := sessionLayoutPath(env.Platform.Home, session)
 	if err != nil {
 		return skip("no resolved layout for this session yet")

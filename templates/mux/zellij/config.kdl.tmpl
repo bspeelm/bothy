@@ -10,3 +10,14 @@ default_mode "normal"
 // $EDITOR too, but naming it here means the setting holds even in a shell that
 // never sourced the profile.
 scrollback_editor "{{ .EditorBin }}"
+{{ if .PaneFrames }}
+// Zellij 0.45 added pane_frame_style and made "titles" the default — a heading
+// above each pane rather than a box around it. The setup bothy is a port of
+// predates that change and had boxes, so this is set rather than left to the
+// default: the workspace should look the same on a machine that gets 0.45 as
+// on one that had 0.42, instead of shifting because an upstream default did.
+//
+// "titles" or "none" if you prefer them: bothy config set workspace.pane_frames titles
+pane_frames true
+pane_frame_style "{{ .PaneFrames }}"
+{{- end }}
