@@ -15,7 +15,7 @@
 %global debug_package %{nil}
 
 Name:           bothy
-Version:        0.1.2
+Version:        0.1.3
 Release:        1%{?dist}
 Summary:        A turn-key terminal workspace built from tools you already trust
 
@@ -63,6 +63,9 @@ go test ./...
 %{_bindir}/%{name}
 
 %changelog
+* Mon Aug 31 2026 Bryan Speelman <bryspeelm@pm.me> - 0.1.3-1
+- See https://github.com/bspeelm/bothy/releases/tag/v0.1.3
+
 * Mon Aug 31 2026 Bryan Speelman <bryspeelm@pm.me> - 0.1.2-1
 - Initial Copr package.
 - Reports its real version when built without the release ldflags.
