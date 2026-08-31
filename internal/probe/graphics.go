@@ -5,6 +5,8 @@ package probe
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -92,46 +94,30 @@ func ZellijVersion(bin string) (Version, error) {
 // Version is a lenient three-part version.
 type Version struct{ Major, Minor, Patch int }
 
-// ParseVersion pulls the first dotted number out of a tool's version output.
-// The shapes seen in practice are "zellij 0.45.1", "Yazi 26.5.6 (...)",
-// "25.07.1" and distro-packaged "Ghostty 1.3.1-4.fc44" — hence taking each
-// segment's leading digits and stopping at the first segment that has none or
-// carries a suffix.
-func ParseVersion(s string) (Version, error) {
-	for _, field := range strings.Fields(s) {
-		field = strings.TrimPrefix(strings.Trim(field, "(),"), "v")
-		nums, ok := leadingNumbers(field)
-		if !ok {
-			continue
-		}
-		v := Version{Major: nums[0], Minor: nums[1]}
-		if len(nums) > 2 {
-			v.Patch = nums[2]
-		}
-		return v, nil
-	}
-	return Version{}, fmt.Errorf("no version number in %q", strings.TrimSpace(s))
-}
+// versionPattern finds a dotted version anywhere in a string.
+//
+// Scanning for the pattern rather than splitting on whitespace matters more
+// than it looks: tools do not agree on where the number goes. jq prints
+// "jq-1.8.1" with the number glued to the name, and lazygit prints
+// "commit=, build date=, ..., version=0.47.2, os=linux". An earlier parser here
+// only accepted a token *starting* with a digit and quietly decided both tools
+// had no version at all — which made bothy offer to download replacements for
+// two perfectly good binaries.
+var versionPattern = regexp.MustCompile(`([0-9]+)\.([0-9]+)(?:\.([0-9]+))?`)
 
-// leadingNumbers turns "1.3.1-4.fc44" into [1 3 1]: each dot-separated segment
-// contributes its leading digits, and a segment with a suffix ends the version.
-func leadingNumbers(s string) ([]int, bool) {
-	var out []int
-	for _, part := range strings.Split(s, ".") {
-		n, i := 0, 0
-		for i < len(part) && part[i] >= '0' && part[i] <= '9' {
-			n = n*10 + int(part[i]-'0')
-			i++
-		}
-		if i == 0 {
-			break // no digits at all: the version stopped before this segment
-		}
-		out = append(out, n)
-		if i < len(part) || len(out) == 3 {
-			break // trailing junk, or we have all three parts
-		}
+// ParseVersion pulls the first dotted version out of a tool's version output.
+// Handles "zellij 0.45.1", "Yazi 26.5.6 (...)", "25.07.1", "jq-1.8.1",
+// "version=0.47.2, os=linux" and distro-packaged "Ghostty 1.3.1-4.fc44".
+func ParseVersion(s string) (Version, error) {
+	m := versionPattern.FindStringSubmatch(s)
+	if m == nil {
+		return Version{}, fmt.Errorf("no version number in %q", strings.TrimSpace(s))
 	}
-	return out, len(out) >= 2
+	atoi := func(x string) int {
+		n, _ := strconv.Atoi(x)
+		return n
+	}
+	return Version{Major: atoi(m[1]), Minor: atoi(m[2]), Patch: atoi(m[3])}, nil
 }
 
 // Less reports whether v sorts before other.

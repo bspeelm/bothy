@@ -24,6 +24,7 @@ import (
 	"github.com/bothy-dev/bothy/internal/platform"
 	"github.com/bothy-dev/bothy/internal/probe"
 	"github.com/bothy-dev/bothy/internal/theme"
+	"github.com/bothy-dev/bothy/internal/tools"
 )
 
 // Severity distinguishes "this is broken" from "this is not what you asked for".
@@ -93,6 +94,10 @@ type Env struct {
 	// Profile is the layout profile in use, for the pane-count check.
 	ProfileName string
 	PaneCount   int
+	// MuxBin is the multiplexer binary bothy will actually launch, resolved
+	// through its own bin first. Checking the system's copy instead reports
+	// confidently about a binary that is not the one being used.
+	MuxBin string
 	// ToolEnv is the environment bothy's session runs tools with. Checks that
 	// invoke a tool must use it, or they interrogate the user's config instead
 	// of bothy's — a check that confidently reports on the wrong file is worse
@@ -136,6 +141,7 @@ func Checks() []Check {
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},
 		{ID: "agent", Run: checkAgent},
+		{ID: "tool-provenance", Run: checkToolProvenance},
 		{ID: "theme-palette", Run: checkThemePalette},
 	}
 }
@@ -253,8 +259,8 @@ func checkImagePreviews(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
-	mux := env.Config.Slots.Mux
-	if mux == "none" {
+	mux := env.MuxBin
+	if env.Config.Slots.Mux == "none" {
 		mux = ""
 	}
 	g := probe.CheckGraphics(mux, env.Platform.Terminal)
@@ -439,6 +445,48 @@ func checkXdgOpenShimGuard(env Env) Result {
 			"run 'bothy install' to rewrite it")
 	}
 	return pass("xdg-open shim is guarded against host recursion")
+}
+
+// checkToolProvenance reports where each tool came from and whether it is
+// still good enough. This replaces revision 1's PATH-shadowing check, which
+// mattered only because bothy installed into ~/.local/bin; a tool bothy
+// supplies now lives in its own bin and is on PATH for its session alone.
+//
+// The failure it exists to catch: a system tool below the minimum with nothing
+// supplied to cover it, which is a workspace that will misbehave in a way the
+// individual tool never complains about.
+func checkToolProvenance(env Env) Result {
+	names, err := tools.Required(env.Config.Slots.Mux, env.Config.Slots.Browser, env.Config.Extras)
+	if err != nil {
+		return warn("could not read the tool definitions", err.Error(), "")
+	}
+
+	var missing, supplied, system []string
+	for _, name := range names {
+		t, err := tools.Get(name)
+		if err != nil {
+			continue
+		}
+		own := filepath.Join(env.Platform.BinDir(), t.Binary)
+		if fi, err := os.Stat(own); err == nil && fi.Mode()&0o111 != 0 {
+			supplied = append(supplied, name)
+			continue
+		}
+		d := tools.Resolve(t, tools.SystemLookPath, tools.SystemVersion)
+		if d.Action == tools.Fetch {
+			missing = append(missing, name+" ("+d.Reason+")")
+			continue
+		}
+		system = append(system, name)
+	}
+
+	if len(missing) > 0 {
+		return fail("some tools are missing or too old",
+			strings.Join(missing, "; "),
+			"run 'bothy install' to supply them into bothy's own bin")
+	}
+	return pass(fmt.Sprintf("%d tool(s) from your system, %d supplied by bothy",
+		len(system), len(supplied)))
 }
 
 func checkAgent(env Env) Result {

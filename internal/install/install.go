@@ -215,7 +215,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 // buildData assembles the template data, running the graphics probe.
 func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 	name := slug(pal.Name)
-	g := probe.CheckGraphics(muxBinary(cfg), p.Terminal)
+	g := probe.CheckGraphics(ToolPath(p, muxBinary(cfg)), p.Terminal)
 
 	d := Data{
 		Theme:            pal,

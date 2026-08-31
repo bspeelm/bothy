@@ -1,0 +1,16 @@
+# Syntax-highlighted git diffs. bothy does not wire this into your global git
+# config — that is yours. It is here so the side pane has it available.
+name        = "delta"
+binary      = "delta"
+repo        = "dandavison/delta"
+min_version = "0.16.0"
+
+[assets]
+linux_x86_64   = "delta-{version}-x86_64-unknown-linux-musl.tar.gz"
+linux_aarch64  = "delta-{version}-aarch64-unknown-linux-gnu.tar.gz"
+# Upstream publishes no Intel-macOS build for recent releases, so this asset
+# 404s and the lockfile carries no checksum for it. Install then refuses with
+# a clear message rather than downloading something unverified — the pattern
+# is kept in case upstream resumes publishing it.
+darwin_x86_64  = "delta-{version}-x86_64-apple-darwin.tar.gz"
+darwin_aarch64 = "delta-{version}-aarch64-apple-darwin.tar.gz"

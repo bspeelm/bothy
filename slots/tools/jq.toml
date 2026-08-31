@@ -1,0 +1,12 @@
+# jq ships a bare binary rather than an archive, and tags releases "jq-1.8.2"
+# rather than "v1.8.2" — both handled by the fetcher without special-casing jq.
+name        = "jq"
+binary      = "jq"
+repo        = "jqlang/jq"
+min_version = "1.6.0"
+
+[assets]
+linux_x86_64   = "jq-linux-amd64"
+linux_aarch64  = "jq-linux-arm64"
+darwin_x86_64  = "jq-macos-amd64"
+darwin_aarch64 = "jq-macos-arm64"

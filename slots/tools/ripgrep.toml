@@ -1,0 +1,10 @@
+name        = "ripgrep"
+binary      = "rg"
+repo        = "BurntSushi/ripgrep"
+min_version = "13.0.0"
+
+[assets]
+linux_x86_64   = "ripgrep-{version}-x86_64-unknown-linux-musl.tar.gz"
+linux_aarch64  = "ripgrep-{version}-aarch64-unknown-linux-gnu.tar.gz"
+darwin_x86_64  = "ripgrep-{version}-x86_64-apple-darwin.tar.gz"
+darwin_aarch64 = "ripgrep-{version}-aarch64-apple-darwin.tar.gz"

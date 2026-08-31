@@ -1,0 +1,101 @@
+# Pinned tool versions and checksums.
+# Regenerate with 'bothy lock'; review the diff before committing.
+# An install fetches exactly these and verifies the checksum first.
+
+[[tool]]
+name = 'delta'
+tag = '0.19.2'
+version = '0.19.2'
+
+[tool.sha256]
+darwin_aarch64 = '9be36612a5a13e9e386dc498fb8e50dc87c72ee42b63db0ea05b32f99a72a69a'
+linux_aarch64 = '0bfce159a5cddd5feb3d6db4a616d883ff51253ce08ac7ec11cb1d208cfaab9e'
+linux_x86_64 = 'f1ea01ca7728ce3462debc359f39dfc7cbbc1a63224b71fefabf92042864aa1b'
+
+[[tool]]
+name = 'fd'
+tag = 'v10.5.0'
+version = '10.5.0'
+
+[tool.sha256]
+darwin_aarch64 = 'b67e1836c468e42e411984b56e52fa7abec08c2bd22c867398e7cc134aac5e12'
+darwin_x86_64 = '7e31028c62c6955877735d0406807aa484c2a5e6f86235a59e26c29c301da590'
+linux_aarch64 = 'c0ee43802e3313a317c5af2f4eabd6ba13eeedd595af9775f05e18a13ac4f52c'
+linux_x86_64 = '761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7'
+
+[[tool]]
+name = 'fzf'
+tag = 'v0.74.3'
+version = '0.74.3'
+
+[tool.sha256]
+darwin_aarch64 = '1f8501cea4f9c0c2d6110d0ff75d0ec9451cd9d7524d9a26244a154ea89f3bd5'
+darwin_x86_64 = 'b8a231250eedec244539ade3dc437bcd60e545a099c6cc0c8a11bdbd8574b9bc'
+linux_aarch64 = '4a17a17b46bd0c4873e995533de508995c11572c0be0664a5dbcf13f60463046'
+linux_x86_64 = '3501a595e4b5c40a6b047340a0e8f805c46fd4e61ef95ef8a136ba8c61cf6f22'
+
+[[tool]]
+name = 'jq'
+tag = 'jq-1.8.2'
+version = '1.8.2'
+
+[tool.sha256]
+darwin_aarch64 = '2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e'
+darwin_x86_64 = 'e94b266e3c26690550006abe63152b782280f4e14374accdf04cbde844f00bc0'
+linux_aarch64 = '8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309'
+linux_x86_64 = 'b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f'
+
+[[tool]]
+name = 'lazygit'
+tag = 'v0.64.1'
+version = '0.64.1'
+
+[tool.sha256]
+darwin_aarch64 = 'a106b4c1bf8ab7539c4afb40a01cbde263a96513cdcb8bf7630278f07e88cd99'
+darwin_x86_64 = 'f727fdf2efa46f78d102639eafe085cef437928da1e9ec79ec8e203b8a12f2a2'
+linux_aarch64 = '8b7ca3b344e60340ad1f89f29b9868ee39bcaba5bb92ee818bbe65476bb8b6e7'
+linux_x86_64 = 'f8ea237c41f194cd799b48505518bfdaae4edf5a2ad6bd3d898e939785ee4532'
+
+[[tool]]
+name = 'ripgrep'
+tag = '15.2.0'
+version = '15.2.0'
+
+[tool.sha256]
+darwin_aarch64 = '3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4'
+darwin_x86_64 = 'af7825fcc69a2afc7a7aea55fc9af90e26421d8f20fe59df32e233c0b8a231c1'
+linux_aarch64 = 'a740b91c82eaf9914cfedd353572f2791cbe0162c84101ee0951058f4dcbc90d'
+linux_x86_64 = '33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c'
+
+[[tool]]
+name = 'yazi'
+tag = 'v26.8.15'
+version = '26.8.15'
+
+[tool.sha256]
+darwin_aarch64 = '3f54907ea08abe96506f4b22239340ed8923a6aeaeae78f33d59bce57daca4cd'
+darwin_x86_64 = '70bb2bcf57d8af862a54e2d12f2fddceefb9aa4ba3783e9a4dcbf2a8e64aacb3'
+linux_aarch64 = 'dfaafadd3a80a18ccbd24c32be4888178202ea96f784a9b1021d526c908cab4b'
+linux_x86_64 = 'a6702034790afcdbb546b73b288c9b184a751fa3f2f17f0ad4d26fc302fb8d45'
+
+[[tool]]
+name = 'zellij'
+tag = 'v0.45.1'
+version = '0.45.1'
+
+[tool.sha256]
+darwin_aarch64 = 'c029ba4fe1927b79ad9f0cdd59155c4dff80777863c85857d4d09b88b56f9891'
+darwin_x86_64 = '8e8bea22737d1652278c51fc5c26c7c22c9855d0ebb9634a84b8873823093114'
+linux_aarch64 = '05f0802afadd53f8db9514e7cae53c9ae8432fed1b35b8294aa816ee3044a16b'
+linux_x86_64 = '40bcc2e03f5d5ae8e054e39f676081fe12ab70871506996ba595834c3718eefc'
+
+[[tool]]
+name = 'zoxide'
+tag = 'v0.10.0'
+version = '0.10.0'
+
+[tool.sha256]
+darwin_aarch64 = 'b55ae6f2f5f23d0a6ccb3bd4eeb2af9c7e0a6556e5255c82100e40305129bbb0'
+darwin_x86_64 = '18ab7ae2633ad6e2ab79a4e665cbba1e95b7c872d44523326efb793202451dad'
+linux_aarch64 = 'f1f16c5d6298d63dee467eedea1cdcd8490e43e493bea43acd416dc9033ef641'
+linux_x86_64 = '2d93385b99f3e82cf2701609a1bffcad863fbeb75aa3fe7eb6be4d29be68b1ae'

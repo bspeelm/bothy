@@ -1,0 +1,11 @@
+# fzf spells the architecture amd64/arm64 rather than x86_64/aarch64.
+name        = "fzf"
+binary      = "fzf"
+repo        = "junegunn/fzf"
+min_version = "0.40.0"
+
+[assets]
+linux_x86_64   = "fzf-{version}-linux_amd64.tar.gz"
+linux_aarch64  = "fzf-{version}-linux_arm64.tar.gz"
+darwin_x86_64  = "fzf-{version}-darwin_amd64.tar.gz"
+darwin_aarch64 = "fzf-{version}-darwin_arm64.tar.gz"

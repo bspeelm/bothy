@@ -1,0 +1,18 @@
+# The multiplexer. This minimum is the one that matters most.
+#
+# 0.45.0 implemented the Kitty graphics protocol and 0.45.1 fixed image sizing
+# on startup. Below that, Yazi's image previews fall back to chafa block art,
+# and the terminal's mangled reply to Yazi's capability query is parsed as
+# keystrokes — the phantom "Find next" documented in docs/origin-cheatsheet.md.
+# Fedora's COPR still ships 0.42.2, which is why this is not academic.
+name        = "zellij"
+binary      = "zellij"
+repo        = "zellij-org/zellij"
+min_version = "0.45.1"
+reason      = "image previews need the Kitty graphics protocol, added in 0.45"
+
+[assets]
+linux_x86_64   = "zellij-x86_64-unknown-linux-musl.tar.gz"
+linux_aarch64  = "zellij-aarch64-unknown-linux-musl.tar.gz"
+darwin_x86_64  = "zellij-x86_64-apple-darwin.tar.gz"
+darwin_aarch64 = "zellij-aarch64-apple-darwin.tar.gz"

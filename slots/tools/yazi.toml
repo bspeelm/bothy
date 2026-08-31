@@ -1,0 +1,17 @@
+# The file browser. Ships two binaries: yazi and its package manager, ya.
+#
+# Every current yazi-rs plugin refuses to load below 26.x with
+# "requires at least Yazi 26.x", and bothy's config uses the 26.x key names
+# ([mgr], and `url` in fetchers and filetype rules).
+name        = "yazi"
+binary      = "yazi"
+extra       = ["ya"]
+repo        = "sxyazi/yazi"
+min_version = "26.0.0"
+reason      = "the plugin ecosystem and bothy's config both require 26.x keys"
+
+[assets]
+linux_x86_64   = "yazi-x86_64-unknown-linux-musl.zip"
+linux_aarch64  = "yazi-aarch64-unknown-linux-musl.zip"
+darwin_x86_64  = "yazi-x86_64-apple-darwin.zip"
+darwin_aarch64 = "yazi-aarch64-apple-darwin.zip"

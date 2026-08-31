@@ -19,6 +19,7 @@ import (
 	"github.com/bothy-dev/bothy/internal/layout"
 	"github.com/bothy-dev/bothy/internal/platform"
 	"github.com/bothy-dev/bothy/internal/theme"
+	"github.com/bothy-dev/bothy/internal/tools"
 )
 
 // Version is set at build time by the release process.
@@ -34,6 +35,7 @@ Usage:
   bothy config  [get|set|edit|path]
   bothy layout  [--profile P]   print the layout that would be launched
   bothy theme   example         print a blank palette file to fill in
+  bothy tools                   show which tools are used and where they came from
   bothy uninstall [--dry-run]   put the machine back the way it was
   bothy version
 
@@ -71,6 +73,10 @@ func main() {
 		err = cmdLayout(args)
 	case "theme":
 		err = cmdTheme(args)
+	case "lock":
+		err = cmdLock(args)
+	case "tools":
+		err = cmdTools(args)
 	case "uninstall":
 		err = cmdUninstall(args)
 	case "version", "--version", "-v":
@@ -98,6 +104,7 @@ func load() (platform.Info, config.Config, error) {
 func cmdInstall(args []string) error {
 	fs := flag.NewFlagSet("install", flag.ExitOnError)
 	dryRun := fs.Bool("dry-run", false, "report what would change without writing anything")
+	offline := fs.Bool("offline", false, "do not fetch any tool; use only what is installed")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -105,6 +112,17 @@ func cmdInstall(args []string) error {
 	p, cfg, err := load()
 	if err != nil {
 		return err
+	}
+
+	// Tools first: the graphics probe that decides how yazi.toml is written
+	// asks the multiplexer its version, so a zellij fetched now is the one the
+	// config is rendered for.
+	if !*dryRun {
+		treport, err := install.EnsureTools(p, cfg, *offline)
+		if err != nil {
+			return err
+		}
+		printTools(treport)
 	}
 
 	res, err := install.Run(p, cfg, install.Options{DryRun: *dryRun})
@@ -148,6 +166,7 @@ func cmdDoctor(args []string) error {
 func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	env := doctor.Env{
 		Platform: p, Config: cfg, ProfileName: cfg.Profile,
+		MuxBin: install.ToolPath(p, cfg.Slots.Mux),
 		// Check the tools the way bothy will actually run them.
 		ToolEnv: install.SessionEnv(p, cfg),
 	}
@@ -344,4 +363,53 @@ func expandDir(dir, home string) string {
 // newFlagSet keeps flag handling uniform across subcommands.
 func newFlagSet(name string) *flag.FlagSet {
 	return flag.NewFlagSet(name, flag.ExitOnError)
+}
+
+// printTools reports the fill-gaps decisions. Saying *why* a tool was fetched
+// matters more than saying that it was: "zellij 0.42.2 is below 0.45.1" is
+// actionable, "downloading zellij" is noise.
+func printTools(r *install.ToolReport) {
+	if r.Skipped {
+		fmt.Println("offline: using only the tools already installed")
+	}
+	for _, d := range r.Fetched {
+		fmt.Printf("  ↓ %s — %s\n", d.Tool.Name, d.Reason)
+	}
+	for _, f := range r.Failed {
+		fmt.Printf("  ! %s could not be supplied: %v\n", f.Decision.Tool.Name, f.Err)
+	}
+	if n := len(r.Used); n > 0 {
+		fmt.Printf("  ✓ using %d tool(s) already on your system\n", n)
+	}
+	if len(r.Fetched) > 0 || len(r.Failed) > 0 {
+		fmt.Println()
+	}
+}
+
+// cmdTools shows where each tool comes from, without changing anything.
+func cmdTools(args []string) error {
+	p, cfg, err := load()
+	if err != nil {
+		return err
+	}
+	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
+	if err != nil {
+		return err
+	}
+	decisions, err := tools.ResolveAll(names)
+	if err != nil {
+		return err
+	}
+	for _, d := range decisions {
+		mark := "✓"
+		if d.Action == tools.Fetch {
+			mark = "↓"
+		}
+		if own, ok := install.InstalledBinary(p, d.Tool.Binary); ok && d.Path == own {
+			fmt.Printf("%s %-9s %-9s supplied by bothy\n", mark, d.Tool.Name, d.Version)
+			continue
+		}
+		fmt.Printf("%s %-9s %s\n", mark, d.Tool.Name, d.Reason)
+	}
+	return nil
 }

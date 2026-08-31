@@ -20,3 +20,19 @@ var Templates embed.FS
 //
 //go:embed profiles
 var Profiles embed.FS
+
+// Slots holds the declarative tool and provider definitions. A tool bothy can
+// supply is a file in here and nothing else — see docs/adding-a-provider.md.
+//
+//go:embed slots
+var Slots embed.FS
+
+// lockFile pins the version and checksum of every tool bothy may install. It
+// is embedded because an installed bothy has no repository to read it from,
+// and the pins are part of what a given bothy release is.
+//
+//go:embed bothy.lock
+var lockFile []byte
+
+// Lock returns the embedded lockfile.
+func Lock() ([]byte, error) { return lockFile, nil }

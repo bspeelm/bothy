@@ -84,6 +84,7 @@ Then run `bothy`.
 | `bothy config set <key> <value>` | Change a slot, theme, or workspace setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file to fill in |
+| `bothy tools` | Show which tools are used and where they came from |
 | `bothy uninstall` | Remove bothy's directory |
 
 ## Slots
@@ -196,6 +197,22 @@ meets the minimum version is used as-is; a missing or too-old one is fetched
 into bothy's own `bin/`, which is on `PATH` for bothy's session only. Installing
 a newer zellij never changes what `zellij` means in your shell, and no package
 manager is ever invoked.
+
+Minimums are "the oldest that actually works", not "the newest available", so
+on a normally equipped machine bothy downloads nothing. `bothy tools` shows the
+decision without changing anything:
+
+```
+$ bothy tools
+✓ delta     /usr/bin/delta is 0.19.1
+✓ yazi      /usr/bin/yazi is 26.5.6
+↓ zellij    /usr/bin/zellij is 0.42.2, below the minimum 0.45.1 —
+            image previews need the Kitty graphics protocol, added in 0.45
+```
+
+Every version and checksum is pinned in `bothy.lock`; a download whose sha256
+does not match is refused and nothing is written. `bothy install --offline`
+skips fetching entirely and uses only what you have.
 
 ## Containers and immutable distros
 
