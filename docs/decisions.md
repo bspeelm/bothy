@@ -389,9 +389,17 @@ bothy — one directory, removed by one command — and reads, beside the word
 user, in the user's repository, with the user's permissions; its edits and
 commits are real, and its own state lives in its own directory that bothy does
 not touch by policy. Borrowing the connotations of a sandbox while declining to
-be one is the kind of overclaim this project exists to avoid, so the tagline
-now names what is actually disposable — "one directory you can delete" — and
-"not a sandbox" is on the What-bothy-is-not list in as many words.
+be one is the kind of overclaim this project exists to avoid, so "not a
+sandbox" is on the What-bothy-is-not list in as many words.
+
+The tagline settled somewhere else again: *"A room you can trust because it
+wants nothing."* It does not name the agent, and that is deliberate. The
+tagline says what kind of thing bothy is — no telemetry, no account, no
+auto-updater, no marketplace, no claim on your dotfiles or your agent's
+credentials, which is the whole of §11 in three words — and the sentence
+immediately below it says what bothy does, agent first. Character, then
+function. An intent that contradicts the design is what this ADR exists to
+prevent; a tagline that leaves the function to the next line is not that.
 
 The alternative was to accept "terminal workspace" and rename `cockpit`, which
 is the honest version of the other choice. It was not taken because the

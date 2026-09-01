@@ -9,7 +9,7 @@
 <h1 align="center">bothy</h1>
 
 <p align="center">
-  <em>a terminal cockpit for working with an AI coding agent, in one directory you can delete</em>
+  <em>A room you can trust because it wants nothing.</em>
 </p>
 
 > **bothy** *(n., Scottish)* — a small unlocked mountain shelter, free for anyone
