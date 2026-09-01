@@ -170,6 +170,7 @@ func Checks() []Check {
 		{ID: "terminal-capability", Run: checkTerminalCapability},
 		{ID: "passthrough", Run: checkPassthrough},
 		{ID: "isolation", Run: checkIsolation},
+		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "watermark-image", Run: checkWatermarkImage},
 		{ID: "zellij-config", Run: checkZellijConfig},
 		{ID: "terminfo", Run: checkTerminfo},

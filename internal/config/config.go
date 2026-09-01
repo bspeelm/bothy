@@ -6,10 +6,12 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -30,6 +32,11 @@ type Config struct {
 	// instead of bothy's. It is one environment variable per slot at launch,
 	// not a second code path. See PLAN.md §5.
 	Passthrough []string `toml:"passthrough"`
+
+	// Unknown holds keys in config.toml that bothy does not recognise. It is
+	// populated by Load and never written back -- a config carried between
+	// machines in git must not grow a record of its own typos.
+	Unknown []string `toml:"-"`
 }
 
 // Editor holds the one editor setting bothy has an opinion about.
@@ -133,8 +140,22 @@ func Load(p platform.Info) (Config, error) {
 
 	// Unmarshal over the defaults so an absent key keeps its default rather
 	// than becoming the zero value.
-	if err := toml.Unmarshal(src, &cfg); err != nil {
-		return cfg, fmt.Errorf("config: %s: %w", Path(p), err)
+	//
+	// Strict, but only to *collect* what it does not recognise. An unknown key
+	// is not an error: a config that refuses to load is worse than a typo, and
+	// a key written by a newer bothy must not brick an older one, or carrying
+	// ~/.config/bothy between machines in git breaks in the other direction.
+	// The decoder populates the struct fully either way.
+	dec := toml.NewDecoder(bytes.NewReader(src))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&cfg); err != nil {
+		var unknown *toml.StrictMissingError
+		if !errors.As(err, &unknown) {
+			return cfg, fmt.Errorf("config: %s: %w", Path(p), err)
+		}
+		for _, e := range unknown.Errors {
+			cfg.Unknown = append(cfg.Unknown, strings.Join(e.Key(), "."))
+		}
 	}
 	// A half-finished configuration still loads. Refusing here would make every
 	// command — including the `config set` that would complete it, and the
@@ -163,9 +184,31 @@ func Save(p platform.Info, cfg Config) error {
 
 // Validate catches the configuration mistakes that would otherwise surface as
 // a broken workspace rather than an error message.
+// slotNames are the slots a passthrough entry may name. Kept beside Slots so
+// adding a field and forgetting this list is a compile-time-adjacent mistake
+// rather than a silent one -- the test asserts they agree.
+var slotNames = []string{"terminal", "mux", "browser", "editor", "agent"}
+
 func (c Config) Validate() error {
 	if c.Profile == "" {
 		return fmt.Errorf("config: profile is empty")
+	}
+	// Cross-field rules install already enforces by failing later. Checking
+	// them here means a `bothy config set` mistake surfaces at the next
+	// command rather than as a workspace that opens wrong.
+	for _, name := range c.Passthrough {
+		if !slices.Contains(slotNames, name) {
+			return fmt.Errorf("config: passthrough names %q, which is not a slot (%s)",
+				name, strings.Join(slotNames, ", "))
+		}
+	}
+	if c.Workspace.PaneFrames != "" {
+		switch c.Workspace.PaneFrames {
+		case "full", "titles", "none":
+		default:
+			return fmt.Errorf("config: workspace.pane_frames is %q, want full, titles or none",
+				c.Workspace.PaneFrames)
+		}
 	}
 	return nil
 }

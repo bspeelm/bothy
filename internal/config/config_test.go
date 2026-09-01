@@ -1,6 +1,10 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -148,4 +152,160 @@ func TestContainerForPrefersTheConfiguredName(t *testing.T) {
 	if got := c.ContainerFor(p, "recorded"); got != "configured" {
 		t.Errorf("ContainerFor() = %q, want the configured container to win", got)
 	}
+}
+
+// A typo used to cost nothing to make and everything to find: Unmarshal over
+// the defaults accepted any key, so `slots.borwser = "yazi"` loaded cleanly,
+// did nothing, and kept doing nothing on every machine the config was carried
+// to.
+func TestLoadCollectsUnknownKeysWithoutFailing(t *testing.T) {
+	p := writeConfig(t, `
+profile = 'cockpit'
+
+[slots]
+browser = 'yazi'
+borwser = 'yazi'
+
+[bogus]
+x = 1
+`)
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatalf("an unknown key made the config fail to load: %v", err)
+	}
+	// The recognised keys must still have been applied -- collecting the
+	// unknown ones must not cost the known ones.
+	if cfg.Profile != "cockpit" || cfg.Slots.Browser != "yazi" {
+		t.Errorf("recognised keys were lost: profile=%q browser=%q", cfg.Profile, cfg.Slots.Browser)
+	}
+	want := map[string]bool{"slots.borwser": true, "bogus": true}
+	if len(cfg.Unknown) != len(want) {
+		t.Fatalf("Unknown = %q, want %d entries", cfg.Unknown, len(want))
+	}
+	for _, k := range cfg.Unknown {
+		if !want[k] {
+			t.Errorf("unexpected unknown key %q", k)
+		}
+	}
+}
+
+func TestLoadReportsNoUnknownKeysForAGoodConfig(t *testing.T) {
+	p := writeConfig(t, "profile = 'cockpit'\n\n[slots]\nbrowser = 'yazi'\n")
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Unknown) != 0 {
+		t.Errorf("Unknown = %q for a config with no typos", cfg.Unknown)
+	}
+}
+
+// Unknown must never be written back: a config carried between machines in
+// git should not grow a record of its own typos.
+func TestSaveDoesNotWriteUnknownKeys(t *testing.T) {
+	p := writeConfig(t, "profile = 'cockpit'\nbogus = 1\n")
+	cfg, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Unknown) == 0 {
+		t.Fatal("nothing was collected, so this test proves nothing")
+	}
+	if err := Save(p, cfg); err != nil {
+		t.Fatal(err)
+	}
+	src, err := os.ReadFile(Path(p))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(src), "Unknown") || strings.Contains(string(src), "bogus") {
+		t.Errorf("the rewritten config carries the unknown key:\n%s", src)
+	}
+}
+
+func TestKeysCoversTheWholeStruct(t *testing.T) {
+	keys := Keys()
+	for _, want := range []string{
+		"profile", "slots.browser", "slots.editor", "theme.palette",
+		"workspace.container", "workspace.pane_frames", "editor.provide_config",
+	} {
+		if !slices.Contains(keys, want) {
+			t.Errorf("Keys() is missing %q", want)
+		}
+	}
+	// Unknown is toml:"-" and must not appear as a settable key.
+	for _, k := range keys {
+		if strings.EqualFold(k, "unknown") {
+			t.Error("Keys() lists the Unknown field, which is not a config key")
+		}
+	}
+}
+
+func TestNearestSuggestsOnlyWhenItIsClose(t *testing.T) {
+	if got := Nearest("slots.borwser"); got != "slots.browser" {
+		t.Errorf("Nearest(slots.borwser) = %q", got)
+	}
+	if got := Nearest("profil"); got != "profile" {
+		t.Errorf("Nearest(profil) = %q", got)
+	}
+	// Nothing close. Suggesting anything here would send someone to edit a
+	// line that was never the problem.
+	if got := Nearest("completely_unrelated_thing"); got != "" {
+		t.Errorf("Nearest(completely_unrelated_thing) = %q, want no suggestion", got)
+	}
+}
+
+// passthrough naming something that is not a slot used to surface as a
+// workspace that opened wrong rather than as an error.
+func TestValidateRejectsAPassthroughThatIsNotASlot(t *testing.T) {
+	c := Default()
+	c.Passthrough = []string{"browser", "kitchen-sink"}
+	err := c.Validate()
+	if err == nil {
+		t.Fatal("passthrough accepted a name that is not a slot")
+	}
+	if !strings.Contains(err.Error(), "kitchen-sink") {
+		t.Errorf("the error does not name the offender: %v", err)
+	}
+
+	c.Passthrough = []string{"browser", "editor"}
+	if err := c.Validate(); err != nil {
+		t.Errorf("real slots were rejected: %v", err)
+	}
+}
+
+// The slot list Validate checks against has to match the Slots struct, or a
+// new slot becomes un-passthrough-able for no stated reason.
+func TestSlotNamesMatchTheSlotsStruct(t *testing.T) {
+	var fields []string
+	ty := reflect.TypeOf(Slots{})
+	for i := 0; i < ty.NumField(); i++ {
+		tag, _, _ := strings.Cut(ty.Field(i).Tag.Get("toml"), ",")
+		fields = append(fields, tag)
+	}
+	slices.Sort(fields)
+	got := slices.Clone(slotNames)
+	slices.Sort(got)
+	if !slices.Equal(fields, got) {
+		t.Errorf("slotNames = %q, Slots struct has %q", got, fields)
+	}
+}
+
+// writeConfig plants a config.toml in a temporary home and returns a
+// platform.Info pointing at it.
+func writeConfig(t *testing.T, body string) platform.Info {
+	t.Helper()
+	home := t.TempDir()
+	p := platform.Info{
+		Home:      home,
+		ConfigDir: filepath.Join(home, ".config"),
+		DataDir:   filepath.Join(home, ".local", "share"),
+	}
+	if err := os.MkdirAll(filepath.Dir(Path(p)), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(Path(p), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
 }

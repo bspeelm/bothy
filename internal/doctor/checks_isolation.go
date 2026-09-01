@@ -6,12 +6,41 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/layout"
 )
 
 // Checks that bothy's own tree is intact and that nothing has been asked to
 // live outside it. ADR-009 as a runtime assertion rather than a test.
+
+// checkConfigKeys catches the typo that used to cost nothing to make and
+// everything to find. `toml.Unmarshal` over the defaults accepted any key, so
+// `slots.borwser = "yazi"` loaded cleanly, did nothing, and kept doing nothing
+// -- on every machine, because the README says to carry ~/.config/bothy in git.
+func checkConfigKeys(env Env) Result {
+	unknown := env.Config.Unknown
+	if len(unknown) == 0 {
+		return pass("every key in config.toml is recognised")
+	}
+	var lines []string
+	for _, k := range unknown {
+		if near := config.Nearest(k); near != "" {
+			lines = append(lines, fmt.Sprintf("%q — did you mean %q?", k, near))
+			continue
+		}
+		// Nothing close. The other reason a key is unrecognised is that it
+		// was written by a bothy newer than this one, and saying so is
+		// cheaper than the confused issue it would otherwise produce.
+		lines = append(lines, fmt.Sprintf("%q — written by a newer bothy?", k))
+	}
+	fix := "remove the line, or set it properly: bothy config set <key> <value>"
+	if near := config.Nearest(unknown[0]); near != "" {
+		fix = "bothy config set " + near + " <value>, and delete the old line"
+	}
+	return warn(fmt.Sprintf("%d unrecognised key(s) in config.toml", len(unknown)),
+		strings.Join(lines, "\n    "), fix)
+}
 
 // checkIsolation is the promise in ADR-009, checked rather than asserted:
 // bothy's tree exists, and the files revision 1 used to write are not there
