@@ -91,6 +91,20 @@ before downloading them, then launches.
 > bothy; download the next one when you want it. If you would rather updates
 > resolved themselves, use the script.
 
+### Where it runs
+
+Supported means tested in CI, which is the only sense of the word that can be
+checked ([ADR-012](docs/decisions.md)). Every release is installed, exercised
+and uninstalled inside Fedora and Ubuntu on x86_64, and the doctor's whole
+report is compared against an expected table.
+
+macOS is **untested**, not unsupported: darwin binaries ship, all nine tools are
+pinned for it, and the install advice knows Homebrew — but no macOS runner
+exists yet, and until one does, bothy on a Mac will never open its own window.
+
+Anywhere else, bothy runs and `bothy doctor` tells you what it cannot give you
+on that machine. Nobody has verified it, and it does not claim otherwise.
+
 ### Upgrading
 
 `bothy upgrade` works out how this copy was installed and prints the command
@@ -242,8 +256,6 @@ them into its own folder, and the result then works from anywhere.
 
 ## What bothy is not
 
-- A Windows tool, unless you use WSL
-- A tmux setup
 - A plugin marketplace or extension API
 - A bundle of the tools. It downloads official releases and verifies them
 - An LSP or debugger manager
@@ -258,10 +270,13 @@ them into its own folder, and the result then works from anywhere.
 
 ## Contributing
 
-See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding support
-for a new tool means writing a config file and some templates, not Go code.
+See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding a tool
+bothy can fetch is one config file. Adding a tool it configures is a file, some
+templates, and one branch. Only the multiplexer needs Go that interprets the
+layout, and [ADR-019](docs/decisions.md) says why that tier exists.
 
-Why things are the way they are is recorded in
+What bothy is aiming at is in [`docs/north-star.md`](docs/north-star.md), why
+things are the way they are is recorded in
 [`docs/decisions.md`](docs/decisions.md), and the plan for the project is in
 [`PLAN.md`](docs/PLAN.md).
 
