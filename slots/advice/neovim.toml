@@ -1,0 +1,16 @@
+# neovim is advised, never installed: bothy supplies no editor at all
+# (ADR-014). This file exists chiefly so that `binary` is written down --
+# neovim runs as `nvim`, and the alternative was a mapping in Go that nothing
+# outside Go could see.
+
+name = "neovim"
+what = "the editor in the editor profile"
+binary = "nvim"
+
+[install]
+fedora-ostree = "sudo rpm-ostree install neovim && systemctl reboot"
+fedora        = "sudo dnf install -y neovim"
+ubuntu        = "sudo apt install -y neovim"
+debian        = "sudo apt install -y neovim"
+arch          = "sudo pacman -S neovim"
+darwin        = "brew install neovim"

@@ -37,6 +37,21 @@ type Avoid struct {
 }
 
 // Get loads advice by name.
+// Binary is the command a provider is run as, which is not always its name:
+// helix runs as hx, claude-code as claude. Declared in the provider's own file
+// so that adding one needs no Go -- the mapping was three copies in two
+// packages, and a provider whose name and command differ could not be added
+// without editing all of them.
+//
+// A provider with no advice file is run as its own name, which is true of most
+// of them.
+func Binary(name string) string {
+	if a, err := Get(name); err == nil && a.Binary != "" {
+		return a.Binary
+	}
+	return name
+}
+
 func Get(name string) (Advice, error) {
 	src, err := bothy.Slots.ReadFile(filepath.Join("slots", "advice", name+".toml"))
 	if err != nil {

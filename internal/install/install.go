@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	bothy "github.com/bspeelm/bothy"
+	"github.com/bspeelm/bothy/internal/advice"
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
@@ -313,27 +314,17 @@ func openerDesc(p platform.Info) string {
 // EditorBinary maps an editor slot to the command it runs. Exported so the
 // doctor checks the same binary the launcher uses.
 func EditorBinary(slot string) string {
-	switch slot {
-	case "helix":
-		return "hx"
-	case "neovim":
-		return "nvim"
-	case "":
-		return "vim"
-	default:
-		return slot
+	if slot == "" {
+		slot = "vim"
 	}
+	return advice.Binary(slot)
 }
 
 func agentBinary(slot string) string {
-	switch slot {
-	case "claude-code", "":
-		return "claude"
-	case "gemini-cli":
-		return "gemini"
-	default:
-		return slot
+	if slot == "" {
+		slot = "claude-code"
 	}
+	return advice.Binary(slot)
 }
 
 // Commands maps layout slots to the commands their panes run.

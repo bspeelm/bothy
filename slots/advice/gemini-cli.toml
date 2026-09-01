@@ -1,0 +1,12 @@
+# The agent is advised, never installed -- see claude-code.toml for why.
+#
+# Named here so that `binary` lives in data: gemini-cli runs as `gemini`, and
+# that mapping used to be a switch in Go and a map in the doctor, which is two
+# places to forget.
+
+name = "gemini-cli"
+what = "the agent that sits in the main pane"
+binary = "gemini"
+
+[install]
+default = "npm install -g @google/gemini-cli"
