@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,5 +110,64 @@ func TestDevLeavesNothingBehindWhenNotInstalled(t *testing.T) {
 	entries, err := os.ReadDir(data)
 	if err == nil && len(entries) > 0 {
 		t.Errorf("a failed launch created %d path(s) under %s", len(entries), data)
+	}
+}
+
+// #50. Inside a container the host's ghostty runs the host's copy of bothy,
+// and which file that is was assumed to be ~/.local/bin/bothy. dnf and deb
+// both put it in /usr/bin, and both are supported install paths.
+func TestHostBothyAsksTheHostRatherThanAssuming(t *testing.T) {
+	p := platform.Info{Home: "/home/me", LocalBin: "/home/me/.local/bin"}
+
+	restore := hostBothyLookup
+	t.Cleanup(func() { hostBothyLookup = restore })
+
+	hostBothyLookup = func() (string, error) { return "/usr/bin/bothy", nil }
+	got, err := hostBothy(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "/usr/bin/bothy" {
+		t.Errorf("hostBothy = %q, want the path the host reported", got)
+	}
+}
+
+// A host PATH without ~/.local/bin is common in a non-login shell, and home is
+// shared, so the old assumption survives as a fallback rather than as the rule.
+func TestHostBothyFallsBackToTheSharedHome(t *testing.T) {
+	home := t.TempDir()
+	bin := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "bothy"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p := platform.Info{Home: home, LocalBin: bin}
+
+	restore := hostBothyLookup
+	t.Cleanup(func() { hostBothyLookup = restore })
+	hostBothyLookup = func() (string, error) { return "", errors.New("no flatpak-spawn") }
+
+	got, err := hostBothy(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(bin, "bothy"); got != want {
+		t.Errorf("hostBothy = %q, want the shared-home copy at %q", got, want)
+	}
+}
+
+// And when the host has neither, that is an error naming what to do about it
+// rather than a path that does not exist.
+func TestHostBothyReportsWhenTheHostHasNone(t *testing.T) {
+	p := platform.Info{Home: "/home/me", LocalBin: filepath.Join(t.TempDir(), "empty")}
+
+	restore := hostBothyLookup
+	t.Cleanup(func() { hostBothyLookup = restore })
+	hostBothyLookup = func() (string, error) { return "", errors.New("no flatpak-spawn") }
+
+	if _, err := hostBothy(p); err == nil {
+		t.Error("hostBothy invented a path for a host with no bothy")
 	}
 }
