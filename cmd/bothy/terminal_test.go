@@ -171,3 +171,73 @@ func TestHostBothyReportsWhenTheHostHasNone(t *testing.T) {
 		t.Error("hostBothy invented a path for a host with no bothy")
 	}
 }
+
+// #33. $DISPLAY and $WAYLAND_DISPLAY are X and Wayland. Aqua sets neither, so
+// keying on them meant bothy would never open a window on a Mac however
+// capable the machine was — and would report "no graphical display" on one
+// with a display.
+func TestDarwinHasADisplayUnlessYouAreSshedIn(t *testing.T) {
+	mac := platform.Info{OS: "darwin", Home: t.TempDir()}
+	clearDisplay(t)
+
+	if !hasDisplay(mac) {
+		t.Error("a Mac at its own keyboard was reported as having no display")
+	}
+
+	t.Setenv("SSH_CONNECTION", "10.0.0.1 22 10.0.0.2 22")
+	if hasDisplay(mac) {
+		t.Error("a Mac over ssh has no window server to open into")
+	}
+}
+
+// Linux keeps the X and Wayland answer, which is the one that is true there.
+func TestLinuxStillAsksTheDisplayServer(t *testing.T) {
+	linux := platform.Info{OS: "linux", Home: t.TempDir()}
+	clearDisplay(t)
+	if hasDisplay(linux) {
+		t.Error("no DISPLAY and no WAYLAND_DISPLAY should mean no display")
+	}
+	t.Setenv("WAYLAND_DISPLAY", "wayland-0")
+	if !hasDisplay(linux) {
+		t.Error("WAYLAND_DISPLAY set and still no display")
+	}
+}
+
+// macOS installs applications as bundles and Ghostty's installer puts nothing
+// on PATH, so a Mac with Ghostty installed looked to bothy like a Mac without.
+func TestGhosttyIsFoundInsideAnAppBundle(t *testing.T) {
+	home := t.TempDir()
+	bundle := filepath.Join(home, "Applications", "Ghostty.app", "Contents", "MacOS")
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bundle, "ghostty"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty"))
+
+	cmd, err := ghosttyCommand(platform.Info{OS: "darwin", Home: home})
+	if err != nil {
+		t.Fatalf("ghostty in ~/Applications was not found: %v", err)
+	}
+	if want := filepath.Join(bundle, "ghostty"); cmd[0] != want {
+		t.Errorf("ghosttyCommand = %v, want the binary inside the bundle at %s", cmd, want)
+	}
+}
+
+// And a Linux machine does not go looking for .app bundles.
+func TestAppBundlesAreNotConsultedOnLinux(t *testing.T) {
+	home := t.TempDir()
+	bundle := filepath.Join(home, "Applications", "Ghostty.app", "Contents", "MacOS")
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bundle, "ghostty"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty"))
+
+	if _, err := ghosttyCommand(platform.Info{OS: "linux", Home: home}); err == nil {
+		t.Error("a Linux machine found a macOS application bundle")
+	}
+}

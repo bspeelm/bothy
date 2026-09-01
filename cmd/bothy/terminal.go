@@ -44,7 +44,11 @@ func decideLaunch(p platform.Info, mode string) launchMode {
 	}
 
 	// No graphical session to open a window into: SSH, a bare TTY, CI.
-	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+	//
+	// $DISPLAY and $WAYLAND_DISPLAY are X and Wayland, so they say nothing
+	// about a Mac. Aqua sets neither, and keying on them meant bothy would
+	// never open a window on macOS however capable the machine was.
+	if !hasDisplay(p) {
 		return launchMode{Reason: "no graphical display; running here"}
 	}
 
@@ -78,11 +82,35 @@ func isTerminal(f *os.File) bool {
 	return true
 }
 
+// hasDisplay reports whether there is a session to open a window into.
+//
+// On darwin, an SSH login has no window server either, and $SSH_CONNECTION is
+// how that shows: the alternative is asking launchd, which is a great deal of
+// machinery to answer a question one environment variable already settles.
+func hasDisplay(p platform.Info) bool {
+	if p.OS == "darwin" {
+		return os.Getenv("SSH_CONNECTION") == "" && os.Getenv("SSH_TTY") == ""
+	}
+	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
+}
+
 // ghosttyCommand returns how to run ghostty. Inside a container it is a host
 // application, reached through flatpak-spawn --host.
 func ghosttyCommand(p platform.Info) ([]string, error) {
 	if path, err := exec.LookPath("ghostty"); err == nil {
 		return []string{path}, nil
+	}
+	// macOS installs applications as bundles, and Ghostty's own installer puts
+	// nothing on PATH. The binary inside the bundle is a normal executable and
+	// takes the same arguments, so this is a path to find rather than a
+	// different way to launch.
+	if p.OS == "darwin" {
+		for _, dir := range []string{"/Applications", filepath.Join(p.Home, "Applications")} {
+			bin := filepath.Join(dir, "Ghostty.app", "Contents", "MacOS", "ghostty")
+			if fi, err := os.Stat(bin); err == nil && !fi.IsDir() {
+				return []string{bin}, nil
+			}
+		}
 	}
 	if p.InContainer() {
 		if fs, err := exec.LookPath("flatpak-spawn"); err == nil {

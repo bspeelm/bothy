@@ -1,6 +1,9 @@
 package probe
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseVersion(t *testing.T) {
 	cases := map[string]Version{
@@ -70,5 +73,38 @@ func TestGraphicsUnknownMuxIsAssumedIncapable(t *testing.T) {
 	g := CheckGraphics("definitely-not-a-real-binary", "ghostty")
 	if g.Supported {
 		t.Error("an uninterrogable multiplexer must not be assumed capable")
+	}
+}
+
+// #71. graphicsTerminals treated "draws inline images" and "speaks the Kitty
+// protocol" as one fact, so iTerm2 -- which has drawn images since before that
+// protocol existed, by one of its own -- was reported as able to do neither.
+//
+// The distinction is not pedantry: zellij carries Kitty graphics and no other,
+// so the answer for iTerm2 depends on whether a multiplexer is in the way.
+func TestITerm2DrawsImagesButNotThroughZellij(t *testing.T) {
+	direct := CheckGraphics("", "iterm.app")
+	if !direct.Supported {
+		t.Errorf("iTerm2 with nothing in the way = unsupported: %s", direct.Reason)
+	}
+
+	through := CheckGraphics("zellij", "iterm.app")
+	if through.Supported {
+		t.Error("iTerm2 through zellij reported as working; zellij passes Kitty graphics only")
+	}
+	if !strings.Contains(through.Reason, "zellij does not carry") {
+		t.Errorf("the reason does not explain the mismatch: %s", through.Reason)
+	}
+}
+
+// A terminal nobody has written down is unknown, which is not the same as
+// known to be incapable -- and the reason should not claim otherwise.
+func TestAnUnknownTerminalIsNotClaimedIncapable(t *testing.T) {
+	g := CheckGraphics("zellij", "apple_terminal")
+	if g.Supported {
+		t.Error("an unlisted terminal was reported as drawing images")
+	}
+	if !strings.Contains(g.Reason, "not known to") {
+		t.Errorf("the reason overclaims: %s", g.Reason)
 	}
 }

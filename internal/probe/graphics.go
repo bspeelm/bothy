@@ -26,11 +26,32 @@ type Graphics struct {
 // 0.45.0 added the protocol; 0.45.1 fixed image sizing on startup.
 var MinZellijGraphics = Version{0, 45, 1}
 
-// graphicsTerminals are the emulators known to implement the Kitty graphics protocol.
-var graphicsTerminals = map[string]bool{
-	"ghostty": true,
-	"kitty":   true,
-	"wezterm": true,
+// terminalGraphics is what an emulator can draw, and by which protocol.
+//
+// The distinction matters because bothy runs Yazi inside a multiplexer.
+// Zellij passes the *Kitty* protocol through and nothing else, so a terminal
+// that draws images by a protocol of its own can show them when it is asked
+// directly and not through Zellij. Treating "draws images" and "speaks Kitty"
+// as one fact told iTerm2 users their terminal could do neither.
+type terminalGraphics struct {
+	// kitty reports the Kitty graphics protocol, which zellij can carry.
+	kitty bool
+	// own names a protocol of the terminal's own, which zellij cannot.
+	own string
+}
+
+// graphicsTerminals is what each emulator can do. A terminal that is absent
+// draws no images at all as far as bothy knows, which is not the same as
+// having been tested.
+var graphicsTerminals = map[string]terminalGraphics{
+	"ghostty": {kitty: true},
+	"kitty":   {kitty: true},
+	"wezterm": {kitty: true},
+
+	// $TERM_PROGRAM, lowercased by platform.detectTerminal. iTerm2 has drawn
+	// inline images since long before the Kitty protocol existed and still
+	// uses its own.
+	"iterm.app": {own: "iTerm2's own inline-image protocol"},
 }
 
 // CheckGraphics decides whether Yazi should draw images.
@@ -38,14 +59,28 @@ var graphicsTerminals = map[string]bool{
 // muxBin is the multiplexer binary to interrogate (usually "zellij"); terminal
 // is the detected emulator. An empty muxBin means no multiplexer is involved.
 func CheckGraphics(muxBin, terminal string) Graphics {
-	if !graphicsTerminals[terminal] {
+	g, known := graphicsTerminals[terminal]
+	if !known {
 		what := terminal
 		if what == "" {
 			what = "this terminal"
 		}
 		return Graphics{
-			Reason: fmt.Sprintf("%s is not known to support the Kitty graphics protocol; "+
+			Reason: fmt.Sprintf("%s is not known to draw inline images; "+
 				"previews would fall back to block art", what),
+		}
+	}
+
+	// A protocol of the terminal's own works when Yazi is asked directly, and
+	// stops at the multiplexer: zellij carries Kitty graphics and nothing else.
+	if g.own != "" {
+		if muxBin == "" {
+			return Graphics{Supported: true,
+				Reason: terminal + " draws images with " + g.own + ", and nothing is in the way"}
+		}
+		return Graphics{
+			Reason: fmt.Sprintf("%s draws images with %s, which zellij does not carry — "+
+				"it passes the Kitty graphics protocol through and no other", terminal, g.own),
 		}
 	}
 
