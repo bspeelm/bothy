@@ -3,6 +3,9 @@ binary      = "rg"
 repo        = "BurntSushi/ripgrep"
 min_version = "13.0.0"
 
+# ripgrep publishes a .sha256 beside each asset, of the asset itself.
+checksums   = "{asset}.sha256"
+
 [assets]
 linux_x86_64   = "ripgrep-{version}-x86_64-unknown-linux-musl.tar.gz"
 linux_aarch64  = "ripgrep-{version}-aarch64-unknown-linux-gnu.tar.gz"

@@ -105,9 +105,13 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 	return &Result{Tool: t.Name, Version: lock.Version, Binaries: installed, SHA256: got}, nil
 }
 
+// ReleaseBase is where release assets are downloaded from, as a variable so a
+// test can point it at a local server rather than the internet.
+var ReleaseBase = "https://github.com"
+
 // ReleaseURL builds a GitHub release download URL.
 func ReleaseURL(repo, tag, asset string) string {
-	return fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repo, tag, asset)
+	return fmt.Sprintf("%s/%s/releases/download/%s/%s", ReleaseBase, repo, tag, asset)
 }
 
 // Download fetches a URL into memory. Assets are small enough that streaming to

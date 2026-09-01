@@ -39,6 +39,10 @@ type Entry struct {
 	Version string `toml:"version"`
 	// SHA256 is keyed by "<os>_<arch>".
 	SHA256 map[string]string `toml:"sha256"`
+	// Verified lists the platforms whose checksum was confirmed against one
+	// the project published itself, rather than only computed from the bytes
+	// GitHub served. Recorded so the answer survives the run.
+	Verified []string `toml:"verified,omitempty"`
 }
 
 // SHA returns the checksum for a platform, or "" if this entry has none.
@@ -112,6 +116,35 @@ func (l *Lockfile) Save(path string) error {
 		"# Regenerate with 'bothy lock'; review the diff before committing.\n" +
 		"# An install fetches exactly these and verifies the checksum first.\n\n"
 	return os.WriteFile(path, append([]byte(header), out...), 0o644)
+}
+
+// upstreamSum reads the sha256 a project published for one asset, or "" when
+// it published none.
+//
+// The file is "<sha256>  <filename>" lines, whether it is a sibling carrying
+// one line or a manifest carrying every asset in the release, so both are
+// found by looking for the line whose filename matches.
+//
+// Not every published checksum is of the asset. zellij's, for instance, is
+// the hash of the binary *inside* the archive, so it cannot be compared with
+// the archive's own -- which is why zellij carries no checksums field despite
+// publishing a file that looks like one.
+func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (string, error) {
+	name, err := t.ChecksumFile(p, version)
+	if err != nil || name == "" {
+		return "", err
+	}
+	body, err := Download(ReleaseURL(t.Repo, tag, name))
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(string(body), "\n") {
+		f := strings.Fields(line)
+		if len(f) == 2 && strings.TrimPrefix(f[1], "*") == asset {
+			return strings.ToLower(f[0]), nil
+		}
+	}
+	return "", fmt.Errorf("%s does not list %s", name, asset)
 }
 
 // LatestRelease asks GitHub for a repository's latest release tag.
@@ -228,7 +261,36 @@ func Relock(t tools.Tool, progress func(string)) (Entry, error) {
 			}
 			continue
 		}
-		e.SHA256[p.OS+"_"+p.Arch] = Sum(body)
+		sum := Sum(body)
+		e.SHA256[p.OS+"_"+p.Arch] = sum
+
+		// Cross-check against what the project itself published, where it
+		// publishes anything. Computing a checksum from the bytes GitHub
+		// served is trust-on-first-use: it catches a release tampered with
+		// after locking and pins one tampered with before. This is the only
+		// place that gap can be closed, and it closes for four of the nine.
+		switch upstream, err := upstreamSum(t, p, tag, version, asset); {
+		case err != nil:
+			if progress != nil {
+				progress("    upstream checksum unreadable: " + err.Error())
+			}
+		case upstream == "":
+			if progress != nil {
+				progress("    no upstream checksum published")
+			}
+		case upstream != sum:
+			// Hard failure. The whole point of reading the upstream value is
+			// that this is the one case it exists to catch.
+			return Entry{}, fmt.Errorf(
+				"fetch: %s %s %s_%s: upstream checksum does not match what was downloaded\n"+
+					"      upstream %s\n      download %s",
+				t.Name, version, p.OS, p.Arch, upstream, sum)
+		default:
+			e.Verified = append(e.Verified, p.OS+"_"+p.Arch)
+			if progress != nil {
+				progress("    upstream checksum matched")
+			}
+		}
 	}
 	if len(e.SHA256) == 0 {
 		return Entry{}, fmt.Errorf("fetch: %s %s: no asset downloaded for any platform", t.Name, tag)
