@@ -33,6 +33,12 @@ type Config struct {
 	// not a second code path. See PLAN.md §5.
 	Passthrough []string `toml:"passthrough"`
 
+	// Unreadable holds keys bothy recognises but could not read, because the
+	// value is the wrong type -- usually a key whose type changed between
+	// versions. Reported differently from Unknown, because "did you mean
+	// background_image?" about background_image helps nobody.
+	Unreadable []string `toml:"-"`
+
 	// Unknown holds keys in config.toml that bothy does not recognise. It is
 	// populated by Load and never written back -- a config carried between
 	// machines in git must not grow a record of its own typos.
@@ -87,14 +93,18 @@ type Workspace struct {
 	// "here" never does, "window" always does. --in-place and --window
 	// override it for a single run.
 	Launch string `toml:"launch"`
-	// Watermark is an image to sit behind the terminal, given as a path to a
-	// file of your own. Empty means none.
+	// BackgroundImage sits behind the terminal, given as a path to a file of
+	// your own. Empty means none.
 	//
 	// A path rather than a switch because bothy ships no art: the trick wants
 	// an image composited where one pane will be, which depends on your
 	// screen, and a picture bothy chose would be wrong on most of them. See
 	// docs/watermark.md.
-	Watermark string `toml:"watermark"`
+	//
+	// Named for what it is rather than what it is for. The rename is what lets
+	// a config written by an older bothy -- where this key was a boolean
+	// called `watermark` -- meet the unknown-key path instead of a type error.
+	BackgroundImage string `toml:"background_image"`
 	// PaneFrames is "full", "titles" or "none".
 	//
 	// Set explicitly rather than left to Zellij, whose default changed to
@@ -127,6 +137,70 @@ func Default() Config {
 	}
 }
 
+// withoutUnreadableKeys removes keys the decoder cannot assign, returning the
+// remaining TOML and the names it dropped.
+//
+// A key whose *type* changed between versions is the same problem as one whose
+// name changed, and #31 settled that answer: warn, never refuse. The decoder
+// stops at the first such key, so it has to be removed and the decode retried
+// -- otherwise every key after it would quietly keep its default, which is a
+// worse failure than the error it replaced.
+//
+// The key is found by position rather than by name: go-toml reports a row and
+// column for a type error and leaves Key() empty, so the line is what there is
+// to go on.
+//
+// Bounded because the loop is driven by an error: a decoder reporting a line
+// this cannot remove would otherwise spin.
+func withoutUnreadableKeys(src []byte) ([]byte, []string) {
+	var dropped []string
+	for range 16 {
+		var probe Config
+		err := toml.Unmarshal(src, &probe)
+		var bad *toml.DecodeError
+		if err == nil || !errors.As(err, &bad) {
+			return src, dropped
+		}
+		row, _ := bad.Position()
+		trimmed, name, ok := dropLine(src, row)
+		if !ok {
+			return src, dropped
+		}
+		// Only a cut that leaves valid TOML is accepted. A value spanning
+		// several lines would otherwise be half-removed, turning one bad key
+		// into a broken file -- which is the failure this exists to prevent.
+		var tree map[string]any
+		if toml.Unmarshal(trimmed, &tree) != nil {
+			return src, dropped
+		}
+		src, dropped = trimmed, append(dropped, name)
+	}
+	return src, dropped
+}
+
+// dropLine removes one 1-indexed line and names the key it defined, qualified
+// by whichever table it was under.
+func dropLine(src []byte, row int) ([]byte, string, bool) {
+	lines := strings.Split(string(src), "\n")
+	if row < 1 || row > len(lines) {
+		return nil, "", false
+	}
+	key, _, found := strings.Cut(lines[row-1], "=")
+	key = strings.TrimSpace(key)
+	if !found || key == "" {
+		return nil, "", false
+	}
+	for i := row - 2; i >= 0; i-- {
+		t := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(t, "[") && strings.HasSuffix(t, "]") {
+			key = strings.Trim(t, "[]") + "." + key
+			break
+		}
+	}
+	out := append(append([]string{}, lines[:row-1]...), lines[row:]...)
+	return []byte(strings.Join(out, "\n")), key, true
+}
+
 // Path returns the config file location for a detected machine.
 func Path(p platform.Info) string {
 	return filepath.Join(p.ConfigDir, "bothy", "config.toml")
@@ -153,6 +227,9 @@ func Load(p platform.Info) (Config, error) {
 	// a key written by a newer bothy must not brick an older one, or carrying
 	// ~/.config/bothy between machines in git breaks in the other direction.
 	// The decoder populates the struct fully either way.
+	src, unreadable := withoutUnreadableKeys(src)
+	cfg.Unreadable = unreadable
+
 	dec := toml.NewDecoder(bytes.NewReader(src))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&cfg); err != nil {

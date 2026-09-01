@@ -3,7 +3,7 @@
 An image behind the terminal, off unless you point at one:
 
 ```sh
-bothy config set workspace.watermark ~/pictures/bothy-watermark.png
+bothy config set workspace.background_image ~/pictures/bothy-watermark.png
 bothy install
 ```
 
@@ -56,7 +56,7 @@ background-image-opacity = 0.12
 
 ## When it does not appear
 
-`bothy doctor` fails if `workspace.watermark` names a file that is not there,
+`bothy doctor` fails if `workspace.background_image` names a file that is not there,
 because Ghostty says nothing about a `background-image` it cannot find. It
 draws nothing, which looks identical to "the opacity is too low" and sends you
 tuning a setting that was never the problem.

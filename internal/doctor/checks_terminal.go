@@ -99,7 +99,7 @@ func terminfoFix(env Env, term string) string {
 // exactly like "the opacity is too low" and sends you tuning a setting that
 // was never the problem.
 func checkWatermarkImage(env Env) Result {
-	path := config.Expand(env.Config.Workspace.Watermark, env.Platform.Home)
+	path := config.Expand(env.Config.Workspace.BackgroundImage, env.Platform.Home)
 	if path == "" {
 		return skip("no watermark configured")
 	}
