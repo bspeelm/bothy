@@ -68,7 +68,7 @@ func removeTree(p platform.Info, rep *UninstallReport, dryRun bool) error {
 // delete — and os.Executable is the only thing that answers "is this me".
 func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool) {
 	self := runningBinary()
-	if self == "" || p.LocalBin == "" || filepath.Dir(self) != p.LocalBin {
+	if self == "" || p.LocalBin == "" || !sameDir(filepath.Dir(self), p.LocalBin) {
 		return
 	}
 	if !fileExists(self) {
@@ -93,6 +93,22 @@ func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool
 // osExecutable is a variable so a test can say which binary is running: under
 // `go test` the real one is the test binary.
 var osExecutable = os.Executable
+
+// sameDir compares two directories through whatever symlinks stand in the way.
+//
+// runningBinary resolves them and LocalBin does not, so on macOS -- where a
+// home under /var is reached through a symlink to /private/var -- the two name
+// one directory in two ways and never match. The binary then survives an
+// uninstall that reported success.
+func sameDir(a, b string) bool {
+	if resolved, err := filepath.EvalSymlinks(a); err == nil {
+		a = resolved
+	}
+	if resolved, err := filepath.EvalSymlinks(b); err == nil {
+		b = resolved
+	}
+	return a == b
+}
 
 func runningBinary() string {
 	self, err := osExecutable()

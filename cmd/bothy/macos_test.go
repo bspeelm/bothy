@@ -84,12 +84,19 @@ func TestBothyInstallsOnMacOS(t *testing.T) {
 	assertNothingUnexplained(t, m.snapshot())
 	assertReport(t, m.doctor(), macExpectation)
 
-	// Every tool had to come from bothy, because PATH holds only the system
-	// directories. That is the darwin half of bothy.lock proved: the asset
-	// names, the checksums, and the archive layouts.
+	// With only the system directories on PATH, the tools bothy had to fetch
+	// are the darwin half of bothy.lock under test: asset names, checksums and
+	// archive layouts. macOS ships its own jq, which bothy leaves alone --
+	// fill gaps, never replace -- so the claim is about the two it certainly
+	// does not ship rather than a count.
 	out, _ := m.run("tools")
-	if strings.Count(out, "supplied by bothy") < 8 {
-		t.Errorf("expected every tool to come from bothy on a bare PATH:\n%s", out)
+	for _, name := range []string{"zellij", "yazi"} {
+		if !strings.Contains(out, name) || !strings.Contains(out, "supplied by bothy") {
+			t.Errorf("%s did not come from bothy on a bare PATH:\n%s", name, out)
+		}
+	}
+	if strings.Contains(out, "not installed") {
+		t.Errorf("a tool is still missing after install:\n%s", out)
 	}
 
 	if out, code := m.run("layout"); code != 0 || !strings.Contains(out, "pane") {
