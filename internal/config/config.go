@@ -99,9 +99,8 @@ type Workspace struct {
 }
 
 // DefaultExtras are the CLI tools Yazi's previews, search and jump commands
-// and the side pane lean on. delta is the exception — nothing bothy generates
-// references it; see issue #45.
-var DefaultExtras = []string{"lazygit", "delta", "fzf", "ripgrep", "fd", "zoxide", "jq"}
+// and the side pane lean on.
+var DefaultExtras = []string{"lazygit", "fzf", "ripgrep", "fd", "zoxide", "jq"}
 
 // Default is the shipped configuration: the origin setup, with every
 // machine-specific value left blank for detection to fill in.

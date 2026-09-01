@@ -506,3 +506,32 @@ makes them one.
 The rule ADR-005 was reaching for survives as a direction: the second tier
 should shrink as the first grows, and a provider that lands in the third tier
 without being a multiplexer is still the bug ADR-005 described.
+
+## ADR-020 — delta is dropped, and the side pane stays a shell
+
+delta was downloaded on every install because the setup bothy ports wired it in
+as git's pager. ADR-009 stopped bothy writing to `~/.gitconfig`, so the wiring
+went and the tool stayed: 7 MB fetched, pinned and version-checked for a
+feature that no longer exists. Nothing bothy generates has referred to it since.
+
+The alternative was to give it a job. ADR-016 raised it as one of the questions
+"the agent is the point" settles — make the side pane optionally lazygit, which
+reads delta as its pager, and a diff is one keypress from the agent that caused
+it. That is a good argument and it is not the one taken, for two reasons that
+both postdate it.
+
+ADR-017 names the third pane: *a shell below right, because you will want to
+run something without leaving*. A side pane that is lazygit is a cockpit
+without a shell, which is a weaker arrangement than the one the invariant
+describes, not a richer one.
+
+And `PLAN.md`'s non-goal is specifically that lazygit is one keypress away *in
+the shell pane*. That is the review mode. Replacing the shell with lazygit
+removes the thing that argument rests on, so bothy would have to choose between
+a shell and a diff where today it has a shell that can produce either.
+
+So delta leaves entirely — `DefaultExtras`, `slots/tools/`, and `bothy.lock` —
+rather than becoming an optional download nobody would find. It is one `dnf
+install git-delta` away, and it only ever did anything once its owner had wired
+it into a file bothy does not write. The cockpit is unchanged: three panes, and
+the third is a shell.

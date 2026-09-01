@@ -202,7 +202,7 @@ func LatestRelease(repo string) (string, error) {
 // VersionFromTag strips the decoration a project puts on its tags.
 //
 //	v0.45.1   -> 0.45.1     (most)
-//	0.19.2    -> 0.19.2     (delta, ripgrep)
+//	0.19.2    -> 0.19.2     (ripgrep)
 //	jq-1.8.2  -> 1.8.2      (jq)
 func VersionFromTag(tag string) string {
 	// Strip a leading "<name>-" prefix, and only that: the version starts at

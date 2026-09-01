@@ -74,9 +74,11 @@ Not vendoring: `PLAN.md` §11 rules out bundling other people's code and
 true. `git` remains a prerequisite, and the README should say so rather than
 imply otherwise.
 
-**Remove delta from `DefaultExtras`.** Nothing bothy writes has referenced it
-since the git-pager wiring was removed; 7 MB nobody uses. Anyone who wants it
-has it in their own gitconfig. (#45)
+**Drop delta.** Nothing bothy writes has referenced it since ADR-009 removed
+the git-pager wiring, so it was 7 MB downloaded for a feature that no longer
+exists. Out of `DefaultExtras`, out of `slots/tools/`, out of `bothy.lock`.
+Anyone who wants it installs it themselves and wires it into the gitconfig
+bothy has promised not to touch. (#45, ADR-020)
 
 **Fix the host-binary assumption in `spawnTerminal`.** Inside a container it
 assumes the host's bothy is at `~/.local/bin/bothy`, which is wrong for a dnf
