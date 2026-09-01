@@ -128,6 +128,20 @@ quiet.
 | `bothy desktop-entry` | Print a `.desktop` launcher (`--install` writes it) |
 | `bothy uninstall` | Remove bothy, and everything it brought, and nothing it did not |
 
+### More than one project at a time
+
+Each directory gets its own session, named after it, so there is nothing to
+tear down when you move between them:
+
+```sh
+cd ~/other-project && bothy    # a second room; the first keeps running
+bothy ls                       # both of them
+bothy attach bothy-first       # back to the one you left, agent and all
+```
+
+Sessions survive closing the window. They do not survive a reboot, which is
+the correct amount of permanence for a room.
+
 ## What it touches
 
 ```

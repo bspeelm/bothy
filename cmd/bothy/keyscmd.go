@@ -50,6 +50,7 @@ func keysText(p platform.Info) string {
 		fmt.Fprintf(&b, "  %-28s %s\n", k.on, k.does)
 	}
 	fmt.Fprintf(&b, "  %-28s %s\n", "bothy attach", "come back to a detached one")
+	fmt.Fprintf(&b, "  %-28s %s\n", "bothy ls", "the rooms you have open")
 
 	if written := browserKeys(p); len(written) > 0 {
 		b.WriteString("\nThe file pane — these are bothy's.\n\n")
