@@ -86,17 +86,14 @@ to be; you will do this once.
 
 ### What gets installed
 
-If you have none of them, nine tools, about 131 MB. That is a fair amount of
+If you have none of them, eight tools, about 117 MB. That is a fair amount of
 disk for three panes, and it is written here so that you find out from the
 README rather than from `du`.
 
 | | | | |
 |---|---|---|---|
-| zellij | yazi | lazygit | delta |
-| ripgrep | fzf | fd | jq |
-| zoxide | | | |
-
-zoxide has the last row to itself for reasons of arithmetic.
+| zellij | yazi | lazygit | ripgrep |
+| fzf | fd | jq | zoxide |
 
 Each download is checked against a recorded checksum before bothy keeps it.
 A checksum is not a signature; it proves the file is the one bothy expected,

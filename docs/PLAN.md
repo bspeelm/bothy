@@ -147,9 +147,9 @@ downloads nothing.
 Full download cost if *every* tool has to be filled in — measured, not
 estimated:
 
-| zellij | yazi | lazygit | delta | jq | ripgrep | fzf | fd | zoxide | total |
-|---|---|---|---|---|---|---|---|---|---|
-| 17.2 | 13.1 | 6.6 | 3.2 | 2.2 | 1.9 | 1.9 | 1.4 | 0.5 | **48.0 MB** |
+| zellij | yazi | lazygit | jq | ripgrep | fzf | fd | zoxide | total |
+|---|---|---|---|---|---|---|---|---|
+| 17.2 | 13.1 | 6.6 | 2.2 | 1.9 | 1.9 | 1.4 | 0.5 | **44.8 MB** |
 
 Static binaries, no dependency trees, shared across every project.
 

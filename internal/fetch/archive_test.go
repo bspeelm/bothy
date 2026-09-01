@@ -64,20 +64,20 @@ func TestExtractTarGzAtRoot(t *testing.T) {
 	}
 }
 
-// delta, ripgrep, fd and zoxide nest the binary inside a versioned directory.
+// ripgrep, fd and zoxide nest the binary inside a versioned directory.
 // Matching on basename is what makes one code path cover both layouts.
 func TestExtractTarGzInVersionedDirectory(t *testing.T) {
 	body := tarGz(t, map[string]string{
-		"delta-0.19.2-x86_64-unknown-linux-musl/delta":   "ELF",
-		"delta-0.19.2-x86_64-unknown-linux-musl/README":  "hi",
-		"delta-0.19.2-x86_64-unknown-linux-musl/doc/man": "man",
+		"ripgrep-14.1.1-x86_64-unknown-linux-musl/rg":      "ELF",
+		"ripgrep-14.1.1-x86_64-unknown-linux-musl/README":  "hi",
+		"ripgrep-14.1.1-x86_64-unknown-linux-musl/doc/man": "man",
 	})
-	got, err := Extract(body, "delta-0.19.2-x86_64-unknown-linux-musl.tar.gz", []string{"delta"})
+	got, err := Extract(body, "ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz", []string{"rg"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got["delta"]) != "ELF" {
-		t.Errorf("got %q", got["delta"])
+	if string(got["rg"]) != "ELF" {
+		t.Errorf("got %q", got["rg"])
 	}
 }
 
