@@ -1,0 +1,134 @@
+package install
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/bspeelm/bothy/internal/platform"
+)
+
+// #49. `ya pkg add` records a revision, but it records whatever HEAD was on
+// that machine that day, so two installs a week apart got different plugins.
+// A plugin without a pin reintroduces exactly that.
+func TestEveryPluginIsPinned(t *testing.T) {
+	plugins, err := YaziPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plugins) == 0 {
+		t.Fatal("no plugins loaded, so this test asserts nothing")
+	}
+	for _, pl := range plugins {
+		if len(pl.Rev) != 40 {
+			t.Errorf("%s is pinned at %q; want a full 40-character sha, "+
+				"because a short one can become ambiguous as the repository grows",
+				pl.Name, pl.Rev)
+		}
+		if strings.Trim(pl.Rev, "0123456789abcdef") != "" {
+			t.Errorf("%s: rev %q is not a hex sha", pl.Name, pl.Rev)
+		}
+	}
+}
+
+// What bothy writes for `ya pkg install` to act on, and what it reads back to
+// decide whether a plugin is at the revision it should be.
+func TestPackageFileRoundTrips(t *testing.T) {
+	p := sandboxPlatform(t)
+	if err := os.MkdirAll(YaziDir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	plugins := []Plugin{
+		{Name: "git", Use: "yazi-rs/plugins:git", Rev: strings.Repeat("a", 40)},
+		{Name: "chmod", Use: "yazi-rs/plugins:chmod", Rev: strings.Repeat("b", 40)},
+	}
+	if err := writePackageFile(p, plugins); err != nil {
+		t.Fatal(err)
+	}
+	got := installedRevs(p)
+	for _, pl := range plugins {
+		if got[pl.Use] != pl.Rev {
+			t.Errorf("%s read back as %q, want %q", pl.Name, got[pl.Use], pl.Rev)
+		}
+	}
+}
+
+// A plugin sitting at some other revision is not "installed". Without this,
+// moving a pin would change the repository and nothing else: the directory
+// exists, so the old copy would stay forever.
+func TestAPluginAtTheWrongRevisionCountsAsMissing(t *testing.T) {
+	p := sandboxPlatform(t)
+	plugins, err := YaziPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := plugins[0]
+
+	// Present on disk, but recorded at a revision that is not the pinned one.
+	if err := os.MkdirAll(filepath.Join(YaziDir(p), "plugins", first.Name+".yazi"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stale := append([]Plugin(nil), plugins...)
+	stale[0].Rev = strings.Repeat("f", 40)
+	if err := writePackageFile(p, stale); err != nil {
+		t.Fatal(err)
+	}
+
+	// Offline, so nothing is fetched and the classification is all that runs.
+	rep, err := EnsureYaziPlugins(p, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pl := range rep.Present {
+		if pl.Name == first.Name {
+			t.Fatalf("%s counted as present while sitting at the wrong revision, "+
+				"so moving its pin would never take effect", first.Name)
+		}
+	}
+}
+
+// And one at the pinned revision is left alone, so an install that has nothing
+// to do runs no subprocess at all.
+func TestAPluginAtThePinnedRevisionIsLeftAlone(t *testing.T) {
+	p := sandboxPlatform(t)
+	plugins, err := YaziPlugins()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pl := range plugins {
+		if err := os.MkdirAll(filepath.Join(YaziDir(p), "plugins", pl.Name+".yazi"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writePackageFile(p, plugins); err != nil {
+		t.Fatal(err)
+	}
+
+	rep, err := EnsureYaziPlugins(p, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Present) != len(plugins) {
+		t.Errorf("%d of %d plugins recognised as present", len(rep.Present), len(plugins))
+	}
+	if len(rep.Failed) != 0 {
+		t.Errorf("offline install reported failures for plugins already at their pin: %+v", rep.Failed)
+	}
+}
+
+func sandboxPlatform(t *testing.T) platform.Info {
+	t.Helper()
+	home := t.TempDir()
+	p := platform.Info{
+		OS: "linux", Arch: "x86_64",
+		Home:      home,
+		DataDir:   filepath.Join(home, ".local", "share"),
+		ConfigDir: filepath.Join(home, ".config"),
+		LocalBin:  filepath.Join(home, ".local", "bin"),
+	}
+	if err := os.MkdirAll(YaziDir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}

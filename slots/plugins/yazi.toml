@@ -5,13 +5,23 @@
 # that fails at launch. The generated files are therefore written to match what
 # is actually installed, and `bothy doctor` reports the difference.
 #
-# They are installed with `ya pkg add`, Yazi's own package manager, which
-# honours YAZI_CONFIG_HOME and records a rev and hash in package.toml. That
-# keeps them pinned and inside bothy's tree without vendoring anyone's code.
+# They are installed with Yazi's own package manager, which honours
+# YAZI_CONFIG_HOME, so they land inside bothy's tree without vendoring anyone's
+# code (PLAN.md §11, NOTICE).
+#
+# `rev` is the pin. `ya pkg add` records a revision too, but it records
+# whatever HEAD was on that machine on that day -- so two people installing a
+# week apart got different plugins. bothy writes package.toml from these
+# revisions instead and runs `ya pkg install`, which checks out exactly what is
+# named here. Never `ya pkg upgrade`: it moves the revision to HEAD, which is
+# the behaviour this pin exists to prevent.
+#
+# To move a pin: change the sha, install, and check the plugin still works.
 
 [[plugin]]
 name  = "git"
 use   = "yazi-rs/plugins:git"
+rev   = "c591a36e7263e95497715d525e9c46c2f0a880ac"
 gives = "per-file git status in the listing"
 # Needs both halves: a fetcher entry in yazi.toml and a setup call in init.lua.
 # With only one, it silently does nothing.
@@ -20,17 +30,20 @@ needs = ["init", "fetcher"]
 [[plugin]]
 name  = "full-border"
 use   = "yazi-rs/plugins:full-border"
+rev   = "c591a36e7263e95497715d525e9c46c2f0a880ac"
 gives = "closed pane borders, so the theme reads as a full frame"
 needs = ["init"]
 
 [[plugin]]
 name  = "smart-enter"
 use   = "yazi-rs/plugins:smart-enter"
+rev   = "c591a36e7263e95497715d525e9c46c2f0a880ac"
 gives = "l opens a file or enters a directory"
 needs = ["keymap"]
 
 [[plugin]]
 name  = "chmod"
 use   = "yazi-rs/plugins:chmod"
+rev   = "c591a36e7263e95497715d525e9c46c2f0a880ac"
 gives = "c m to chmod without dropping to a shell"
 needs = ["keymap"]
