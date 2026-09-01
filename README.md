@@ -9,7 +9,8 @@
 <h1 align="center">bothy</h1>
 
 <p align="center">
-  <em>a terminal cockpit for working with an AI coding agent — that leaves no trace</em>
+  <em>A room you can trust because it wants nothing.<br>
+  The agent, of course, is another matter.</em>
 </p>
 
 > **bothy** *(n., Scottish)* — a small unlocked mountain shelter, free for anyone
@@ -35,10 +36,15 @@ removes it.
 
 The default layout is built for one job: watching an agent work on a repository
 and staying in the loop while it does. The file browser is there so you can see
-what changed, the shell so you can check it, and the whole thing is disposable
-so you can try it on a machine you do not want to keep it on. bothy runs
-perfectly well with `slots.agent none` if you want the workspace without the
-agent — but the agent is what it was shaped around.
+what changed, the shell so you can check it.
+
+To be plain about what is disposable: **bothy is**, not the agent's work. The
+agent runs as you and its edits are real — bothy gives you a good seat and a
+tidy uninstall, not a safety net. What you can delete in one command is the
+toolchain and the configs bothy brought with it.
+
+bothy runs perfectly well with `slots.agent none` if you want the workspace
+without the agent — but the agent is what it was shaped around.
 
 ## Install
 
@@ -243,6 +249,10 @@ them into its own folder, and the result then works from anywhere.
 - An LSP or debugger manager
 - A background service, auto-updater, or telemetry collector
 - A manager for your agent's config, keys or hooks
+- **A sandbox.** The agent runs as you, in your repository, with your
+  permissions. Its edits and commits are real and are not bothy's to undo.
+  What `bothy uninstall` removes is bothy — its tools and its configs — not
+  anything the agent did
 - A Flatpak. Flathub does not accept command-line software, and bothy
   downloads its tools as it runs, which Flatpak packaging is designed to avoid
 
