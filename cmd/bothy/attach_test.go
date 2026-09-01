@@ -41,7 +41,7 @@ func sandbox(t *testing.T, ownZellij bool) platform.Info {
 // reported "zellij is not installed" while `bothy` launched fine.
 func TestAttachPrefersTheZellijBothyInstalled(t *testing.T) {
 	p := sandbox(t, true)
-	plan, err := planAttach(p, config.Default(), nil)
+	plan, err := planAttach(p, config.Default(), "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestAttachPrefersTheZellijBothyInstalled(t *testing.T) {
 // bothy's environment reads the user's own zellij config.
 func TestAttachCarriesBothysEnvironment(t *testing.T) {
 	p := sandbox(t, true)
-	plan, err := planAttach(p, config.Default(), nil)
+	plan, err := planAttach(p, config.Default(), "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestAttachHopsOnlyFromOutsideAContainer(t *testing.T) {
 	cfg.Workspace.Container = "bothy-test"
 
 	outside := sandbox(t, true)
-	plan, err := planAttach(outside, cfg, []string{"work"})
+	plan, err := planAttach(outside, cfg, "", []string{"work"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestAttachHopsOnlyFromOutsideAContainer(t *testing.T) {
 	inside := sandbox(t, true)
 	inside.Container = platform.Toolbx
 	inside.ContainerName = "bothy-test"
-	plan, err = planAttach(inside, cfg, []string{"work"})
+	plan, err = planAttach(inside, cfg, "", []string{"work"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestAttachHopsOnlyFromOutsideAContainer(t *testing.T) {
 func TestAttachReportsAMissingMultiplexer(t *testing.T) {
 	p := sandbox(t, false)
 	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty"))
-	if _, err := planAttach(p, config.Default(), nil); err == nil {
+	if _, err := planAttach(p, config.Default(), "", nil); err == nil {
 		t.Error("attach resolved a zellij that is not installed anywhere")
 	}
 }

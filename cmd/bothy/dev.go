@@ -137,7 +137,68 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	if err := os.Chdir(dir); err != nil {
 		return err
 	}
-	return runWithEnv(install.SessionEnv(p, cfg), bin, "--layout", layoutFile)
+	env := install.SessionEnv(p, cfg)
+	session := sessionName(dir)
+	return runWithEnv(env, bin, launchArgs(session, layoutFile, liveSessions(bin, env))...)
+}
+
+// sessionName is the multiplexer session for a project directory. One session
+// per project is what lets `bothy attach` choose between them, so the name has
+// to be derived from the directory rather than generated, and has to survive
+// being a session name: zellij uses it as a directory under its cache.
+func sessionName(dir string) string {
+	var b strings.Builder
+	for _, r := range filepath.Base(filepath.Clean(dir)) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+			b.WriteRune(r)
+		default:
+			// Everything else collapses to one dash, so "my project" and
+			// "my/project" cannot become the same name by different routes.
+			if !strings.HasSuffix(b.String(), "-") {
+				b.WriteRune('-')
+			}
+		}
+	}
+	name := strings.Trim(b.String(), "-")
+	if name == "" {
+		return "bothy"
+	}
+	return "bothy-" + name
+}
+
+// launchArgs invokes the multiplexer for a session that may already be running.
+//
+// Attaching to a live session must not carry --layout: zellij applies a layout
+// to a session that exists by adding it as a new tab, so a second `bothy` in
+// the same project would grow the workspace rather than return to it.
+func launchArgs(session, layoutFile string, live []string) []string {
+	for _, s := range live {
+		if s == session {
+			return []string{"attach", session}
+		}
+	}
+	return []string{"--layout", layoutFile, "attach", "--create", session}
+}
+
+// liveSessions asks the multiplexer which sessions are running, through bothy's
+// own environment -- with the ambient one it reads a different cache directory
+// and reports none. No sessions and no multiplexer are the same answer here,
+// because creating is the right move for both.
+func liveSessions(bin string, env []string) []string {
+	cmd := exec.Command(bin, "list-sessions", "--short", "--no-formatting")
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+	var live []string
+	for _, line := range strings.Split(string(out), "\n") {
+		if s := strings.TrimSpace(line); s != "" {
+			live = append(live, s)
+		}
+	}
+	return live
 }
 
 // bothy's own bin first: a zellij bothy supplied is not on the ambient PATH.
@@ -175,7 +236,8 @@ func cmdAttach(args []string) error {
 	if err != nil {
 		return err
 	}
-	plan, err := planAttach(p, cfg, args)
+	dir, _ := os.Getwd()
+	plan, err := planAttach(p, cfg, sessionName(dir), args)
 	if err != nil {
 		return err
 	}
@@ -198,10 +260,15 @@ type attachPlan struct {
 	Env  []string
 }
 
-func planAttach(p platform.Info, cfg config.Config, args []string) (attachPlan, error) {
+func planAttach(p platform.Info, cfg config.Config, session string, args []string) (attachPlan, error) {
 	mux := cfg.Slots.Mux
 	if mux == "" {
 		mux = "zellij"
+	}
+	// Bare `bothy attach` means this project's session. Naming one explicitly
+	// still works, which is how you reach a session for somewhere else.
+	if len(args) == 0 && session != "" {
+		args = []string{session}
 	}
 	if !p.InContainer() {
 		if container := install.ContainerFor(p, cfg); container != "" {
