@@ -65,9 +65,12 @@ var onlineExpectation = map[string]doctor.Severity{
 	"passthrough":           doctor.Skip, // none configured
 	"isolation":             doctor.Pass,
 	"config-keys":           doctor.Pass, // the only config is the one the test wrote
-	"watermark-image":       doctor.Skip, // off by default
-	"zellij-config":         doctor.Pass,
-	"terminfo":              doctor.Pass, // only because prep installed infocmp
+	// The test installs and checks in one run with one binary, so the version
+	// the manifest records is the version doing the checking.
+	"config-age":      doctor.Pass,
+	"watermark-image": doctor.Skip, // off by default
+	"zellij-config":   doctor.Pass,
+	"terminfo":        doctor.Pass, // only because prep installed infocmp
 	// Warn, and correctly so: the forwarding shim is only written where there
 	// is a host to forward to, and neither base image ships xdg-open. There is
 	// nothing to open a file with here and nothing bothy can do about it.

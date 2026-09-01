@@ -76,10 +76,20 @@ func removeTree(p platform.Info, rep *UninstallReport, dryRun bool) error {
 // survives until it exits — so "remove it by hand" was caution with nothing
 // behind it, and an uninstaller that leaves itself installed has not finished.
 //
-// Only at the path bothy's own bootstrap uses. A copy someone put in
-// /usr/local/bin, or one a package manager owns, is not bothy's to delete.
+// Only the running binary, and only when it is at the path bothy's own
+// bootstrap uses. A copy someone put in /usr/local/bin, or one a package
+// manager owns, is not bothy's to delete.
+//
+// That was the intent all along; the code checked whether ~/.local/bin/bothy
+// *existed* instead. So an rpm- or deb-installed bothy at /usr/bin, run as
+// `bothy uninstall`, deleted someone's leftover script install that it had
+// nothing to do with. os.Executable is the only thing that actually answers
+// "is this me".
 func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool) {
-	self := filepath.Join(p.LocalBin, "bothy")
+	self := runningBinary()
+	if self == "" || p.LocalBin == "" || filepath.Dir(self) != p.LocalBin {
+		return
+	}
 	if !fileExists(self) {
 		return
 	}
@@ -95,6 +105,25 @@ func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool
 			rep.Removed = append(rep.Removed, self)
 		}
 	}
+}
+
+// runningBinary is this process's own executable, symlinks resolved, or "" if
+// it cannot be determined -- in which case removing nothing is the right
+// answer.
+// osExecutable is a variable so a test can say which binary is running. Under
+// `go test` the real one is the test binary, which is never the thing being
+// uninstalled.
+var osExecutable = os.Executable
+
+func runningBinary() string {
+	self, err := osExecutable()
+	if err != nil {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(self); err == nil {
+		return resolved
+	}
+	return self
 }
 
 // noteUserConfig mentions the settings directory, which is the user's and is

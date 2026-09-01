@@ -36,7 +36,7 @@ type ToolFailure struct {
 // say it again, with the fix.
 // progress is called before each download, because an install that pulls tens
 // of megabytes in silence is indistinguishable from one that has hung.
-func EnsureTools(p platform.Info, cfg config.Config, offline bool, progress func(string)) (*ToolReport, error) {
+func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer string, progress func(string)) (*ToolReport, error) {
 	rep := &ToolReport{Skipped: offline}
 
 	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
@@ -70,7 +70,7 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, progress func
 				})
 			}
 		}
-		return rep, m.Save(p.StateDir())
+		return rep, m.Save(p.StateDir(), bothyVer)
 	}
 	lock, err := fetch.LoadLock()
 	if err != nil {
@@ -108,7 +108,7 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, progress func
 		})
 	}
 
-	if err := m.Save(p.StateDir()); err != nil {
+	if err := m.Save(p.StateDir(), bothyVer); err != nil {
 		return nil, err
 	}
 	return rep, nil

@@ -96,6 +96,10 @@ type Env struct {
 	// through its own bin first. Checking the system's copy instead reports
 	// confidently about a binary that is not the one being used.
 	MuxBin string
+	// Version is the running binary's version, for comparison with the one
+	// recorded in the manifest. Passed in rather than read here, so that
+	// internal/doctor keeps knowing nothing about package main.
+	Version string
 	// ToolEnv is the environment bothy's session runs tools with. Checks that
 	// invoke a tool must use it, or they interrogate the user's config instead
 	// of bothy's — a check that confidently reports on the wrong file is worse
@@ -171,6 +175,7 @@ func Checks() []Check {
 		{ID: "passthrough", Run: checkPassthrough},
 		{ID: "isolation", Run: checkIsolation},
 		{ID: "config-keys", Run: checkConfigKeys},
+		{ID: "config-age", Run: checkConfigAge},
 		{ID: "watermark-image", Run: checkWatermarkImage},
 		{ID: "zellij-config", Run: checkZellijConfig},
 		{ID: "terminfo", Run: checkTerminfo},

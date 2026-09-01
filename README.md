@@ -78,6 +78,24 @@ before downloading them, then launches.
 > bothy; download the next one when you want it. If you would rather updates
 > resolved themselves, use the script.
 
+### Upgrading
+
+`bothy upgrade` works out how this copy was installed and prints the command
+for it. It never replaces the binary itself — that is your package manager's
+job, or the install script's.
+
+| installed with | upgrade with |
+|---|---|
+| the script | run the same one-liner again |
+| dnf | `sudo dnf upgrade bothy` |
+| apt | download the next `.deb` and `sudo apt install ./bothy_*.deb` |
+| `go install` | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+| source | `git pull && make install-binary` |
+
+**Then run `bothy install`.** The templates are compiled into the binary, so a
+newer bothy carries newer configs — and a launch does not re-render them.
+`bothy doctor` says so when the two disagree, but it is easier to just do it.
+
 ### What gets installed
 
 If you have none of them already, bothy downloads these nine tools, about
@@ -110,6 +128,7 @@ gives you the right command for both.
 | `bothy install` | Re-apply your settings after changing them |
 | `bothy tools` | Which tools are in use, and where they came from |
 | `bothy outdated` | Which pinned tools have newer releases upstream |
+| `bothy upgrade` | How to upgrade this copy of bothy |
 | `bothy config set <key> <value>` | Change a setting |
 | `bothy layout` | Print the layout that would be launched |
 | `bothy theme example` | Print a blank palette file |

@@ -55,6 +55,7 @@ Usage:
   bothy tools                   show which tools are used and where they came from
   bothy desktop-entry           print a .desktop launcher (--install to write it)
   bothy uninstall [--dry-run]   remove bothy's directory and its binary
+  bothy upgrade                 how to upgrade this copy of bothy
   bothy outdated [--json]       which pinned tools have newer releases
   bothy lock    [--tool T]      re-pin the tools in bothy.lock (maintainers)
   bothy version
@@ -94,6 +95,8 @@ func main() {
 		err = cmdLayout(args)
 	case "theme":
 		err = cmdTheme(args)
+	case "upgrade":
+		err = cmdUpgrade(args)
 	case "outdated":
 		err = cmdOutdated(args)
 	case "lock":

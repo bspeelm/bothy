@@ -27,7 +27,11 @@ const ManifestVersion = 2
 type Manifest struct {
 	Version   int       `json:"version"`
 	UpdatedAt time.Time `json:"updated_at"`
-	BothyVer  string    `json:"bothy_version"`
+	// BothyVer is the version that generated the configs beside this file.
+	// The templates are compiled into the binary, so a newer bothy carries
+	// newer templates -- and a launch does not re-render, so knowing which
+	// one wrote them is the only way to notice they are stale.
+	BothyVer string `json:"bothy_version"`
 	// InstalledIn is the container bothy resolved its tools in, or "" for the
 	// host. It matters because home is shared but PATH is not: tools found at
 	// /usr/bin inside a container are simply absent on the host, so a launch
@@ -76,8 +80,14 @@ func Load(stateDir string) (*Manifest, error) {
 
 // Save writes the manifest atomically. A half-written manifest would leave
 // uninstall unable to account for installed binaries.
-func (m *Manifest) Save(stateDir string) error {
+// bothyVer is the version of bothy doing the writing. It is stamped rather
+// than left to the caller because the point of recording it is that it is
+// always right, and a field the caller may forget is a field that is empty on
+// the machines that most need it -- this one was declared and never written by
+// any version of bothy until now.
+func (m *Manifest) Save(stateDir, bothyVer string) error {
 	m.Version = ManifestVersion
+	m.BothyVer = bothyVer
 	m.UpdatedAt = time.Now().UTC()
 	sort.Slice(m.Binaries, func(i, j int) bool { return m.Binaries[i].Name < m.Binaries[j].Name })
 

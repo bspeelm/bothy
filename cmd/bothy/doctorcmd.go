@@ -30,8 +30,9 @@ func cmdDoctor(args []string) error {
 func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	env := doctor.Env{
 		Platform: p, Config: cfg, ProfileName: cfg.Profile,
-		MuxBin: install.ToolPath(p, cfg.Slots.Mux),
-		RunsIn: hopTarget(p, cfg),
+		MuxBin:  install.ToolPath(p, cfg.Slots.Mux),
+		RunsIn:  hopTarget(p, cfg),
+		Version: version(),
 		// Check the tools the way bothy will actually run them.
 		ToolEnv: install.SessionEnv(p, cfg),
 	}

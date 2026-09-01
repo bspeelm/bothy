@@ -379,7 +379,15 @@ The container job also found what the unit tests structurally could not:
 `SessionEnv` set no XDG directories, so the tools bothy runs wrote outside its
 tree at every command except `install`.
 
-Deferred, unchanged: macOS, WSL2/Windows, tmux, `bothy update`.
+`bothy upgrade` shipped, and is worth saying what it is not: it prints the
+command for however this copy was installed and never writes to bothy's own
+binary. §11's auto-updater non-goal is untouched -- what was deferred here was
+a command you type, which is a different thing from a process that replaces
+you while you are not looking. It ships alongside a doctor check for the
+matching bug: a launch never re-renders, so a newer binary ran against an
+older binary's configs indefinitely and nothing said so.
+
+Deferred, unchanged: macOS, WSL2/Windows, tmux.
 
 Next, in 0.1.4: an apt path via goreleaser's `nfpms:`, and a weekly job that
 opens a tracking issue when a pinned tool has a newer release.

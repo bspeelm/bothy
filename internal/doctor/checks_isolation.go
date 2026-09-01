@@ -7,12 +7,53 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/fetch"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/state"
 )
 
 // Checks that bothy's own tree is intact and that nothing has been asked to
 // live outside it. ADR-009 as a runtime assertion rather than a test.
+
+// checkConfigAge catches the upgrade nobody finishes.
+//
+// Templates and profiles are compiled into the binary, and a launch does not
+// re-render -- ensureInstalled returns as soon as the config root exists. So a
+// newer bothy runs against whatever an older one wrote, indefinitely, and the
+// only thing that fixes it is typing `bothy install`, which nothing asks you
+// to do. This is the check that asks.
+//
+// Warn rather than fail: stale configs work, they are just not what this
+// binary would generate. Failing would exit non-zero on every machine that had
+// not yet re-installed, which is most of them the day this ships.
+func checkConfigAge(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
+	// A source build is ahead of the tag it describes, and a developer
+	// rebuilding all day does not need to be told their configs are one commit
+	// old. Note this is not `== "dev"`: make install-binary stamps git
+	// describe, so the real shape is v0.1.5-3-gabc1234-dirty.
+	if fetch.IsSourceBuild(env.Version) {
+		return skip("running a source build; version comparison would be noise")
+	}
+	m, err := state.Load(env.Platform.StateDir())
+	if err != nil {
+		return skip("no manifest to read a version from")
+	}
+	switch {
+	case m.BothyVer == "":
+		return warn("the configs were written by a bothy that predates this check",
+			"bothy did not record its version until 0.1.5, so this cannot say which one",
+			"bothy install")
+	case m.BothyVer != env.Version:
+		return warn("the configs were written by bothy "+m.BothyVer,
+			"you are running "+env.Version+", whose templates may differ; a launch does not re-render",
+			"bothy install")
+	}
+	return pass("the configs were written by this bothy")
+}
 
 // checkConfigKeys catches the typo that used to cost nothing to make and
 // everything to find. `toml.Unmarshal` over the defaults accepted any key, so

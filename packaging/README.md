@@ -186,6 +186,19 @@ Anyone who would rather that happened by itself is better served by the install
 script, which resolves `/releases/latest/` every time it runs. ADR-013 records
 why there is no PPA and no hosted repository.
 
+### Upgrading one
+
+`apt upgrade` will not do it, for the reason above. Download the next `.deb`
+and `apt install ./` it again -- that upgrades in place rather than objecting
+that the package is already there. `bothy upgrade` prints the command, and
+detects that dpkg owns the binary rather than guessing.
+
+The Copr side is the ordinary `sudo dnf upgrade bothy`, because that one *is*
+a repository.
+
+Either way, `bothy install` afterwards: the templates live in the binary and a
+launch does not re-render them.
+
 ### It declares no dependencies
 
 Like the rpm, and for reasons of its own rather than by inheritance. bothy needs
