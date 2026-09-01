@@ -84,3 +84,41 @@ func TestAgentAdviceExists(t *testing.T) {
 		t.Error("no install command for the agent")
 	}
 }
+
+// #72. The name a provider is configured by is not always the command it runs
+// as -- helix is hx, claude-code is claude -- and that mapping lived in an
+// EditorBinary switch, an agentBinary switch, and a map inlined in a doctor
+// check. Three copies in two packages, beside an advice.binary field that was
+// parsed and never read.
+func TestBinaryComesFromTheProvidersOwnFile(t *testing.T) {
+	for _, tc := range []struct{ name, want string }{
+		{"helix", "hx"},
+		{"neovim", "nvim"},
+		{"claude-code", "claude"},
+		{"gemini-cli", "gemini"},
+		// Named the same as the command it runs, and said so in its own file.
+		{"vim", "vim"},
+		// No advice file at all: a provider is run as its own name, which is
+		// true of most of them and is what makes "any command you name" work.
+		{"emacs", "emacs"},
+	} {
+		if got := Binary(tc.name); got != tc.want {
+			t.Errorf("Binary(%q) = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// Every advised provider whose command differs from its name has to say so,
+// or the difference goes back to being knowledge held in Go.
+func TestAdvisedProvidersDeclareTheirBinary(t *testing.T) {
+	for _, name := range []string{"helix", "neovim", "claude-code", "gemini-cli"} {
+		a, err := Get(name)
+		if err != nil {
+			t.Errorf("no advice file for %q: %v", name, err)
+			continue
+		}
+		if a.Binary == "" {
+			t.Errorf("%s declares no binary, so bothy would run a command by that name", name)
+		}
+	}
+}

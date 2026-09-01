@@ -88,11 +88,6 @@ func (i Info) StateDir() string { return filepath.Join(i.BothyDir(), "state") }
 // that what they cache lands inside bothy's tree like everything else.
 func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
 
-// ShareDir is what XDG_DATA_HOME points at for bothy's session. A level below
-// BothyDir, so that what the tools write stays in one removable directory.
-// Bothy's own tree does not move with it: that is what Root is for.
-func (i Info) ShareDir() string { return filepath.Join(i.BothyDir(), "share") }
-
 // UserConfigDir is ~/.config/bothy: the user's own settings, palette and
 // overrides. bothy reads it and writes only config.toml there.
 func (i Info) UserConfigDir() string { return filepath.Join(i.ConfigDir, "bothy") }

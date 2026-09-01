@@ -114,10 +114,7 @@ func checkAgent(env Env) Result {
 	if slot == "" || slot == "none" {
 		return skip("no agent slot configured")
 	}
-	bin := map[string]string{"claude-code": "claude", "gemini-cli": "gemini"}[slot]
-	if bin == "" {
-		bin = slot
-	}
+	bin := advice.Binary(slot)
 	if _, err := env.lookPath(bin); err != nil {
 		fix := "install it, or point the slot elsewhere: bothy config set slots.agent none"
 		if a, err := advice.Get(slot); err == nil {
