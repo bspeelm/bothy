@@ -106,6 +106,38 @@ jobs:
             }
           done
 
+  macos:
+    # ADR-012: a platform is supported when CI installs it, runs the doctor and
+    # matches an expected table. The README has listed macOS since v0.1.0 and
+    # nothing has ever proved it.
+    #
+    # This cannot reuse the container job's shape. There is no container to
+    # bind-mount a home into, so it installs into a temporary HOME on the
+    # runner and walks that instead. The assertions themselves are shared, in
+    # cmd/bothy/harness_test.go, so the two jobs cannot come to demand
+    # different things.
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      - run: make build
+
+      - name: install, verify and uninstall
+        # pipefail, or `go test | tee` reports tee's exit code and a failing
+        # test is green.
+        run: |
+          set -o pipefail
+          go test ./cmd/bothy/ -tags macos -timeout 15m -v \
+            -run TestBothyInstallsOnMacOS | tee macos.log
+          # `go test -run` exits 0 when its filter matches nothing.
+          grep -q -- "--- PASS: TestBothyInstallsOnMacOS" macos.log || {
+            echo "::error::the test did not run — the -run filter or the build tag has drifted"
+            exit 1
+          }
+
   deb:
     # The .deb only exists once a release is published, so without this the
     # first `apt install` of one happens after the tag is irrevocable.
