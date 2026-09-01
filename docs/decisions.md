@@ -185,7 +185,9 @@ explains itself does not.
 
 A second cap on total lines, at 7000, keeps the prose honest too. Comments
 should be worth their room; an unbounded allowance would eventually mean
-narration rather than reasoning.
+narration rather than reasoning. (**That second cap is replaced by ADR-021**,
+which caps comments as a share of code. The reason above is unchanged; the
+measure was wrong.)
 
 The general point, since it applies beyond this budget: when a measure and the
 thing it measures disagree, fix the measure. Do not quietly move its threshold,
@@ -535,3 +537,32 @@ rather than becoming an optional download nobody would find. It is one `dnf
 install git-delta` away, and it only ever did anything once its owner had wired
 it into a file bothy does not write. The cockpit is unchanged: three panes, and
 the third is a shell.
+
+## ADR-021 — The prose budget is a ratio, not a total
+
+ADR-010 capped code at 5,000 lines and added a second cap on *total* lines to
+keep the prose honest. The reason for the second cap was right and the measure
+was wrong, in the way that record itself describes.
+
+Total lines are code plus comments plus blanks, and code already has its own
+cap. So the total cap never bounded prose: it bounded prose *plus* code, and
+every line of legitimate functionality shrank the prose allowance by one.
+Between ADR-010 and this one, code grew by about 1,250 lines and consumed the
+entire margin, while comments stayed at roughly the same share of the codebase
+they had always been — 21% then, 22% now. Nothing about the prose had changed,
+and the prose budget failed.
+
+The measure that matches the principle is proportion. Comments are capped at
+**25% of code**, which is the question actually worth asking: is the
+explanation proportionate to the thing being explained? A file that doubles in
+size may honestly need twice the reasoning; one that adds a paragraph of
+narration to an unchanged function may not, and the ratio notices.
+
+This does not loosen anything. At the moment of the change the ratio stood at
+22% against a 25% cap, roughly the same headroom the total cap had when it was
+set — and unlike the total, it does not quietly tighten every time a feature
+lands.
+
+ADR-010's general point is the reason this record exists rather than a raised
+threshold: when a measure and the thing it measures disagree, fix the measure.
+It is a good rule and it caught its own second cap.

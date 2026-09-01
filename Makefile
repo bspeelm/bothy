@@ -7,11 +7,12 @@ LDFLAGS  := -s -w -X main.Version=$(VERSION)
 # PLAN.md §3: the core binary stays under 10 MB and the core source under ~5k
 # LOC. Checked, not aspired to.
 #
-# Two source limits: code is capped at 5k lines and total (with comments) at
-# MAX_TOTAL_LINES, so prose cannot grow without bound. See ADR-010 and ADR-015.
-MAX_BINARY_BYTES := 10485760
-MAX_CODE_LINES   := 5000
-MAX_TOTAL_LINES  := 6600
+# Two source limits: code is capped outright, and comments are capped as a
+# share of it, so prose has to stay proportionate to what it explains rather
+# than compete with it for room. See ADR-010, ADR-015 and ADR-021.
+MAX_BINARY_BYTES  := 10485760
+MAX_CODE_LINES    := 5000
+MAX_COMMENT_RATIO := 25
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
@@ -44,11 +45,12 @@ budgets: build
 	echo "binary: $$size bytes (budget $(MAX_BINARY_BYTES))"; \
 	if [ $$size -gt $(MAX_BINARY_BYTES) ]; then echo "over budget"; exit 1; fi
 	@code=$$(cat $(SOURCES) | grep -v '^[[:space:]]*//' | grep -vc '^[[:space:]]*$$'); \
-	total=$$(cat $(SOURCES) | wc -l); \
-	echo "code:   $$code lines (budget $(MAX_CODE_LINES))"; \
-	echo "total:  $$total lines (budget $(MAX_TOTAL_LINES), incl. comments)"; \
+	comments=$$(cat $(SOURCES) | grep -c '^[[:space:]]*//'); \
+	ratio=$$(( comments * 100 / code )); \
+	echo "code:     $$code lines (budget $(MAX_CODE_LINES))"; \
+	echo "comments: $$comments lines, $$ratio% of code (budget $(MAX_COMMENT_RATIO)%)"; \
 	if [ $$code -gt $(MAX_CODE_LINES) ]; then echo "over the code budget"; exit 1; fi; \
-	if [ $$total -gt $(MAX_TOTAL_LINES) ]; then echo "over the total budget"; exit 1; fi
+	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi
 
 check: lint test budgets
 
