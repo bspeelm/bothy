@@ -27,6 +27,7 @@ linux_x86_64 = '761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7
 name = 'fzf'
 tag = 'v0.74.3'
 version = '0.74.3'
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
 darwin_aarch64 = '1f8501cea4f9c0c2d6110d0ff75d0ec9451cd9d7524d9a26244a154ea89f3bd5'
@@ -38,6 +39,7 @@ linux_x86_64 = '3501a595e4b5c40a6b047340a0e8f805c46fd4e61ef95ef8a136ba8c61cf6f22
 name = 'jq'
 tag = 'jq-1.8.2'
 version = '1.8.2'
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
 darwin_aarch64 = '2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e'
@@ -49,6 +51,7 @@ linux_x86_64 = 'b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f
 name = 'lazygit'
 tag = 'v0.64.1'
 version = '0.64.1'
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
 darwin_aarch64 = 'a106b4c1bf8ab7539c4afb40a01cbde263a96513cdcb8bf7630278f07e88cd99'
@@ -60,6 +63,7 @@ linux_x86_64 = 'f8ea237c41f194cd799b48505518bfdaae4edf5a2ad6bd3d898e939785ee4532
 name = 'ripgrep'
 tag = '15.2.0'
 version = '15.2.0'
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
 darwin_aarch64 = '3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4'

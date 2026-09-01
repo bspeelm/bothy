@@ -5,6 +5,9 @@ binary      = "jq"
 repo        = "jqlang/jq"
 min_version = "1.6.0"
 
+# jq publishes one sha256sum.txt for the whole release.
+checksums   = "sha256sum.txt"
+
 [assets]
 linux_x86_64   = "jq-linux-amd64"
 linux_aarch64  = "jq-linux-arm64"

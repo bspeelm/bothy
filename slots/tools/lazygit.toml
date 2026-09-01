@@ -5,6 +5,9 @@ binary      = "lazygit"
 repo        = "jesseduffield/lazygit"
 min_version = "0.40.0"
 
+# lazygit publishes one checksums.txt for the whole release.
+checksums   = "checksums.txt"
+
 [assets]
 linux_x86_64   = "lazygit_{version}_linux_x86_64.tar.gz"
 linux_aarch64  = "lazygit_{version}_linux_arm64.tar.gz"

@@ -4,6 +4,9 @@ binary      = "fzf"
 repo        = "junegunn/fzf"
 min_version = "0.40.0"
 
+# fzf publishes one checksums file per release, named for the version.
+checksums   = "fzf_{version}_checksums.txt"
+
 [assets]
 linux_x86_64   = "fzf-{version}-linux_amd64.tar.gz"
 linux_aarch64  = "fzf-{version}-linux_arm64.tar.gz"

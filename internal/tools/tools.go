@@ -37,6 +37,10 @@ type Tool struct {
 	MinVersion string            `toml:"min_version"`
 	Reason     string            `toml:"reason"`
 	Assets     map[string]string `toml:"assets"`
+	// Checksums names the file the project publishes its own sha256 in, with
+	// {asset} and {version} interpolated. Empty when it publishes none, which
+	// is most of them. See Tool.ChecksumFile.
+	Checksums string `toml:"checksums"`
 }
 
 // Binaries is every binary this tool installs.
@@ -52,6 +56,25 @@ func (t Tool) Asset(p platform.Info, version string) (string, error) {
 		return "", fmt.Errorf("tools: %s has no asset for %s", t.Name, key)
 	}
 	return strings.ReplaceAll(pattern, "{version}", version), nil
+}
+
+// ChecksumFile is the release asset carrying this tool's own sha256 for one
+// platform, or "" when the project publishes none.
+//
+// Two shapes are in use upstream and one field covers both: a sibling beside
+// each asset ("{asset}.sha256"), or one manifest for the whole release
+// ("checksums.txt"). What is inside them is the same either way -- lines of
+// "<sha256>  <filename>" -- so the parser does not need to know which it got.
+func (t Tool) ChecksumFile(p platform.Info, version string) (string, error) {
+	if t.Checksums == "" {
+		return "", nil
+	}
+	asset, err := t.Asset(p, version)
+	if err != nil {
+		return "", err
+	}
+	name := strings.ReplaceAll(t.Checksums, "{asset}", asset)
+	return strings.ReplaceAll(name, "{version}", version), nil
 }
 
 // Min parses the minimum version.

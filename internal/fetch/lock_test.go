@@ -1,8 +1,12 @@
 package fetch
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
@@ -90,5 +94,96 @@ func TestPinnedVersionsSatisfyTheirOwnMinimums(t *testing.T) {
 			t.Errorf("%s pins %s, below its own minimum %s — fetching it would not help",
 				tool.Name, got, min)
 		}
+	}
+}
+
+// The two shapes projects publish in, and one field covers both: a sibling
+// beside each asset, or one manifest for the whole release. What is inside is
+// the same either way, so the parser does not need to know which it got.
+func TestChecksumFileRendersBothShapes(t *testing.T) {
+	p := platform.Info{OS: "linux", Arch: "x86_64"}
+	for _, tc := range []struct {
+		name      string
+		checksums string
+		want      string
+	}{
+		{"sibling", "{asset}.sha256", "thing-1.2.3-linux.tar.gz.sha256"},
+		{"manifest", "checksums.txt", "checksums.txt"},
+		{"manifest with a version", "t_{version}_checksums.txt", "t_1.2.3_checksums.txt"},
+		{"publishes none", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tool := tools.Tool{
+				Name:      "thing",
+				Checksums: tc.checksums,
+				Assets:    map[string]string{"linux_x86_64": "thing-{version}-linux.tar.gz"},
+			}
+			got, err := tool.ChecksumFile(p, "1.2.3")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("ChecksumFile() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// Parsing the published file. A manifest lists every asset in the release, so
+// picking the wrong line is how a checksum comes to be compared against the
+// wrong artifact.
+func TestUpstreamSumFindsTheRightLine(t *testing.T) {
+	const asset = "rg-1.0-linux.tar.gz"
+	manifest := "" +
+		"aaaa  rg-1.0-darwin.tar.gz\n" +
+		"bbbb  " + asset + "\n" +
+		"cccc  rg-1.0-windows.zip\n"
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, manifest)
+	}))
+	defer srv.Close()
+	old := ReleaseBase
+	ReleaseBase = srv.URL
+	defer func() { ReleaseBase = old }()
+
+	tool := tools.Tool{
+		Name: "rg", Repo: "a/b", Checksums: "checksums.txt",
+		Assets: map[string]string{"linux_x86_64": "rg-{version}-linux.tar.gz"},
+	}
+	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1.0", "1.0", asset)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "bbbb" {
+		t.Errorf("upstreamSum() = %q, want the line for %s", got, asset)
+	}
+}
+
+// A tool that publishes nothing must be silent, not an error -- four of the
+// nine publish nothing and that is not a fault.
+func TestUpstreamSumIsSilentWhenNothingIsPublished(t *testing.T) {
+	tool := tools.Tool{Name: "delta", Repo: "a/b",
+		Assets: map[string]string{"linux_x86_64": "delta.tar.gz"}}
+	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1", "1", "delta.tar.gz")
+	if err != nil || got != "" {
+		t.Errorf("upstreamSum() = %q, %v; want silence", got, err)
+	}
+}
+
+// A file that does not mention the asset is a broken assumption, not a match.
+func TestUpstreamSumErrorsWhenTheAssetIsAbsent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "aaaa  something-else.tar.gz\n")
+	}))
+	defer srv.Close()
+	old := ReleaseBase
+	ReleaseBase = srv.URL
+	defer func() { ReleaseBase = old }()
+
+	tool := tools.Tool{Name: "t", Repo: "a/b", Checksums: "checksums.txt",
+		Assets: map[string]string{"linux_x86_64": "t.tar.gz"}}
+	if _, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1", "1", "t.tar.gz"); err == nil {
+		t.Error("a checksum file that does not list the asset was accepted")
 	}
 }
