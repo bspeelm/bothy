@@ -40,6 +40,7 @@ Usage:
   bothy                         launch the workspace
   bothy attach [session]        reattach to this project's session
   bothy ls                      which sessions are running
+  bothy keys                    the bindings worth knowing
   bothy install [--dry-run]     write the configs, then check them
   bothy doctor  [--json]        report what is broken and how to fix it
   bothy config  [get|set|edit|path]
@@ -80,6 +81,8 @@ func main() {
 		err = cmdAttach(args)
 	case "ls":
 		err = cmdLs(args)
+	case "keys":
+		err = cmdKeys(args)
 	case "config":
 		err = cmdConfig(args)
 	case "layout":

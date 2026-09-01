@@ -118,6 +118,7 @@ quiet.
 | `bothy` | Open the workspace |
 | `bothy attach` | Go back to one you left running, which has gone on without you |
 | `bothy ls` | Which of them are running |
+| `bothy keys` | The bindings worth knowing, for a first day |
 | `bothy doctor` | What is wrong, and what to do about it (`--json`, for machines that want to know) |
 | `bothy install` | Apply your settings again after you have changed them |
 | `bothy tools` | Which tools are in use, and where they came from, in case of dispute |

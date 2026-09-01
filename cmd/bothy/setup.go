@@ -87,6 +87,7 @@ func ensureInstalled(p platform.Info, cfg config.Config) error {
 	if err := setup(p, cfg, setupOptions{Quiet: true}); err != nil {
 		return err
 	}
+	showKeysOnce(p)
 	fmt.Println()
 	return nil
 }
