@@ -66,10 +66,9 @@ var onlineExpectation = map[string]doctor.Severity{
 	"config-keys":           doctor.Pass, // the only config is the one the test wrote
 	// The test installs and checks in one run with one binary, so the version
 	// the manifest records is the version doing the checking.
-	"config-age":      doctor.Pass,
-	"watermark-image": doctor.Skip, // off by default
-	"zellij-config":   doctor.Pass,
-	"terminfo":        doctor.Pass, // only because prep installed infocmp
+	"config-age":    doctor.Pass,
+	"zellij-config": doctor.Pass,
+	"terminfo":      doctor.Pass, // only because prep installed infocmp
 	// Warn, and correctly so: in a container the opener forwards to the host,
 	// and neither base image ships flatpak-spawn to forward with. There is
 	// nothing to open a file with here and nothing bothy can do about it.

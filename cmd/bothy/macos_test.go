@@ -46,7 +46,6 @@ var macExpectation = map[string]doctor.Severity{
 	"tool-data":             doctor.Pass,
 	"config-keys":           doctor.Pass,
 	"config-age":            doctor.Pass,
-	"watermark-image":       doctor.Skip, // off by default
 	"zellij-config":         doctor.Pass,
 	"terminfo":              doctor.Pass, // infocmp is in /usr/bin, and TERM is set below
 	// The check this job exists to prove. macOS has `open`, not xdg-open, and
