@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -85,5 +86,42 @@ func TestVersionStaysStampable(t *testing.T) {
 	}
 	if !regexp.MustCompile(`(?m)^var Version = "[^"]*"$`).Match(src) {
 		t.Error(`Version is not a plain string literal; -X will silently stop working`)
+	}
+}
+
+// A README linking to a file that is not there is worse than no link: it is
+// the first thing a newcomer clicks, and this project's pitch is its
+// documentation. `[PLAN.md](PLAN.md)` pointed at the repository root for
+// several releases while the file lived in docs/.
+func TestEveryRelativeDocLinkResolves(t *testing.T) {
+	root := "../.."
+	files, err := filepath.Glob(filepath.Join(root, "docs", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, filepath.Join(root, "README.md"),
+		filepath.Join(root, "CLAUDE.md"), filepath.Join(root, "NOTICE"))
+
+	link := regexp.MustCompile(`\]\(([^)]+)\)`)
+	for _, f := range files {
+		body, err := os.ReadFile(f)
+		if err != nil {
+			continue // NOTICE has no links; a missing optional file is not a failure
+		}
+		for _, m := range link.FindAllStringSubmatch(string(body), -1) {
+			target := m[1]
+			// External links and pure anchors are somebody else's problem.
+			if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "#") {
+				continue
+			}
+			target, _, _ = strings.Cut(target, "#")
+			if target == "" {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(filepath.Dir(f), target)); err != nil {
+				t.Errorf("%s links to %q, which does not exist",
+					filepath.Base(f), m[1])
+			}
+		}
 	}
 }
