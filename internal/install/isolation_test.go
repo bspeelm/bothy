@@ -695,3 +695,40 @@ func TestUninstallLeavesABinaryItDoesNotOwn(t *testing.T) {
 		t.Error("uninstall deleted a binary that was not the one running")
 	}
 }
+
+// #86. SessionEnv points XDG_DATA_HOME into bothy's tree so the tools keep
+// their state there, and platform.Detect derived bothy's own tree from that
+// same variable. So a `bothy doctor` typed in the workspace's shell pane
+// looked one level deeper than the workspace it was running in, found nothing,
+// and reported the plugins missing.
+//
+// The round trip is the claim: bothy must find the same tree from inside its
+// own session as it did from outside.
+func TestBothyFindsTheSameTreeFromInsideItsOwnSession(t *testing.T) {
+	home := t.TempDir()
+	p := platform.Info{
+		OS: "linux", Arch: "x86_64",
+		Home:      home,
+		DataDir:   filepath.Join(home, ".local", "share"),
+		ConfigDir: filepath.Join(home, ".config"),
+		LocalBin:  filepath.Join(home, ".local", "bin"),
+	}
+
+	for _, kv := range SessionEnv(p, config.Default()) {
+		if name, value, ok := strings.Cut(kv, "="); ok {
+			switch name {
+			case "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "BOTHY_DIR", "HOME":
+				t.Setenv(name, value)
+			}
+		}
+	}
+
+	inside := platform.Detect()
+	if inside.BothyDir() != p.BothyDir() {
+		t.Errorf("from inside its own session bothy resolves %s,\n     but it was launched from %s",
+			inside.BothyDir(), p.BothyDir())
+	}
+	if inside.ConfigRoot() != p.ConfigRoot() {
+		t.Errorf("ConfigRoot inside = %s, want %s", inside.ConfigRoot(), p.ConfigRoot())
+	}
+}

@@ -402,6 +402,12 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	env.set("XDG_STATE_HOME", p.StateDir())
 	env.set("XDG_DATA_HOME", p.ShareDir())
 
+	// Bothy's own tree, named rather than derived. The three variables above
+	// move where the tools look; this one keeps bothy itself looking here, so
+	// that a `bothy doctor` typed in the shell pane inspects the workspace it
+	// is running in rather than an empty directory beneath it.
+	env.set("BOTHY_DIR", p.BothyDir())
+
 	env.set("BOTHY_SESSION", "1")
 	return env.slice()
 }

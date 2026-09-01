@@ -45,8 +45,12 @@ type Info struct {
 	Term     string // $TERM
 	Terminal string // best guess at the emulator: "ghostty", "wezterm", …
 
-	Home      string
-	LocalBin  string // ~/.local/bin — where the bothy binary itself lives
+	Home     string
+	LocalBin string // ~/.local/bin — where the bothy binary itself lives
+	// Root is bothy's own tree, named outright rather than derived. Set from
+	// $BOTHY_DIR, which SessionEnv exports, so a bothy run inside its own
+	// workspace finds the tree it was launched from.
+	Root      string
 	ConfigDir string // $XDG_CONFIG_HOME or ~/.config
 	DataDir   string // $XDG_DATA_HOME or ~/.local/share
 }
@@ -56,7 +60,17 @@ type Info struct {
 // rather than a manifest replay. See PLAN.md §2.
 
 // BothyDir is the root of everything bothy owns.
-func (i Info) BothyDir() string { return filepath.Join(i.DataDir, "bothy") }
+//
+// Root wins when set, because DataDir is derived from XDG_DATA_HOME and
+// SessionEnv points that variable *into* this tree. Deriving bothy's own
+// location from a variable bothy rewrites means every command typed in the
+// workspace's shell pane looks one level deeper than the tree it came from.
+func (i Info) BothyDir() string {
+	if i.Root != "" {
+		return i.Root
+	}
+	return filepath.Join(i.DataDir, "bothy")
+}
 
 // ConfigRoot holds the generated configs the tools are launched against.
 // Note this is *not* the user's ~/.config — bothy never writes there.
@@ -75,7 +89,8 @@ func (i Info) StateDir() string { return filepath.Join(i.BothyDir(), "state") }
 func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
 
 // ShareDir is what XDG_DATA_HOME points at for bothy's session. A level below
-// BothyDir, so a nested bothy still resolves inside the tree.
+// BothyDir, so that what the tools write stays in one removable directory.
+// Bothy's own tree does not move with it: that is what Root is for.
 func (i Info) ShareDir() string { return filepath.Join(i.BothyDir(), "share") }
 
 // UserConfigDir is ~/.config/bothy: the user's own settings, palette and
@@ -97,6 +112,8 @@ func Detect() Info {
 	i.LocalBin = filepath.Join(home, ".local", "bin")
 	i.ConfigDir = xdg("XDG_CONFIG_HOME", home, ".config")
 	i.DataDir = xdg("XDG_DATA_HOME", home, ".local", "share")
+
+	i.Root = os.Getenv("BOTHY_DIR")
 
 	i.DistroID, i.DistroLike, i.DistroVersion = osRelease()
 	i.Container, i.ContainerName = detectContainer()
