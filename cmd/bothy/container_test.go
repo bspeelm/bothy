@@ -30,6 +30,7 @@ import (
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/doctor"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 var images = []string{"fedora:44", "ubuntu:24.04"}
@@ -54,6 +55,7 @@ var prep = map[string]string{
 // decides what it means on a headless machine, rather than quietly not being
 // covered -- the same lesson the isolation job in ci.yml already encodes.
 var onlineExpectation = map[string]doctor.Severity{
+	"tool-data":             doctor.Pass, // named, not prevented: see ADR-022
 	"yazi-config-discarded": doctor.Pass, // --clear-cache parses the config without a terminal
 	"yazi-version":          doctor.Pass,
 	"yazi-config-keys":      doctor.Pass,
@@ -298,44 +300,93 @@ func (b *box) snapshot() []string {
 	return out
 }
 
+// bothysOwn are the only paths bothy itself writes.
+var bothysOwn = []string{".local/share/bothy/", ".config/bothy/", ".local/bin/bothy"}
+
+// toolOwned reports whether a path is a tool's own data or state directory,
+// named after a tool bothy runs.
+//
+// Matching on the tool's name rather than allowing the parent directories
+// wholesale is what keeps this an assertion: ~/.local/share is where anything
+// might land, and "a directory under it" would wave through exactly the writes
+// this is meant to catch.
+func toolOwned(path string) bool {
+	rest, ok := strings.CutPrefix(path, ".local/share/")
+	if !ok {
+		if rest, ok = strings.CutPrefix(path, ".local/state/"); !ok {
+			return false
+		}
+	}
+	name, _, ok := strings.Cut(rest, "/")
+	if !ok {
+		return false
+	}
+	all, err := tools.Load()
+	if err != nil {
+		return false
+	}
+	for _, t := range all {
+		if t.Name == name || t.Binary == name {
+			return true
+		}
+	}
+	return false
+}
+
 // assertNothingOutsideBothysTree is ADR-009 checked end to end, after the real
-// tools have really run. Anything else in home is something bothy, or a tool
-// bothy invoked, wrote where it said it would not.
+// tools have really run.
+//
+// bothy points only XDG_CACHE_HOME into its own tree, so a tool keeps its data
+// where it always would -- your Neovim plugins and your zoxide database are
+// not bothy's to relocate. So the promise this checks is the one bothy can
+// keep: nothing outside its tree is bothy's doing, and anything else there
+// belongs to a tool bothy ran and is named after it.
 func (b *box) assertNothingOutsideBothysTree() {
 	b.t.Helper()
-	allowed := []string{
-		".local/share/bothy/",
-		".config/bothy/",
-		".local/bin/bothy",
-	}
-	var stray []string
+	var stray, tooldata []string
 	for _, f := range b.snapshot() {
-		ok := false
-		for _, prefix := range allowed {
-			if strings.HasPrefix(f, prefix) {
-				ok = true
-				break
-			}
-		}
-		if !ok {
+		switch {
+		case hasAnyPrefix(f, bothysOwn):
+		case toolOwned(f):
+			tooldata = append(tooldata, f)
+		default:
 			stray = append(stray, f)
 		}
 	}
+	// Logged rather than asserted: which tool writes what is upstream's
+	// business and changes with their releases. That it is *named after a
+	// tool* is the assertion, and `bothy doctor` reports the same set.
+	if len(tooldata) > 0 {
+		b.t.Logf("%d file(s) the tools keep outside bothy's tree, by design:\n  %s",
+			len(tooldata), strings.Join(tooldata, "\n  "))
+	}
 	if len(stray) > 0 {
-		b.t.Errorf("%d file(s) written outside bothy's tree:\n  %s",
+		b.t.Errorf("%d file(s) written outside bothy's tree and belonging to no tool:\n  %s",
 			len(stray), strings.Join(stray, "\n  "))
 	}
 }
 
+// assertUninstalled: uninstall removes bothy, which is its own tree and its own
+// binary. A tool's data is not bothy's to delete, and the doctor says so before
+// anyone runs this.
 func (b *box) assertUninstalled() {
 	b.t.Helper()
 	for _, f := range b.snapshot() {
 		// config.toml is the user's own file and survives on purpose.
-		if f == ".config/bothy/config.toml" {
+		if f == ".config/bothy/config.toml" || toolOwned(f) {
 			continue
 		}
 		b.t.Errorf("uninstall left %s behind", f)
 	}
+}
+
+func hasAnyPrefix(s string, prefixes []string) bool {
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func assertReport(t *testing.T, rep doctor.Report, want map[string]doctor.Severity) {
