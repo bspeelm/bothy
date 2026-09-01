@@ -9,7 +9,8 @@
 <h1 align="center">bothy</h1>
 
 <p align="center">
-  <em>A room you can trust because it wants nothing.</em>
+  <em>A room you can trust because it wants nothing.<br>
+  The agent, of course, is another matter.</em>
 </p>
 
 > **bothy** *(n., Scottish)* — a small unlocked mountain shelter, free for anyone

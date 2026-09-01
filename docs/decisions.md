@@ -392,14 +392,21 @@ not touch by policy. Borrowing the connotations of a sandbox while declining to
 be one is the kind of overclaim this project exists to avoid, so "not a
 sandbox" is on the What-bothy-is-not list in as many words.
 
-The tagline settled somewhere else again: *"A room you can trust because it
-wants nothing."* It does not name the agent, and that is deliberate. The
-tagline says what kind of thing bothy is — no telemetry, no account, no
+The tagline that survived does both jobs in two sentences:
+
+> A room you can trust because it wants nothing.
+> The agent, of course, is another matter.
+
+The first line is §11 in three words — no telemetry, no account, no
 auto-updater, no marketplace, no claim on your dotfiles or your agent's
-credentials, which is the whole of §11 in three words — and the sentence
-immediately below it says what bothy does, agent first. Character, then
-function. An intent that contradicts the design is what this ADR exists to
-prevent; a tagline that leaves the function to the next line is not that.
+credentials. The second names the agent, which is what this ADR asked the
+stated intent to do, and declines responsibility for it in the same breath.
+
+That second sentence is the whole not-a-sandbox point, delivered as a wink
+rather than a disclaimer, and it is better for being funny: a caveat someone
+enjoys reading is a caveat they finish. The plain statement stays on the
+What-bothy-is-not list, because a joke is not a substitute for saying it once
+without one.
 
 The alternative was to accept "terminal workspace" and rename `cockpit`, which
 is the honest version of the other choice. It was not taken because the
