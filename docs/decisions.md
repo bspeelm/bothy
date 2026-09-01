@@ -25,6 +25,8 @@ mode that can hit the known-bad-repository problems the doctor checks for.
 
 ## ADR-003 — Zellij is the only multiplexer
 
+**Superseded by ADR-018.** The cost stands; the refusal does not.
+
 tmux support would roughly double the layout renderer and its test matrix for a
 second dialect of the same idea. Zellij's KDL layouts, plugin panes, and
 built-in status bar are what make a declarative profile possible at all. tmux is
@@ -32,11 +34,15 @@ a documented non-goal for v1, not a rejection forever.
 
 ## ADR-004 — Windows means WSL2
 
+**Superseded by ADR-018.** The cost stands; the refusal does not.
+
 Zellij and Yazi's plugin ecosystem are Unix-native. Native Windows without WSL is
 a documented non-goal that will not change. The Windows story is: install
 Windows Terminal, install WSL2, hand off to the Linux installer inside it.
 
 ## ADR-005 — No plugin system
+
+**Amended by ADR-019**, which names the three tiers this rule has always had.
 
 bothy has slots and providers, and a provider is a declarative TOML file plus
 templates. That is the entire extension surface. No runtime plugin loading, no
@@ -418,3 +424,85 @@ for that job.
 The cost is a smaller audience by description. Someone wanting a terminal
 workspace with no agent will read the first line and leave, and that is the
 correct outcome — they were going to write the layout file themselves.
+
+## ADR-017 — The invariant is three panes; everything else is a provider
+
+bothy produces one arrangement: files above, agent below left, shell below
+right. Which terminal draws it, which multiplexer splits it, which browser fills
+the top pane and which agent runs in the middle are providers of slots, and the
+product is that the arrangement survives whichever ones you already have.
+
+So the invariant splits into capabilities — **panes**, **sessions**, **images**,
+**theme**, **isolation** — and every stack is described by which of them it can
+supply. `panes` is mandatory; a stack that cannot give you three panes is not a
+bothy stack. The other four are reported, per stack, before anything is
+installed. This is ADR-007's *gate, probe, explain* raised from one workaround to
+the whole product: a stack that cannot draw images gets told so in the plan
+rather than at launch.
+
+The alternative was to keep one blessed stack and treat everything else as
+unsupported. It was not taken because the interesting claim is not that Ghostty
+plus Zellij plus Yazi works — that is a layout file — but that the same three
+panes can be assembled from what is already on the machine, with an honest
+account of what is lost.
+
+This does not reverse ADR-016. That record narrowed what bothy is *for*, at a
+deliberate cost in audience; this one widens what it runs *on*. Narrow about the
+purpose, broad about the substrate. The purpose is what makes the arrangement
+worth reproducing anywhere.
+
+`docs/north-star.md` carries the long form.
+
+## ADR-018 — Supersedes ADR-003 and ADR-004: scope is a CI table, not a refusal
+
+ADR-003 made Zellij the only multiplexer and ADR-004 made native Windows a
+non-goal "that will not change". Both stated a scope by refusing something, and
+the README's "What bothy is not" list carried the same two lines.
+
+ADR-012 already decided where scope belongs: *portability is a CI claim, not a
+README claim*. A refusal and a tested-stack table answer the same question, and
+only one of them can be checked. Where they disagree — and they would, the first
+time a second backend became cheap — the refusal is the half that goes stale
+silently.
+
+So the two lines come off the not-list, ADR-003's and ADR-004's refusals are
+withdrawn, and what bothy runs on is stated by the stacks CI tests. tmux and
+native Windows are then neither promised nor refused: they are absent from the
+table, which is exactly what is true about them.
+
+The reasons those two records gave were sound and are kept as costs rather than
+as prohibitions. tmux is a second renderer of the same profile, and the estimate
+that it "would roughly double the layout renderer" turns out to be low: the
+multiplexer is seven decisions spread across the tree, not one package. Native
+Windows needs a second bootstrap in a second language, which ADR-001 permits
+exactly once and spends on `bootstrap/install.sh`. Both are worth doing when
+someone wants them and neither is worth doing on speculation.
+
+What replaces the refusal is a promise that is harder to keep and possible to
+verify: for any stack, bothy says what the invariant can and cannot deliver on
+it, whether or not that stack is one CI has seen.
+
+## ADR-019 — Amends ADR-005: three provider tiers, stated
+
+ADR-005 says the extension surface is slots and providers, and that a provider
+needing Go code means the slot model is wrong. The rule is right about direction
+and has never been literally true. `docs/adding-a-provider.md` states it and then
+shows the Go snippet a configuration provider needs; `EditorBinary` and
+`agentBinary` are hardcoded maps duplicating an `advice.binary` field that is
+parsed and never read, with a third copy inlined in a doctor check.
+
+Naming the tiers is more useful than a rule with undocumented exceptions:
+
+- **Data.** One TOML file. Every tool bothy fetches.
+- **Data and a branch.** A file, templates, and one arm in `install.plan()`.
+- **Data and a renderer.** Go that *interprets* the profile rather than being
+  configured by it. The multiplexer only.
+
+The third tier exists because Zellij takes a KDL layout file, tmux takes
+`split-window` commands and Windows Terminal takes `wt` arguments. Those are
+renderers of one profile, not templates of one thing, and no amount of data
+makes them one.
+
+The rule ADR-005 was reaching for survives as a direction: the second tier
+should shrink as the first grows, and a provider that lands in the third tier
+without being a multiplexer is still the bug ADR-005 described.

@@ -387,7 +387,8 @@ you while you are not looking. It ships alongside a doctor check for the
 matching bug: a launch never re-renders, so a newer binary ran against an
 older binary's configs indefinitely and nothing said so.
 
-Deferred, unchanged: macOS, WSL2/Windows, tmux.
+Deferred: macOS, Windows, tmux — see ADR-018, which withdrew the refusals
+and left the costs.
 
 Next, in 0.1.4: an apt path via goreleaser's `nfpms:`, and a weekly job that
 opens a tracking issue when a pinned tool has a newer release.
@@ -396,8 +397,6 @@ opens a tracking issue when a pinned tool has a newer release.
 
 ## 11. Non-goals
 
-- Native Windows without WSL
-- tmux (it would double the layout renderer)
 - A plugin marketplace, extension API, or runtime plugins
 - Bundling or vendoring the tools themselves
 - Installing anything system-wide, or asking a package manager for anything
@@ -405,6 +404,10 @@ opens a tracking issue when a pinned tool has a newer release.
 - LSP/debugger management, background services, auto-updaters, telemetry, accounts
 - Managing the agent's config, keys, MCP servers, or hooks
 - Parallel-agent orchestration — one agent pane per profile is the scope
+
+Which platforms and which multiplexer are not on this list. That scope is the
+table of stacks CI tests, not a refusal — ADR-012 and ADR-018, with the table
+itself in [`north-star.md`](north-star.md) §6.
 
 ---
 
