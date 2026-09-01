@@ -3,10 +3,6 @@
 *A room you can trust because it wants nothing. The agent, of course, is
 another matter.*
 
-> **bothy** *(n., Scottish)* — a small unlocked shelter in the hills, kept by
-> two customs nobody enforces and most people follow: leave it as you found
-> it, and leave something for whoever comes next.
-
 You type one word in a directory and get three panes: your files above, an
 agent below on the left, and a shell on the right for when the agent has done
 something and you want to see whether it's true.
