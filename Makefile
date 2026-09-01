@@ -16,7 +16,7 @@ MAX_COMMENT_RATIO := 25
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 
-.PHONY: all build test lint vet fmt budgets check clean install-binary vendor srpm release release-tag copr
+.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr
 
 all: check
 
@@ -52,7 +52,25 @@ budgets: build
 	if [ $$code -gt $(MAX_CODE_LINES) ]; then echo "over the code budget"; exit 1; fi; \
 	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi
 
-check: lint test budgets
+# The platforms .goreleaser.yaml ships, plus windows -- which bothy does not
+# support and does compile for today, with no build tags anywhere. Keeping it
+# in the list costs a second and makes the day it stops compiling a decision
+# rather than a discovery.
+CROSS := darwin/amd64 darwin/arm64 linux/arm64 windows/amd64
+
+# Compile for every target, without running anything.
+#
+# `make build` has no GOOS, so it only ever proves the host, and the only thing
+# that built darwin was goreleaser -- which runs after the tag is pushed, on
+# the one step that cannot be taken back. Building ./cmd/bothy reaches every
+# package that ships; bootstrap is the only other one and it is tests.
+crossbuild:
+	@for t in $(CROSS); do \
+	    echo "  $$t"; \
+	    GOOS=$${t%/*} GOARCH=$${t#*/} CGO_ENABLED=0 go build -o /dev/null ./cmd/bothy || exit 1; \
+	done
+
+check: lint test crossbuild budgets
 
 # Named for what it installs. "install-local" collided with `bothy install`,
 # which installs the workspace — two different things wearing one word.
