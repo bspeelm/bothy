@@ -154,7 +154,6 @@ func Checks() []Check {
 		{ID: "tool-data", Run: checkToolData},
 		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "config-age", Run: checkConfigAge},
-		{ID: "watermark-image", Run: checkWatermarkImage},
 		{ID: "zellij-config", Run: checkZellijConfig},
 		{ID: "terminfo", Run: checkTerminfo},
 		{ID: "opener", Run: checkOpener},

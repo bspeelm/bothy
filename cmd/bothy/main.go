@@ -51,7 +51,6 @@ Usage:
   bothy uninstall [--dry-run]   remove bothy's directory and its binary
   bothy upgrade                 how to upgrade this copy of bothy
   bothy outdated [--json]       which pinned tools have newer releases
-  bothy lock    [--tool T]      re-pin the tools in bothy.lock (maintainers)
   bothy version
 
 Every generated file says it is bothy's and names where to put your own
@@ -59,9 +58,29 @@ changes. Everything bothy writes lives under ~/.local/share/bothy, and
 'bothy uninstall' removes that one directory.
 `
 
+// isHelpFlag names the flags main answers itself rather than handing on.
+func isHelpFlag(s string) bool {
+	switch s {
+	case "--version", "-v", "--help", "-h":
+		return true
+	}
+	return false
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		if err := cmdDev(nil); err != nil {
+			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// A leading flag means the launcher, so `bothy --in-place` works. Without
+	// this the flags could only be reached through `bothy dev`, which is why
+	// that alias outlived the shell function it was kept for.
+	if strings.HasPrefix(os.Args[1], "-") && !isHelpFlag(os.Args[1]) {
+		if err := cmdDev(os.Args[1:]); err != nil {
 			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
 			os.Exit(1)
 		}
@@ -75,8 +94,6 @@ func main() {
 		err = cmdInstall(args)
 	case "doctor":
 		err = cmdDoctor(args)
-	case "dev":
-		err = cmdDev(args)
 	case "attach":
 		err = cmdAttach(args)
 	case "ls":

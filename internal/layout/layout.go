@@ -154,9 +154,8 @@ func Render(p Profile, cmds Commands) (string, error) {
 	b.WriteString("layout {\n")
 
 	// The bars are fixed line counts (1 and 2), not percentages. That asymmetry
-	// matters: at lower resolutions they eat a larger fraction of the window and
-	// push the content rows' edges up, which is why the watermark extra tells
-	// you to leave margin at the bottom.
+	// matters: at lower resolutions they eat a larger fraction of the window,
+	// so a row's share of the height is not its share of the screen.
 	if enabled(p.TabBar, true) {
 		writePlugin(&b, 1, "zellij:tab-bar")
 	}

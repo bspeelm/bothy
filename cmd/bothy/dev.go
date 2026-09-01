@@ -15,9 +15,9 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
-// cmdDev launches the workspace. Bare `bothy` and `bothy dev` both land here.
+// cmdDev launches the workspace: bare `bothy`, and `bothy` with any flag.
 func cmdDev(args []string) error {
-	fs := flag.NewFlagSet("dev", flag.ExitOnError)
+	fs := flag.NewFlagSet("bothy", flag.ExitOnError)
 	dir := fs.String("dir", "", "directory to open in (default: the current one)")
 	profile := fs.String("profile", "", "layout profile (default: the configured one)")
 	window := fs.Bool("window", false, "always open a new Ghostty window")
@@ -26,7 +26,7 @@ func cmdDev(args []string) error {
 		return err
 	}
 
-	// Checked after flag parsing so `bothy dev --profile x attach` still attaches.
+	// Checked after flag parsing so `bothy --profile x attach` still attaches.
 	if fs.NArg() > 0 && fs.Arg(0) == "attach" {
 		return cmdAttach(fs.Args()[1:])
 	}
@@ -221,7 +221,7 @@ func lookPathIn(p platform.Info, name string) (string, error) {
 func hopIntoContainer(container, dir, profile string) error {
 	// --in-place: the terminal question is settled outside; the inner copy
 	// must not reopen it.
-	inner := fmt.Sprintf("cd %s && bothy dev --in-place --dir %s --profile %s",
+	inner := fmt.Sprintf("cd %s && bothy --in-place --dir %s --profile %s",
 		shellQuote(dir), shellQuote(dir), shellQuote(profile))
 
 	return containerHop(container, inner)

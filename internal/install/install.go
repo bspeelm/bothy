@@ -48,10 +48,7 @@ type Data struct {
 	Font       string
 	ProjectDir string
 
-	Watermark        bool
-	WatermarkPath    string
-	WatermarkOpacity string
-	PaneFrames       string
+	PaneFrames string
 
 	// Plugins is the set of Yazi plugins actually installed. Templates key on
 	// it so a generated config never references something that is not there.
@@ -216,12 +213,6 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 			Dest: GhosttyConf(p), Tool: "ghostty",
 			Template: "templates/terminal/ghostty/config.tmpl",
 		})
-		if data.Watermark {
-			out = append(out, file{
-				Dest:  data.WatermarkPath,
-				Asset: "templates/extras/watermark/tux.png",
-			})
-		}
 	}
 
 	// Inside Toolbx/Distrobox the opener forwards to the host via flatpak-spawn.
@@ -245,24 +236,21 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 	g := probe.CheckGraphics(ToolPath(p, muxBinary(cfg)), p.Terminal)
 
 	d := Data{
-		Theme:            pal,
-		ThemeName:        name,
-		ImagePreviews:    g.Supported,
-		GraphicsReason:   g.Reason,
-		Container:        p.InContainer(),
-		Opener:           opener(p),
-		OpenerDesc:       openerDesc(p),
-		ContainerName:    ContainerFor(p, cfg),
-		EditorBin:        EditorBinary(cfg.Slots.Editor),
-		AgentBin:         agentBinary(cfg.Slots.Agent),
-		BrowserBin:       cfg.Slots.Browser,
-		Font:             cfg.Theme.Font,
-		ProjectDir:       cfg.Workspace.ProjectDir,
-		Watermark:        cfg.Workspace.Watermark,
-		WatermarkPath:    filepath.Join(p.ConfigRoot(), "watermark.png"),
-		WatermarkOpacity: "0.05",
-		PaneFrames:       cfg.Workspace.PaneFrames,
-		Plugins:          InstalledPlugins(p),
+		Theme:          pal,
+		ThemeName:      name,
+		ImagePreviews:  g.Supported,
+		GraphicsReason: g.Reason,
+		Container:      p.InContainer(),
+		Opener:         opener(p),
+		OpenerDesc:     openerDesc(p),
+		ContainerName:  ContainerFor(p, cfg),
+		EditorBin:      EditorBinary(cfg.Slots.Editor),
+		AgentBin:       agentBinary(cfg.Slots.Agent),
+		BrowserBin:     cfg.Slots.Browser,
+		Font:           cfg.Theme.Font,
+		ProjectDir:     cfg.Workspace.ProjectDir,
+		PaneFrames:     cfg.Workspace.PaneFrames,
+		Plugins:        InstalledPlugins(p),
 	}
 	d.VimColorscheme = cfg.Theme.VimColorscheme
 	if d.VimColorscheme == "" {

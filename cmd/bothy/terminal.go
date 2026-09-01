@@ -188,7 +188,7 @@ func spawnTerminal(p platform.Info, dir, profileName string) error {
 	args := append([]string{}, term[1:]...)
 	args = append(args,
 		"--config-file="+conf,
-		"-e", self, "dev", "--dir", dir, "--profile", profileName,
+		"-e", self, "--dir", dir, "--profile", profileName,
 	)
 
 	cmd := exec.Command(term[0], args...)
