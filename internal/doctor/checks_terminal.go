@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/advice"
+	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/probe"
 )
@@ -91,6 +92,30 @@ func terminfoFix(env Env, term string) string {
 	}
 	return "carry it over from a machine that has it: 'infocmp -x " + term +
 		" > " + term + ".src' there, then 'tic -x " + term + ".src' here"
+}
+
+// checkWatermarkImage exists because Ghostty says nothing about a
+// background-image that is not there. It simply draws nothing, which looks
+// exactly like "the opacity is too low" and sends you tuning a setting that
+// was never the problem.
+func checkWatermarkImage(env Env) Result {
+	path := config.Expand(env.Config.Workspace.Watermark, env.Platform.Home)
+	if path == "" {
+		return skip("no watermark configured")
+	}
+	if env.Config.Slots.Terminal != "ghostty" {
+		return skip("the watermark needs ghostty")
+	}
+	fi, err := os.Stat(path)
+	switch {
+	case err != nil:
+		return fail("the watermark image is missing", path+" does not exist",
+			"point workspace.watermark at an image, or clear it")
+	case fi.Size() == 0:
+		return fail("the watermark image is empty", path+" is zero bytes",
+			"replace it, or clear workspace.watermark")
+	}
+	return pass("watermark image is in place")
 }
 
 func checkOpener(env Env) Result {

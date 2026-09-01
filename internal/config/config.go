@@ -87,6 +87,14 @@ type Workspace struct {
 	// "here" never does, "window" always does. --in-place and --window
 	// override it for a single run.
 	Launch string `toml:"launch"`
+	// Watermark is an image to sit behind the terminal, given as a path to a
+	// file of your own. Empty means none.
+	//
+	// A path rather than a switch because bothy ships no art: the trick wants
+	// an image composited where one pane will be, which depends on your
+	// screen, and a picture bothy chose would be wrong on most of them. See
+	// docs/watermark.md.
+	Watermark string `toml:"watermark"`
 	// PaneFrames is "full", "titles" or "none".
 	//
 	// Set explicitly rather than left to Zellij, whose default changed to

@@ -652,6 +652,9 @@ template data, a branch in `plan`, a doctor check, an embedded PNG and a page
 of documentation — 34 lines of code for a thing whose own config comment
 conceded it was a nice touch rather than a feature.
 
+(**Reversed in part by ADR-025.** The feature comes back; the shipped picture
+does not, which is where the weight was.)
+
 **`bothy lock` leaves the public help.** It stays a command and stops being
 advertised: it downloads half a gigabyte to recompute checksums, which is a
 maintainer's business and a surprising thing to offer everyone who types
@@ -672,3 +675,37 @@ answered "unknown command", so the alias was load-bearing for anyone who
 wanted anything other than the default. main now routes a leading flag to the
 launcher, which costs slightly more than the alias did and fixes a gap nobody
 had filed. The cut paid for itself in the wrong currency.
+
+## ADR-025 — The watermark stays; the picture bothy shipped does not
+
+ADR-024 cut the watermark among the things 1.0 planned to remove. That was
+wrong about the feature and right about its weight, and the two can be
+separated.
+
+What made it expensive was not the idea but the asset. bothy shipped a
+24 KB PNG of Tux, pre-composited for a 1920×1080 screen at a position measured
+from one person's monitor, behind a boolean that turned it on. That picture is
+wrong on most screens, wrong for anyone whose layout differs, and — a thing
+nobody had noticed — it is Larry Ewing's, redistributed with no credit anywhere
+in `NOTICE`.
+
+So `workspace.watermark` becomes a path to art of your own, and bothy ships
+none. The template gains the image when the key is set and says nothing when it
+is not. That is fewer moving parts than the boolean was: no embedded asset, no
+copy step in `plan`, no backup of a file bothy put there.
+
+The opacity is deliberately not a second key. Every other Ghostty setting is
+tuned by writing it into `~/.config/bothy/overrides/ghostty/`, which is
+appended after bothy's config and wins; a setting that already has a mechanism
+does not need a key of its own.
+
+The doctor check survives unchanged in purpose, and the purpose is worth
+restating because it is not obvious: Ghostty says nothing at all about a
+`background-image` it cannot find. It draws nothing, which looks exactly like
+an opacity set too low, and sends you tuning a setting that was never the
+problem.
+
+`docs/watermark.md` now carries the compositing recipe rather than describing
+a file bothy installs — including the arithmetic, because the useful part was
+never the picture but the trick of making a window-shaped canvas put art where
+a pane will be.
