@@ -285,3 +285,35 @@ that dpkg has a record of the file it put in `/usr/bin`. And `nfpms:` emits `deb
 and nothing else. It would have taken one word to emit an rpm too, and the result
 would have been two packages named `bothy`, built from different inputs by
 different systems, with nothing to say which one a machine ought to have.
+
+## ADR-014 — bothy installs no editor, and helix could not be installed anyway
+
+The swap table offers vim, nano and helix, and bothy supplies none of them.
+That is deliberate, and it is worth separating from a second fact that looks
+like the same thing.
+
+**The deliberate part.** An editor is the most personal tool in the workspace
+and the one a person is likeliest to already have, configured the way they
+like. ADR-009 already removed bothy's `~/.vimrc` write for that reason —
+"a workspace tool replacing your editor config is overreach". Installing the
+editor itself is the same overreach one step earlier. So the editor slot names
+a command and sets `EDITOR` for bothy's session, and nothing else.
+
+**The accidental part.** helix publishes only `tar.xz`. The standard library
+has no xz decompressor and PLAN.md §13 caps dependencies at go-toml, so
+`Extract` refuses that format by name. If the decision above were ever
+reversed, helix would still be the one editor that could not be supplied.
+
+Taking `ulikunitz/xz` — small, pure Go — was considered and rejected. Not on
+its merits, which are fine, but because the ceiling has held precisely because
+every exception was refused, and a dependency admitted for one tool's archive
+format is admitted forever. This ADR is where the evidence accumulates if
+helix, or a second tar.xz tool, turns out to matter to real users.
+
+What actually needed fixing was neither of those. There was no editor check at
+all: a configured editor that was not installed produced a pane running a
+missing command, an `EDITOR` pointing at nothing, and a doctor reporting
+sixteen passes and no failures. The slot was entirely a claim about the
+machine, which is the one kind of thing this project's doctor exists to check.
+It is checked now, with per-distribution advice in `slots/advice/`, the same
+shape Ghostty and the agent already use.

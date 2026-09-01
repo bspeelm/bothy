@@ -154,13 +154,19 @@ Every part of the workspace can be changed:
 | terminal | ghostty | kitty, wezterm (bothy never installs these) |
 | multiplexer | zellij | none yet |
 | file browser | yazi | turn it off |
-| editor | vim | nano, helix |
+| editor | vim | nano, helix (bothy installs none of these) |
 | agent | claude-code | any command you name |
 | theme | dracula | any palette you write |
 
 ```sh
 bothy config set slots.editor helix
 ```
+
+bothy does not install editors. An editor is the most personal tool in the
+workspace and the one you are likeliest to already have, so the slot names the
+command and sets `EDITOR` for the session — it does not fetch anything. If the
+one you name is not installed, `bothy doctor` says so and gives you the command
+for your distribution.
 
 Three layouts come with bothy, called profiles. `cockpit` is the default, with
 the file browser on top and the agent and shell below. `editor` gives you an

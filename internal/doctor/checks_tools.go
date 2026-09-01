@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/advice"
+	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/state"
 	"github.com/bspeelm/bothy/internal/theme"
 	"github.com/bspeelm/bothy/internal/tools"
@@ -119,6 +120,37 @@ func checkAgent(env Env) Result {
 				"\n         or turn the pane off: bothy config set slots.agent none"
 		}
 		return fail(bin+" is not on PATH", "the agent pane would open empty", fix)
+	}
+	return pass(bin + " is on PATH")
+}
+
+// checkEditor is the counterpart to checkAgent, and existed for neither until
+// now: a configured editor that is not installed produced a pane running a
+// missing command, an EDITOR pointing at nothing, and a doctor reporting
+// everything fine.
+//
+// bothy supplies no editor. That is deliberate -- an editor is the most
+// personal tool in the workspace and the one people already have -- but it
+// means the editor slot is entirely a claim about the machine, and a claim
+// about the machine is exactly what the doctor is for.
+func checkEditor(env Env) Result {
+	if r, ok := env.elsewhere(); ok {
+		return r
+	}
+	slot := env.Config.Slots.Editor
+	if slot == "" || slot == "none" {
+		return skip("no editor slot configured")
+	}
+	bin := install.EditorBinary(slot)
+	if _, err := env.lookPath(bin); err != nil {
+		fix := "install it, or point the slot elsewhere: bothy config set slots.editor vim"
+		if a, err := advice.Get(slot); err == nil {
+			fix = a.Command(env.Platform) +
+				"\n         or choose another: bothy config set slots.editor vim"
+		}
+		return fail(bin+" is not on PATH",
+			"the editor pane would open empty, and EDITOR points at a command that does not exist",
+			fix)
 	}
 	return pass(bin + " is on PATH")
 }

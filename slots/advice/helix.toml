@@ -1,0 +1,25 @@
+# helix is advised, never installed -- and unlike vim and nano, it could not be
+# installed even if the policy changed.
+#
+# bothy supplies no editor at all. Editors are the most personal tool in the
+# workspace and the one people already have, so the editor slot names the
+# binary and sets EDITOR; it does not fetch anything. That is a deliberate
+# choice and helix is not an exception to it.
+#
+# helix does have one property the others do not: it publishes only tar.xz,
+# which the standard library cannot unpack and PLAN.md §13's dependency
+# ceiling forbids adding a decompressor for. So if the no-editors decision
+# were ever reversed, helix would still be the one slot that could not be
+# filled. See docs/decisions.md ADR-014.
+
+name = "helix"
+what = "the editor in the editor profile"
+binary = "hx"
+
+[install]
+fedora-ostree = "sudo rpm-ostree install helix && systemctl reboot"
+fedora        = "sudo dnf install -y helix"
+ubuntu        = "sudo snap install --classic helix"
+debian        = "see https://docs.helix-editor.com/install.html — Debian has no official package"
+arch          = "sudo pacman -S helix"
+darwin        = "brew install helix"

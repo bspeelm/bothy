@@ -176,6 +176,7 @@ func Checks() []Check {
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},
 		{ID: "agent", Run: checkAgent},
+		{ID: "editor", Run: checkEditor},
 		{ID: "tool-provenance", Run: checkToolProvenance},
 		{ID: "tools-reachable", Run: checkToolsReachable},
 		{ID: "theme-palette", Run: checkThemePalette},
