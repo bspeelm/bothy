@@ -1,0 +1,13 @@
+# nano is advised, never installed. See vim.toml for why bothy supplies no
+# editor at all.
+
+name = "nano"
+what = "the editor in the editor profile"
+binary = "nano"
+
+[install]
+fedora-ostree = "sudo rpm-ostree install nano && systemctl reboot"
+fedora        = "sudo dnf install -y nano"
+debian        = "sudo apt install -y nano"
+arch          = "sudo pacman -S nano"
+darwin        = "brew install nano"

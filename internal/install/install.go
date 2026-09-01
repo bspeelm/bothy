@@ -254,7 +254,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		GraphicsReason:   g.Reason,
 		Container:        p.InContainer(),
 		ContainerName:    ContainerFor(p, cfg),
-		EditorBin:        editorBinary(cfg.Slots.Editor),
+		EditorBin:        EditorBinary(cfg.Slots.Editor),
 		AgentBin:         agentBinary(cfg.Slots.Agent),
 		BrowserBin:       cfg.Slots.Browser,
 		Font:             cfg.Theme.Font,
@@ -280,7 +280,10 @@ func muxBinary(cfg config.Config) string {
 	return cfg.Slots.Mux
 }
 
-func editorBinary(slot string) string {
+// EditorBinary maps an editor slot to the command it runs. Exported because
+// the doctor has to check the same binary the launcher will use; two spellings
+// of that mapping is how a check comes to report on the wrong thing.
+func EditorBinary(slot string) string {
 	switch slot {
 	case "helix":
 		return "hx"
@@ -308,7 +311,7 @@ func agentBinary(slot string) string {
 func Commands(cfg config.Config) layout.Commands {
 	return layout.Commands{
 		"browser": cfg.Slots.Browser,
-		"editor":  editorBinary(cfg.Slots.Editor),
+		"editor":  EditorBinary(cfg.Slots.Editor),
 		"agent":   agentBinary(cfg.Slots.Agent),
 	}
 }
@@ -388,7 +391,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// Fedora's nano-default-editor exports EDITOR=nano from /etc/profile.d,
 	// and that is what yazi, lazygit and git shell out to. Setting it here
 	// covers bothy's panes without touching the user's shell config.
-	editor := editorBinary(cfg.Slots.Editor)
+	editor := EditorBinary(cfg.Slots.Editor)
 	env.set("EDITOR", editor)
 	env.set("VISUAL", editor)
 

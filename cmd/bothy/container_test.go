@@ -73,9 +73,12 @@ var onlineExpectation = map[string]doctor.Severity{
 	"opener":              doctor.Warn,
 	"xdg-open-shim-guard": doctor.Skip, // no shared home, so no shim to guard
 	"agent":               doctor.Skip, // slots.agent none, see runOnline
-	"tool-provenance":     doctor.Pass,
-	"tools-reachable":     doctor.Pass,
-	"theme-palette":       doctor.Skip, // the built-in palette
+	// slots.editor none, for the same reason as the agent: bothy supplies no
+	// editor, so demanding one would assert what the base image ships.
+	"editor":          doctor.Skip,
+	"tool-provenance": doctor.Pass,
+	"tools-reachable": doctor.Pass,
+	"theme-palette":   doctor.Skip, // the built-in palette
 }
 
 func TestBothyInstallsInAContainer(t *testing.T) {
@@ -118,6 +121,9 @@ func runOnline(t *testing.T, image string) {
 	// config until the test passes, which is why runOnline pays for it at the
 	// end by asserting the check still fires under the default config.
 	if out, code := b.run("config", "set", "slots.agent", "none"); code != 0 {
+		t.Fatalf("config set exited %d: %s", code, out)
+	}
+	if out, code := b.run("config", "set", "slots.editor", "none"); code != 0 {
 		t.Fatalf("config set exited %d: %s", code, out)
 	}
 
