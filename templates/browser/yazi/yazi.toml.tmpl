@@ -46,19 +46,12 @@ group = "git"
 [preview]
 max_width  = 900
 max_height = 900
-{{ if .Container }}
-# Yazi's default opener is xdg-open, and this container has no desktop to hand a
-# file to: `gio mime image/png` here reports "No default applications", because
-# app databases are read from the filesystem and only the host has the viewers.
-# Installing xdg-utils gets a working binary with nothing behind it. Hand the
-# open to the host instead.
+# Yazi's default opener is xdg-open, which is a freedesktop convention: macOS
+# has `open` instead, and inside a container the app databases live on the host
+# — `gio mime image/png` there reports "No default applications", so a local
+# xdg-open would be a working binary with nothing behind it. bothy picks the
+# one that fits this machine; see install.opener.
 [opener]
 open = [
-    { run = 'flatpak-spawn --host xdg-open "$@"', desc = "Open on host", orphan = true },
+    { run = '{{ .Opener }} "$@"', desc = "{{ .OpenerDesc }}", orphan = true },
 ]
-{{- else }}
-[opener]
-open = [
-    { run = 'xdg-open "$@"', desc = "Open", orphan = true },
-]
-{{- end }}

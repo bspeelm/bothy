@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/advice"
+	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/probe"
 )
 
@@ -93,21 +94,31 @@ func terminfoFix(env Env, term string) string {
 }
 
 func checkOpener(env Env) Result {
-	if _, err := env.lookPath("xdg-open"); err != nil {
+	// The binary the generated config actually names, so the check and the
+	// config cannot disagree about which one matters on this machine.
+	want := install.OpenerBinary(env.Platform)
+	if _, err := env.lookPath(want); err != nil {
+		if env.Platform.OS == "darwin" {
+			// `open` is part of macOS. Its absence means something stranger
+			// than a missing package, so there is nothing to advise
+			// installing.
+			return warn(want+" is not on PATH",
+				"pressing Enter on a file in yazi will not open it", "")
+		}
 		if env.Platform.SharedHome {
-			return fail("xdg-open is not on PATH",
+			return fail(want+" is not on PATH",
 				"pressing Enter on a file in yazi will report 'No such file or directory'",
 				"run 'bothy install' to place the host-forwarding shim in bothy's bin")
 		}
 		if env.Platform.InContainer() {
 			// No host session to forward to, so there is no shim to suggest.
-			return warn("xdg-open is not on PATH",
+			return warn(want+" is not on PATH",
 				"this container has no desktop to open files with, and no host to forward to",
 				"")
 		}
-		return warn("xdg-open is not on PATH", "", "install xdg-utils")
+		return warn(want+" is not on PATH", "", "install xdg-utils")
 	}
-	return pass("xdg-open resolves")
+	return pass(want + " resolves")
 }
 
 // checkXdgOpenShimGuard: home is shared between host and container, so the
