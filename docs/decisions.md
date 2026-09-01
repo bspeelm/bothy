@@ -382,6 +382,17 @@ produces a working workspace, bothy still installs no agent, and PLAN.md §11's
 non-goal — bothy does not manage the agent's config, keys or hooks — is
 untouched. What changes is which questions have easy answers.
 
+**And it constrains how the isolation property may be described.** The first
+draft of this reframing put "leaves no trace" in the tagline, which is true of
+bothy — one directory, removed by one command — and reads, beside the word
+*agent*, as a claim about blast radius. It is not one. The agent runs as the
+user, in the user's repository, with the user's permissions; its edits and
+commits are real, and its own state lives in its own directory that bothy does
+not touch by policy. Borrowing the connotations of a sandbox while declining to
+be one is the kind of overclaim this project exists to avoid, so the tagline
+now names what is actually disposable — "one directory you can delete" — and
+"not a sandbox" is on the What-bothy-is-not list in as many words.
+
 The alternative was to accept "terminal workspace" and rename `cockpit`, which
 is the honest version of the other choice. It was not taken because the
 narrower claim is the one nobody else makes. "One command opens yazi, zellij and
