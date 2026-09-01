@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/platform"
@@ -93,6 +94,41 @@ func ghosttyCommand(p platform.Info) ([]string, error) {
 	return nil, fmt.Errorf("ghostty not found")
 }
 
+// hostBothyLookup asks the host where its bothy is. A package variable so a
+// test can answer without a container and a host to spawn into.
+var hostBothyLookup = func() (string, error) {
+	fs, err := exec.LookPath("flatpak-spawn")
+	if err != nil {
+		return "", err
+	}
+	out, err := exec.Command(fs, "--host", "sh", "-c", "command -v bothy").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// hostBothy is the path the host should run.
+//
+// Asking the host beats assuming: a dnf or deb install puts its copy in
+// /usr/bin, which is nowhere under home, and both are supported install paths.
+//
+// The fallback covers a host PATH that omits ~/.local/bin in a non-login
+// shell, which is common enough that reporting "not found" would usually be
+// wrong. It can be checked from in here because home is shared -- which is the
+// same fact that made the original assumption tempting.
+func hostBothy(p platform.Info) (string, error) {
+	if path, err := hostBothyLookup(); err == nil && path != "" {
+		return path, nil
+	}
+	fallback := filepath.Join(p.LocalBin, "bothy")
+	if _, err := os.Stat(fallback); err == nil {
+		return fallback, nil
+	}
+	return "", fmt.Errorf("the host has no bothy on its PATH, and none at %s\n"+
+		"      install it on the host too, or run bothy with --in-place", fallback)
+}
+
 // spawnTerminal opens Ghostty on bothy's own config and runs bothy inside it.
 // The palette is inlined because Ghostty theme lookup paths are not relocatable.
 func spawnTerminal(p platform.Info, dir, profileName string) error {
@@ -104,10 +140,16 @@ func spawnTerminal(p platform.Info, dir, profileName string) error {
 	if err != nil {
 		return fmt.Errorf("cannot find the bothy binary to run: %w", err)
 	}
-	// Inside a container the host's ghostty runs the host's copy of bothy —
-	// the same file, because home is shared. That copy hops back in.
+	// Inside a container the host's ghostty runs the host's copy of bothy,
+	// which then hops back in. The container's own os.Executable() is not that
+	// copy: home is shared, so the path may name a different file on the other
+	// side, or none.
 	if len(term) > 1 && term[1] == "--host" {
-		self = filepath.Join(p.LocalBin, "bothy")
+		host, err := hostBothy(p)
+		if err != nil {
+			return err
+		}
+		self = host
 	}
 
 	conf := install.GhosttyConf(p)
