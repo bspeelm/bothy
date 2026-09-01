@@ -17,6 +17,7 @@ import (
 type ToolReport struct {
 	Used    []tools.Decision // the system's copy was good enough
 	Fetched []tools.Decision // bothy supplied one
+	Current []tools.Decision // bothy had already supplied one, at the pinned version
 	Failed  []ToolFailure
 	Skipped bool // --offline
 }
@@ -43,7 +44,7 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 	if err != nil {
 		return nil, err
 	}
-	decisions, err := tools.ResolveAll(names)
+	decisions, err := tools.ResolveAll(names, p.BinDir())
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +90,13 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 				fmt.Errorf("%s is not pinned in bothy.lock; run 'bothy lock'", d.Tool.Name)})
 			continue
 		}
+		// Already ours, at the version this bothy pins. Skipping the download
+		// is what makes install idempotent; comparing against the pin rather
+		// than the minimum is what makes it an upgrade when the pin moves.
+		if Supplied(p, m, d.Tool.Name, entry.Version) {
+			rep.Current = append(rep.Current, d)
+			continue
+		}
 		if progress != nil {
 			progress(fmt.Sprintf("  ↓ %s %s", d.Tool.Name, entry.Version))
 		}
@@ -108,6 +116,82 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 		return nil, err
 	}
 	return rep, nil
+}
+
+// ours reports whether a recorded binary is one bothy put in its own bin.
+// The directory is trusted over the recorded source, because a manifest can
+// carry `"source": "system"` for a binary sitting in bothy's own bin.
+func ours(p platform.Info, b state.Binary) bool {
+	return b.Source == "bothy" ||
+		filepath.Dir(filepath.Clean(b.Path)) == filepath.Clean(p.BinDir())
+}
+
+// Supplied reports whether bothy already has this tool at want, with the
+// binary still there.
+//
+// The manifest is the record, not the filesystem: a binary of the right name
+// says nothing about which version it is, and the lockfile moving is exactly
+// the case this has to notice.
+func Supplied(p platform.Info, m *state.Manifest, name, want string) bool {
+	for _, b := range m.Binaries {
+		if b.Name != name {
+			continue
+		}
+		if !ours(p, b) || b.Version != want {
+			return false
+		}
+		_, err := os.Stat(b.Path)
+		return err == nil
+	}
+	return false
+}
+
+// SuppliedVersion is the version bothy installed for a tool, or "" when bothy
+// did not supply it.
+func SuppliedVersion(p platform.Info, m *state.Manifest, name string) string {
+	for _, b := range m.Binaries {
+		if b.Name == name && ours(p, b) {
+			return b.Version
+		}
+	}
+	return ""
+}
+
+// PendingFetches are the tools that would actually be downloaded: the ones
+// bothy has to supply and does not already have at the pinned version.
+//
+// Used by the first-run prompt, so that it asks about the megabytes it is
+// about to spend rather than about every tool the system happens to lack.
+func PendingFetches(p platform.Info, decisions []tools.Decision) []tools.Decision {
+	m, err := state.Load(p.StateDir())
+	if err != nil {
+		return fetchesIn(decisions)
+	}
+	lock, err := fetch.LoadLock()
+	if err != nil {
+		return fetchesIn(decisions)
+	}
+	var out []tools.Decision
+	for _, d := range decisions {
+		if d.Action != tools.Fetch {
+			continue
+		}
+		if entry, ok := lock.Get(d.Tool.Name); ok && Supplied(p, m, d.Tool.Name, entry.Version) {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+func fetchesIn(decisions []tools.Decision) []tools.Decision {
+	var out []tools.Decision
+	for _, d := range decisions {
+		if d.Action == tools.Fetch {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // ToolPath resolves a binary the way bothy's session will: its own bin first,

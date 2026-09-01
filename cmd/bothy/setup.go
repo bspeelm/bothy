@@ -98,17 +98,14 @@ func confirmDownloads(p platform.Info, cfg config.Config) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	decisions, err := tools.ResolveAll(names)
+	decisions, err := tools.ResolveAll(names, p.BinDir())
 	if err != nil {
 		return false, err
 	}
 
-	var wanted []tools.Decision
-	for _, d := range decisions {
-		if d.Action == tools.Fetch {
-			wanted = append(wanted, d)
-		}
-	}
+	// What would actually be downloaded, which is not every gap: a tool bothy
+	// already supplied at the pinned version costs nothing to keep.
+	wanted := install.PendingFetches(p, decisions)
 	if len(wanted) == 0 || !isTerminal(os.Stdin) {
 		return true, nil
 	}
