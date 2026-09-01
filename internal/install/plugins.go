@@ -107,14 +107,9 @@ func EnsureYaziPlugins(p platform.Info, offline bool) (*PluginReport, error) {
 		}
 
 		cmd := exec.Command(ya, "pkg", "add", pl.Use)
-		// XDG_CACHE_HOME as well as the config home. `ya pkg add` clones the
-		// whole yazi-rs/plugins repository into its package cache — every
-		// plugin, not the one asked for — and without this it lands in
-		// ~/.cache/yazi, outside bothy's tree, where uninstall cannot reach it.
-		//
-		// The isolation guarantee covers what bothy writes. It does not
-		// automatically cover what the tools bothy runs decide to write, and
-		// that gap has to be closed one subprocess at a time.
+		// XDG_CACHE_HOME as well as the config home: `ya pkg add` clones the
+		// whole yazi-rs/plugins repository into its package cache, which
+		// otherwise lands in ~/.cache/yazi where uninstall cannot reach it.
 		cmd.Env = append(os.Environ(),
 			"YAZI_CONFIG_HOME="+dir,
 			"XDG_CACHE_HOME="+filepath.Join(p.BothyDir(), "cache"),

@@ -74,13 +74,8 @@ func (i Info) StateDir() string { return filepath.Join(i.BothyDir(), "state") }
 // that what they cache lands inside bothy's tree like everything else.
 func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
 
-// ShareDir is what XDG_DATA_HOME points at for bothy's session.
-//
-// Deliberately a level below BothyDir rather than BothyDir itself: bothy
-// derives DataDir from XDG_DATA_HOME and BothyDir from DataDir, so pointing
-// that variable at BothyDir would make a bothy run inside a bothy session
-// resolve a different tree. One level down, a nested bothy lands at
-// <bothy>/share/bothy -- still inside the tree, which is all isolation asks.
+// ShareDir is what XDG_DATA_HOME points at for bothy's session. A level below
+// BothyDir, so a nested bothy still resolves inside the tree.
 func (i Info) ShareDir() string { return filepath.Join(i.BothyDir(), "share") }
 
 // UserConfigDir is ~/.config/bothy: the user's own settings, palette and
@@ -138,13 +133,10 @@ func xdg(env, home string, fallback ...string) string {
 	return filepath.Join(append([]string{home}, fallback...)...)
 }
 
-// osRelease reads ID and VERSION_ID from /etc/os-release.
 // osRelease reads the three fields bothy dispatches on.
 //
-// ID_LIKE matters as much as ID: it is how Mint, Pop!_OS and every other
-// derivative say "treat me as debian". Reading only ID gave all of them the
-// generic advice, which on the one slot that offers per-distro instructions is
-// the whole of what that slot is for.
+// ID_LIKE matters as much as ID: it is how Mint, Pop!_OS and other derivatives
+// say "treat me as debian".
 func osRelease() (id, like, version string) {
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
@@ -173,15 +165,11 @@ func osRelease() (id, like, version string) {
 }
 
 // detectContainer identifies Toolbx/Distrobox and recovers the container's
-// name. The name matters: `dev` run from the host has to hop back into *this*
-// container, and hardcoding a name is exactly the machine-specific detail that
-// stopped the origin setup from being portable.
+// name, which `bothy` on the host needs to hop back into it.
 func detectContainer() (ContainerKind, string) { return detectContainerIn("/") }
 
-// detectContainerIn is detectContainer against an arbitrary root, so that the
-// marker files can be tested. Reading absolute paths directly made this the
-// one piece of detection that could only be exercised by running inside the
-// thing it detects.
+// detectContainerIn is detectContainer against an arbitrary root, so the
+// marker files can be tested.
 func detectContainerIn(root string) (ContainerKind, string) {
 	marker := func(name string) bool {
 		_, err := os.Stat(filepath.Join(root, name))
@@ -200,13 +188,9 @@ func detectContainerIn(root string) (ContainerKind, string) {
 	}
 	if marker("run/.containerenv") {
 		// Toolbx marks itself, and that mark is the only evidence worth
-		// reading. /run/.containerenv is written by podman, not by Toolbx --
-		// it names the engine that wrote it -- and podman puts a name in it
-		// for every container it runs, generating one where none was given.
-		// Treating that name as evidence of Toolbx made every `podman run
-		// --name` a Toolbx, and had `bothy` on the host answer a plain podman
-		// container with `toolbox run --container <that name>`, a hop that
-		// could never work.
+		// reading. /run/.containerenv is written by podman for every container
+		// it runs, with a generated name if none was given, so a name there is
+		// not evidence of Toolbx.
 		if marker("run/.toolboxenv") {
 			return Toolbx, name()
 		}

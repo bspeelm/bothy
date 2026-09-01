@@ -54,14 +54,8 @@ fetch() {
 echo "bothy: downloading $os/$arch"
 fetch "$base/$archive" "$tmp/$archive"
 
-# Every tool bothy installs is checksum-verified before it is written. For a
-# long time the one unverified download in the whole system was bothy's own
-# binary, which is a poor advertisement for the argument.
-#
-# This is not a signature and does not pretend to be: checksums.txt comes from
-# the same release as the archive, so it catches corruption and a truncated
-# download, not a compromised release. That is worth having and worth being
-# precise about.
+# Verify against checksums.txt from the same release. This catches corruption
+# and truncation, not a compromised release; it is a checksum, not a signature.
 if command -v sha256sum >/dev/null 2>&1; then
     sha_cmd="sha256sum"
 elif command -v shasum >/dev/null 2>&1; then

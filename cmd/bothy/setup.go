@@ -15,13 +15,12 @@ import (
 type setupOptions struct {
 	DryRun  bool
 	Offline bool
-	// Quiet drops the file-by-file listing, for the first-run path where the
-	// point is a working workspace rather than an inventory of it.
+	// Quiet drops the file-by-file listing, for the first-run path.
 	Quiet bool
 }
 
-// setup installs tools and writes configs. Shared by `bothy install` and by
-// the first run of `bothy`, so the two cannot drift into doing different work.
+// setup installs tools and writes configs, for both `bothy install` and the
+// first run of `bothy`.
 func setup(p platform.Info, cfg config.Config, opts setupOptions) error {
 	// Tools first: the graphics probe that decides how yazi.toml is written
 	// asks the multiplexer its version, so a zellij fetched now is the one the
@@ -69,9 +68,8 @@ func setup(p platform.Info, cfg config.Config, opts setupOptions) error {
 	return nil
 }
 
-// ensureInstalled sets the workspace up if this is the first run, rather than
-// refusing and naming a command it has just established is needed. `bothy
-// install` stays, for re-applying after `bothy config set`.
+// ensureInstalled sets the workspace up on first run, so one command reaches
+// a working workspace. `bothy install` remains for re-applying after config changes.
 func ensureInstalled(p platform.Info, cfg config.Config) error {
 	if _, err := os.Stat(p.ConfigRoot()); err == nil {
 		return nil
@@ -93,9 +91,7 @@ func ensureInstalled(p platform.Info, cfg config.Config) error {
 	return nil
 }
 
-// confirmDownloads asks before pulling tens of megabytes, when there is
-// somebody there to ask. A desktop launcher cannot answer a prompt, and
-// neither can a script, so both proceed.
+// confirmDownloads asks before downloading, when stdin is a terminal.
 func confirmDownloads(p platform.Info, cfg config.Config) (bool, error) {
 	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
 	if err != nil {

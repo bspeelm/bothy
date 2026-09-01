@@ -9,19 +9,10 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// Custom palettes.
-//
-// bothy ships exactly one palette — the freely-licensed open Dracula one in
-// theme.go — and reads any other from a file the user points it at. There is no
-// code here that knows about any particular commercial theme, and no colour
-// value in this repository that is not open Dracula's.
-//
-// That is a deliberate boundary, not an oversight. A palette you have licensed
-// is yours to use on your own machine; it is not bothy's to carry, parse the
-// vendor's files for, or copy around. Writing eleven values into a small TOML
-// file keeps the licensed material entirely outside this project, and has the
-// side effect of making every other palette — Catppuccin, Nord, Gruvbox, your
-// own — work by exactly the same route.
+// Custom palettes. bothy ships exactly one palette (open Dracula, theme.go)
+// and reads any other from a file the user points it at, so a licensed
+// palette never enters this repository and every other palette works by
+// the same route. See docs/decisions.md ADR-006.
 
 // paletteFile is the on-disk shape of a custom palette.
 type paletteFile struct {
@@ -99,9 +90,7 @@ func (p Palette) validate(source string) error {
 	return nil
 }
 
-// ExampleFile is a blank palette for someone to fill in. It carries no colour
-// values at all, so that a palette anyone has licensed stays on their machine
-// and out of this repository.
+// ExampleFile is a blank palette for someone to fill in. It carries no colour values.
 const ExampleFile = `# A bothy palette.
 #
 # Eleven tokens theme the whole workspace: the multiplexer, the file browser,

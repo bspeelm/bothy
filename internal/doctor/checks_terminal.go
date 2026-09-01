@@ -10,12 +10,10 @@ import (
 	"github.com/bspeelm/bothy/internal/probe"
 )
 
-// Checks about the terminal, the multiplexer, and getting a file opened --
-// the parts of the workspace that depend on what is outside bothy's tree.
+// Checks about the terminal, the multiplexer, and getting a file opened.
 
 // checkTerminalCapability reports where bothy will run. A terminal that cannot
-// draw images is not an error — it is a reason previews will be off, and
-// saying so beats letting someone wonder why their config "did not work".
+// draw images is not an error; it is the reason previews will be off.
 func checkTerminalCapability(env Env) Result {
 	term := env.Platform.Terminal
 	if term == "" {
@@ -25,9 +23,8 @@ func checkTerminalCapability(env Env) Result {
 	if g.Supported {
 		return pass("running in " + term + ", which can draw images")
 	}
-	// Not a failure: bothy opens a Ghostty window when the current terminal
-	// cannot draw, so this is a statement of what will happen rather than a
-	// problem to fix. It becomes one only if there is no Ghostty to open.
+	// Not a failure: bothy opens a Ghostty window instead — unless there is
+	// no ghostty to open.
 	if _, err := exec.LookPath("ghostty"); err != nil {
 		fix := "install a terminal that can draw images, or accept block-art previews"
 		if a, err := advice.Get("ghostty"); err == nil {
@@ -63,16 +60,14 @@ func checkZellijConfig(env Env) Result {
 }
 
 // checkTerminfo catches the container trap: the toolbox image has no
-// xterm-ghostty entry, so entering it greets you with a terminfo error and
-// leaves the terminal degraded.
+// xterm-ghostty entry, so entering it leaves the terminal degraded.
 func checkTerminfo(env Env) Result {
 	term := env.Platform.Term
 	if term == "" {
 		return warn("$TERM is not set", "", "")
 	}
-	// Without infocmp there is no way to answer the question. Saying so is
-	// better than reporting the entry missing, which is a different problem
-	// with a different fix.
+	// Without infocmp the question cannot be answered; reporting the entry
+	// missing would be a different problem with a different fix.
 	if _, err := exec.LookPath("infocmp"); err != nil {
 		return skip("infocmp is not installed, so terminfo cannot be checked")
 	}
@@ -84,13 +79,9 @@ func checkTerminfo(env Env) Result {
 }
 
 // terminfoFix names a way to get the entry that works where it is offered.
-//
 // The host copy is only there under Toolbx and Distrobox, which mount the host
-// root at /run/host. Everywhere else -- a plain container, or any machine whose
-// distribution has no package for this terminal, which on Ubuntu is every
-// machine -- the portable answer is to carry the compiled entry over from
-// somewhere that has it: "install the terminfo entry for xterm-ghostty" names
-// no package that exists.
+// root at /run/host. Elsewhere the portable answer is to carry the compiled
+// entry over from a machine that has it: no package by that name exists.
 func terminfoFix(env Env, term string) string {
 	sub := term[:1]
 	if env.Platform.SharedHome {
@@ -109,8 +100,7 @@ func checkOpener(env Env) Result {
 				"run 'bothy install' to place the host-forwarding shim in bothy's bin")
 		}
 		if env.Platform.InContainer() {
-			// No host session to forward to, so there is no shim to suggest
-			// and nothing bothy can do about it.
+			// No host session to forward to, so there is no shim to suggest.
 			return warn("xdg-open is not on PATH",
 				"this container has no desktop to open files with, and no host to forward to",
 				"")
@@ -120,10 +110,8 @@ func checkOpener(env Env) Result {
 	return pass("xdg-open resolves")
 }
 
-// checkXdgOpenShimGuard is the check that stops a fix from becoming a worse
-// bug. Home is shared between host and container, so the shim in ~/.local/bin
-// is on the host's PATH too — without its containerenv guard, the host execs
-// itself forever.
+// checkXdgOpenShimGuard: home is shared between host and container, so the
+// shim must keep its containerenv guard or the host execs itself forever.
 func checkXdgOpenShimGuard(env Env) Result {
 	shim := filepath.Join(env.Platform.BinDir(), "xdg-open")
 	b, err := os.ReadFile(shim)

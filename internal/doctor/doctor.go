@@ -1,15 +1,14 @@
 // Package doctor detects the ways this workspace is known to break.
 //
-// Every check here exists because the failure it looks for actually happened
-// and cost someone an afternoon — most of them are drawn from
-// docs/origin-cheatsheet.md. The common thread is that these failures are
-// *silent*: Yazi discards an entire config and carries on, vim ignores a
-// colorscheme without a word, Ghostty ignores a config file whose name is one
-// character wrong. A check that only restates an error the tool already prints
-// loudly is not worth adding.
+// The failures here are silent ones: Yazi discards an entire config and
+// carries on, vim ignores a colorscheme without a word, Ghostty ignores a
+// misnamed config file. A check that restates an error the tool already
+// prints loudly is not worth adding. When a setup bug is fixed, the fix
+// ships with a check that detects it (PLAN.md §0).
 //
-// Per PLAN.md §0: when a setup bug is fixed, the fix ships with a check that
-// detects it.
+// Every check that invokes a tool must resolve it and run it the way bothy's
+// session will (lookPath, Env.ToolEnv). A check that reports on a different
+// binary or config than the launcher uses is worse than no check.
 package doctor
 
 import (
@@ -37,8 +36,7 @@ type Result struct {
 	Summary  string   `json:"summary"`
 	// Detail explains what was actually observed.
 	Detail string `json:"detail,omitempty"`
-	// Fix is a single actionable line. Every failing check must have one:
-	// a diagnosis without a fix is just a nicer error message.
+	// Fix is a single actionable line. Every failing check must have one.
 	Fix string `json:"fix,omitempty"`
 }
 
@@ -84,37 +82,21 @@ type Check struct {
 type Env struct {
 	Platform platform.Info
 	Config   config.Config
-	// Profile is the layout profile in use, for the pane-count check.
+	// ProfileName and PaneCount describe the layout profile in use.
 	ProfileName string
 	PaneCount   int
-	// RunsIn is the container bothy will hop into to launch the workspace, or
-	// "" when it runs here. Set on the host when an install happened inside a
-	// toolbox: the tools live there, so checking for them here reports every
-	// one of them missing and every report is wrong.
+	// RunsIn is the container the workspace will launch in, or "" when it runs here.
 	RunsIn string
-	// MuxBin is the multiplexer binary bothy will actually launch, resolved
-	// through its own bin first. Checking the system's copy instead reports
-	// confidently about a binary that is not the one being used.
+	// MuxBin is the multiplexer binary bothy will actually launch, resolved through its own bin first.
 	MuxBin string
-	// Version is the running binary's version, for comparison with the one
-	// recorded in the manifest. Passed in rather than read here, so that
-	// internal/doctor keeps knowing nothing about package main.
+	// Version is the running binary's version, to compare against the
+	// manifest's. Passed in, so this package knows nothing about package main.
 	Version string
-	// ToolEnv is the environment bothy's session runs tools with. Checks that
-	// invoke a tool must use it, or they interrogate the user's config instead
-	// of bothy's — a check that confidently reports on the wrong file is worse
-	// than no check at all. The caller supplies it via install.SessionEnv.
+	// ToolEnv is the session environment from install.SessionEnv; checks that invoke a tool must use it.
 	ToolEnv []string
 }
 
-// lookPath resolves a binary the way bothy's session will: its own bin first,
-// then the system PATH.
-//
-// This exists because forgetting it has now caused the same bug four times.
-// A check that resolves through the ambient PATH reports on a binary bothy is
-// not going to run — and in a container where bothy supplied every tool, that
-// meant the doctor announcing "0 from your system, 9 supplied by bothy" and
-// "zellij is not installed" in the same report.
+// lookPath resolves a binary the way bothy's session will: its own bin first, then PATH.
 func (e Env) lookPath(name string) (string, error) {
 	if own, ok := install.InstalledBinary(e.Platform, name); ok {
 		return own, nil
@@ -123,11 +105,8 @@ func (e Env) lookPath(name string) (string, error) {
 }
 
 // elsewhere reports that the workspace runs in another container, so a check
-// that inspects tools here would be inspecting the wrong machine.
-//
-// bothy straddles a host and a container that share a home directory, so
-// "where am I" and "where does the work happen" are different questions. A
-// check that conflates them is confidently wrong rather than merely silent.
+// that inspects tools here would inspect the wrong machine. Host and
+// container share a home but not a PATH.
 func (e Env) elsewhere() (Result, bool) {
 	if e.RunsIn == "" {
 		return Result{}, false

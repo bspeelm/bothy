@@ -9,8 +9,6 @@ import (
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
-// `bothy tools` -- report the fill-gaps decisions, and what is still running.
-
 // cmdTools shows where each tool comes from, without changing anything.
 func cmdTools(args []string) error {
 	p, cfg, err := load()
@@ -39,9 +37,7 @@ func cmdTools(args []string) error {
 	return nil
 }
 
-// printTools reports the fill-gaps decisions. Saying *why* a tool was fetched
-// matters more than saying that it was: "zellij 0.42.2 is below 0.45.1" is
-// actionable, "downloading zellij" is noise.
+// printTools reports the fill-gaps decisions, with the reason each tool was fetched.
 func printTools(r *install.ToolReport) {
 	if r.Skipped {
 		fmt.Println("offline: using only the tools already installed")

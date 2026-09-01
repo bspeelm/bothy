@@ -10,17 +10,13 @@ import (
 	"strings"
 )
 
-// Graphics is the verdict on whether inline image previews will actually work.
+// Graphics is the verdict on whether inline image previews will work, with
+// the reason carried alongside so "previews are off" is never unexplained.
 //
-// Zellij below 0.45.0 cannot pass the Kitty graphics protocol through:
-// previews fall back to chafa block art, and Zellij's mangled reply to Yazi's
-// capability query is parsed as keystrokes, firing a phantom "Find next" on
-// every preview. 0.45.1 fixed image sizing and stopped advertising Sixel the
-// terminal does not have. Hence a version gate rather than a permanent
-// workaround — ADR-007.
-//
-// Reason travels with the verdict: "previews are off" without one is the kind
-// of unexplained behaviour the doctor exists to remove.
+// Zellij before 0.45.1 could not pass the Kitty graphics protocol through,
+// and its mangled reply to Yazi's capability query was parsed as keystrokes.
+// The workaround is gated on a version probe rather than deleted or made
+// permanent — see docs/decisions.md ADR-007.
 type Graphics struct {
 	Supported bool
 	Reason    string
@@ -30,9 +26,7 @@ type Graphics struct {
 // 0.45.0 added the protocol; 0.45.1 fixed image sizing on startup.
 var MinZellijGraphics = Version{0, 45, 1}
 
-// graphicsTerminals are the emulators known to implement the Kitty graphics
-// protocol. Anything else falls back to block art, which is not worth the
-// phantom-keypress risk.
+// graphicsTerminals are the emulators known to implement the Kitty graphics protocol.
 var graphicsTerminals = map[string]bool{
 	"ghostty": true,
 	"kitty":   true,
@@ -91,13 +85,9 @@ func ZellijVersion(bin string) (Version, error) {
 // Version is a lenient three-part version.
 type Version struct{ Major, Minor, Patch int }
 
-// versionPattern finds a dotted version anywhere in a string.
-//
-// Scanning for the pattern rather than splitting on whitespace, because tools
-// do not agree on where the number goes: jq prints "jq-1.8.1" with the number
-// glued to the name, lazygit prints "commit=, build date=, ...,
-// version=0.47.2, os=linux". Requiring a token that *starts* with a digit
-// finds neither, and a tool with no detectable version gets replaced.
+// versionPattern finds a dotted version anywhere in a string. Tools disagree
+// about where the number goes: jq prints "jq-1.8.1", lazygit prints
+// "commit=, build date=, ..., version=0.47.2, os=linux".
 var versionPattern = regexp.MustCompile(`([0-9]+)\.([0-9]+)(?:\.([0-9]+))?`)
 
 // ParseVersion pulls the first dotted version out of a tool's version output.

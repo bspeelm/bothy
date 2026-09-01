@@ -1,14 +1,10 @@
 // Package render turns templates into the config files bothy launches its
-// tools against.
+// tools against. Everything it writes goes inside bothy's own tree (ADR-009).
 //
-// Everything it writes goes inside bothy's own tree (ADR-009), which is what
-// lets this package be as small as it is: no backups, no content hashes, no
-// drift detection, because it never writes a file the user owns.
-//
-// Two properties it does keep:
+// Two rules:
 //
 //   - Every generated file says it is generated, and names where to put your
-//     own changes. A file with no provenance is a file nobody dares edit.
+//     own changes.
 //   - Overrides are appended after the template, so your setting wins.
 package render
 
@@ -37,9 +33,8 @@ var commentPrefix = map[string]string{
 	".sh": "#", ".bash": "#", ".conf": "#", ".ini": "#", ".yaml": "#", ".yml": "#",
 }
 
-// comment is the line-comment marker for a destination path. Anything bothy
-// has no style for gets "#", which is right for the config formats it is
-// likeliest to meet next and wrong in a way that is visible rather than silent.
+// comment is the line-comment marker for a destination path; anything with no
+// style of its own gets "#".
 func comment(dest string) string {
 	if c := commentPrefix[filepath.Ext(dest)]; c != "" {
 		return c
@@ -89,9 +84,8 @@ func nthLineEnd(s string, n int) int {
 
 // Writer renders templates into bothy's tree.
 type Writer struct {
-	// Root is bothy's tree — config/ and bin/ both live under it. Every write
-	// must land inside it; the Write method refuses anything else, which is
-	// the isolation promise enforced rather than merely intended.
+	// Root is bothy's tree — config/ and bin/ both live under it. Write
+	// refuses any destination outside it.
 	Root string
 	// Overrides is ~/.config/bothy/overrides.
 	Overrides string
@@ -133,12 +127,8 @@ func (w *Writer) Render(dest, tool, tmplName, tmplText string, data any) ([]byte
 	return body.Bytes(), nil
 }
 
-// override reads the user's addition for a file, if any.
-//
-// The merge rule is deliberately dumb — append, and nothing else. Every format
-// bothy writes (TOML, KDL, Lua, vimscript) is one where a later statement wins
-// or adds, and a structural merge would need a parser per format plus a story
-// for conflicts. Appending keeps working when a tool adds a new config key.
+// override reads the user's addition for a file. The merge is append-only:
+// every format bothy writes is one where a later statement wins.
 func (w *Writer) override(tool, name string) ([]byte, error) {
 	if w.Overrides == "" {
 		return nil, nil
@@ -153,10 +143,8 @@ func (w *Writer) override(tool, name string) ([]byte, error) {
 	return b, nil
 }
 
-// Write puts content at dest, which must be inside Root.
-//
-// It returns whether the file changed, so an install can report "3 written, 9
-// already current" rather than claiming to have rewritten everything.
+// Write puts content at dest, which must be inside Root. It reports whether
+// the file changed, so an install can say how much of it was already current.
 func (w *Writer) Write(dest string, content []byte) (changed bool, err error) {
 	if err := w.inRoot(dest); err != nil {
 		return false, err
@@ -194,9 +182,7 @@ func (w *Writer) WriteExec(dest string, content []byte) (bool, error) {
 	return changed, os.Chmod(dest, 0o755)
 }
 
-// inRoot is the isolation guarantee, checked rather than trusted. A template
-// destination is built from configuration, and configuration can contain "..";
-// this is the one place that can go wrong, so it is the one place that checks.
+// inRoot enforces the isolation guarantee; a destination built from config can contain "..".
 func (w *Writer) inRoot(dest string) error {
 	if w.Root == "" {
 		return fmt.Errorf("render: no root configured")
@@ -220,11 +206,8 @@ func (w *Writer) inRoot(dest string) error {
 // writeAtomic writes via a temporary file and renames, so an interrupted write
 // cannot leave a tool reading a truncated config.
 func writeAtomic(dest string, content []byte, mode fs.FileMode) error {
-	// A unique temporary name, not dest+".bothy-tmp". Two installs running at
-	// once -- or an install racing a doctor that regenerates a config --
-	// shared that one name, so one process could rename the other's
-	// half-written file into place and defeat the atomicity this function
-	// exists to provide.
+	// Unique temp name, so concurrent writers cannot rename each other's
+	// half-written file.
 	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".bothy-*")
 	if err != nil {
 		return err
@@ -248,8 +231,7 @@ func writeAtomic(dest string, content []byte, mode fs.FileMode) error {
 	return os.Rename(tmp, dest)
 }
 
-// funcs is the template function set. It stays small on purpose: a template
-// needing more logic than this is a sign the providers should be split instead.
+// funcs is the template function set; it stays small on purpose.
 func funcs() template.FuncMap {
 	return template.FuncMap{
 		"join":  strings.Join,

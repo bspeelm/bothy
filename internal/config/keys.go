@@ -5,11 +5,8 @@ import (
 	"strings"
 )
 
-// Keys lists every key config.toml accepts, in dotted form.
-//
-// Derived from the struct rather than written out, because a hand-kept list is
-// one that drifts the first time a field is added and nobody remembers this
-// file exists.
+// Keys lists every key config.toml accepts, in dotted form, derived from the
+// struct so it cannot drift when a field is added.
 func Keys() []string {
 	return keysOf(reflect.TypeOf(Config{}), "")
 }
@@ -33,11 +30,7 @@ func keysOf(t reflect.Type, prefix string) []string {
 }
 
 // Nearest returns the valid key closest to key, or "" when nothing is close
-// enough to be worth suggesting.
-//
-// The threshold matters more than the algorithm: suggesting "profile" for
-// "borwser" is worse than suggesting nothing, because it sends someone to edit
-// a line that was never the problem.
+// enough: suggesting "profile" for "borwser" is worse than suggesting nothing.
 func Nearest(key string) string {
 	best, bestD := "", 0
 	for _, k := range Keys() {

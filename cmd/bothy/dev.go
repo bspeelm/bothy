@@ -15,7 +15,7 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
-// cmdDev launches the workspace, and is what the `dev` shell function calls.
+// cmdDev launches the workspace. Bare `bothy` and `bothy dev` both land here.
 func cmdDev(args []string) error {
 	fs := flag.NewFlagSet("dev", flag.ExitOnError)
 	dir := fs.String("dir", "", "directory to open in (default: the current one)")
@@ -26,8 +26,7 @@ func cmdDev(args []string) error {
 		return err
 	}
 
-	// `dev attach` reattaches rather than starting a second session. Checked
-	// after parsing, not on args[0], so flags may precede the word.
+	// Checked after flag parsing so `bothy dev --profile x attach` still attaches.
 	if fs.NArg() > 0 && fs.Arg(0) == "attach" {
 		return cmdAttach(fs.Args()[1:])
 	}
@@ -46,8 +45,7 @@ func cmdDev(args []string) error {
 		return err
 	}
 
-	// The layout starts its own agent. Running `dev` from inside an agent
-	// session would nest a second one in the first.
+	// The layout starts its own agent; running from inside one would nest a second.
 	if agent, nested := nestedAgent(); nested {
 		return fmt.Errorf("already inside %s, and the layout would start another one\n"+
 			"      exit this session first, then run bothy", agent)
@@ -79,8 +77,7 @@ func cmdDev(args []string) error {
 	// container hop, so the window opens once, on the host.
 	if mode := decideLaunch(p, force); mode.Spawn {
 		if err := spawnTerminal(p, target, name); err != nil {
-			// A terminal that will not open is a reason to carry on here, not
-			// to refuse: the workspace still works, it just cannot draw images.
+			// Not fatal: the workspace still runs here, without image previews.
 			fmt.Fprintf(os.Stderr, "bothy: %v\n         running in this terminal instead\n", err)
 		} else {
 			return nil
@@ -98,11 +95,8 @@ func cmdDev(args []string) error {
 	return launch(p, cfg, target, name)
 }
 
-// launch renders the profile and hands off to the multiplexer.
-//
-// This is where isolation happens: the tools read bothy's configs only because
-// environment variables scoped to this one process tree point them there. Your
-// shell keeps its own PATH and EDITOR, and your ~/.config is untouched.
+// launch renders the profile and hands off to the multiplexer with the
+// session environment from install.SessionEnv, which is where isolation happens.
 func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	prof, err := install.LoadProfile(p, profileName)
 	if err != nil {
@@ -113,8 +107,6 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 		return err
 	}
 
-	// The guard belongs beside the write rather than beside cmdDev's setup
-	// call: a check next to one caller protects only that caller.
 	if _, err := os.Stat(p.ConfigRoot()); err != nil {
 		return fmt.Errorf("no workspace configured yet\n"+
 			"      bothy keeps everything in one directory, derived from $HOME:\n"+
@@ -148,7 +140,7 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	return runWithEnv(install.SessionEnv(p, cfg), bin, "--layout", layoutFile)
 }
 
-// lookPathIn prefers bothy's own bin, then falls back to the system PATH.
+// bothy's own bin first: a zellij bothy supplied is not on the ambient PATH.
 func lookPathIn(p platform.Info, name string) (string, error) {
 	if own, ok := install.InstalledBinary(p, name); ok {
 		return own, nil
@@ -157,8 +149,8 @@ func lookPathIn(p platform.Info, name string) (string, error) {
 }
 
 func hopIntoContainer(container, dir, profile string) error {
-	// --in-place: whatever decided to hop already settled the terminal
-	// question, and the copy inside the container must not reopen it.
+	// --in-place: the terminal question is settled outside; the inner copy
+	// must not reopen it.
 	inner := fmt.Sprintf("cd %s && bothy dev --in-place --dir %s --profile %s",
 		shellQuote(dir), shellQuote(dir), shellQuote(profile))
 
@@ -166,8 +158,7 @@ func hopIntoContainer(container, dir, profile string) error {
 }
 
 // containerHop runs one shell command inside a container, through whichever of
-// toolbox and distrobox is installed. Shared, so `dev` and `attach` cannot
-// diverge on which they support.
+// toolbox and distrobox is installed.
 func containerHop(container, command string) error {
 	if bin, err := exec.LookPath("toolbox"); err == nil {
 		return runInteractive(bin, "run", "--container", container, "bash", "-lc", command)
@@ -195,8 +186,7 @@ func cmdAttach(args []string) error {
 }
 
 // attachPlan is what `bothy attach` will do: hop into the container the
-// workspace lives in, or run the multiplexer here. A value, so the resolution
-// can be asserted about in tests.
+// workspace lives in, or run the multiplexer here.
 type attachPlan struct {
 	// Container and Command are the container and the shell line to run in it,
 	// both empty when attaching here.
@@ -218,8 +208,6 @@ func planAttach(p platform.Info, cfg config.Config, args []string) (attachPlan, 
 			return attachPlan{Container: container, Command: attachCommand(mux, args)}, nil
 		}
 	}
-	// lookPathIn, not exec.LookPath: bothy's own bin comes first, so a
-	// multiplexer bothy supplied is found even when the ambient PATH has none.
 	bin, err := lookPathIn(p, mux)
 	if err != nil {
 		return attachPlan{}, fmt.Errorf("%s is not installed", mux)
@@ -234,7 +222,7 @@ func planAttach(p platform.Info, cfg config.Config, args []string) (attachPlan, 
 	}, nil
 }
 
-// attachCommand builds the shell line for the container hop. Quoted, because
+// attachCommand builds the shell line for the container hop, quoted because
 // it is interpolated into `bash -lc`.
 func attachCommand(mux string, args []string) string {
 	parts := make([]string, 0, len(args)+2)
@@ -246,8 +234,7 @@ func attachCommand(mux string, args []string) string {
 }
 
 // nestedAgent reports whether this shell is already inside an agent session.
-// Each agent advertises itself differently, so this is a list rather than a
-// rule, and a refusal to nest rather than a promise never to.
+// Each agent advertises itself differently, so this is a list.
 func nestedAgent() (string, bool) {
 	for env, name := range map[string]string{
 		"CLAUDECODE":      "a Claude Code session",
@@ -278,8 +265,7 @@ func runWithEnv(env []string, name string, args ...string) error {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 
-	// A non-zero exit from the multiplexer is its business, not an error in
-	// bothy — reporting "bothy: exit status 1" over it would be noise.
+	// A non-zero exit from the multiplexer is its own status, not a bothy error.
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		os.Exit(exitErr.ExitCode())

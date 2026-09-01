@@ -48,9 +48,8 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 		return nil, err
 	}
 
-	// Written on every path, offline included: the launcher reads InstalledIn
-	// to find its way back to the container holding the tools, and skipping
-	// downloads is not a reason to skip that.
+	// Written on every path, offline included: InstalledIn is what lets a host
+	// launch find the container holding the tools.
 	m, err := state.Load(p.StateDir())
 	if err != nil {
 		return nil, err

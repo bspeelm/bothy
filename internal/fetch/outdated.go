@@ -25,13 +25,8 @@ func (u Update) Outdated() bool {
 }
 
 // CheckOutdated asks each tool's forge for its latest release and compares it
-// with what the lockfile pins.
-//
-// This is the cheap half of what `bothy lock` does: one API call per tool and
-// no asset bytes at all. Relock downloads every asset for all four platforms
-// -- around half a gigabyte -- because a checksum has to come from the bytes
-// bothy will actually run. Answering "is anything stale?" needs none of that,
-// and asking it should not cost a coffee break.
+// with the lockfile pin. One API call per tool and no asset bytes; Relock
+// downloads every asset because a checksum must come from the real bytes.
 func CheckOutdated(ts []tools.Tool, lock *Lockfile) []Update {
 	out := make([]Update, 0, len(ts))
 	for _, t := range ts {

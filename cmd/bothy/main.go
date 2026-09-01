@@ -1,8 +1,5 @@
-// Command bothy sets up and launches a terminal workspace.
-//
-// Subcommand dispatch is a plain switch rather than a CLI framework. PLAN.md §8
-// puts the dependency ceiling at go-toml plus the standard library, and the
-// switch below is smaller than the flag definitions a framework would need.
+// Command bothy sets up and launches a terminal workspace. Dispatch is a
+// plain switch; PLAN.md §8 caps dependencies at go-toml.
 package main
 
 import (
@@ -61,7 +58,6 @@ changes. Everything bothy writes lives under ~/.local/share/bothy, and
 `
 
 func main() {
-	// Bare `bothy` launches the workspace: the daily command costs nothing to type.
 	if len(os.Args) < 2 {
 		if err := cmdDev(nil); err != nil {
 			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
@@ -78,7 +74,6 @@ func main() {
 	case "doctor":
 		err = cmdDoctor(args)
 	case "dev":
-		// Retained so `bothy dev` keeps working; bare `bothy` is the same thing.
 		err = cmdDev(args)
 	case "attach":
 		err = cmdAttach(args)
@@ -122,9 +117,8 @@ func load() (platform.Info, config.Config, error) {
 	return p, cfg, err
 }
 
-// warnUnknownKeys says once, on stderr, what `bothy doctor` says at length.
-// Every command that reads the config goes through here, so an unrecognised
-// key is always mentioned; stderr, so it cannot corrupt `--json` or a layout.
+// warnUnknownKeys reports unrecognised config keys once, on stderr so it
+// cannot corrupt --json output or a piped layout.
 func warnUnknownKeys(cfg config.Config) {
 	for _, k := range cfg.Unknown {
 		if near := config.Nearest(k); near != "" {

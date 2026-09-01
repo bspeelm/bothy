@@ -18,8 +18,5 @@ darwin_x86_64  = "zellij-x86_64-apple-darwin.tar.gz"
 darwin_aarch64 = "zellij-aarch64-apple-darwin.tar.gz"
 
 # No checksums field, despite zellij publishing a .sha256sum beside each asset:
-# it is the hash of the binary *inside* the archive
-# ("target/x86_64-unknown-linux-musl/release/zellij"), not of the archive bothy
-# downloads, so there is nothing to compare it with. Verifying it would mean
-# extracting first, which is a different shape of check than the one `bothy
-# lock` does.
+# it hashes the binary *inside* the archive, not the archive bothy downloads,
+# so there is nothing to compare it with without extracting first.

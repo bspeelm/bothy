@@ -17,17 +17,15 @@ type Running struct {
 }
 
 // StillRunning finds processes executing binaries from bothy's bin, so that
-// uninstall can warn before deleting one out from under a live session: Linux
-// holds the inode open, so the session keeps running but can never be
-// reattached.
+// uninstall can warn rather than delete a multiplexer out from under a live
+// session (Linux keeps the inode; the session can never be reattached).
 //
-// Matches on /proc/PID/cmdline rather than the /proc/PID/exe link. Reading the
-// exe link needs ptrace permission, which is refused across the user-namespace
-// boundary of a rootless container — so inside a toolbox it finds nothing at
-// all, while cmdline reads the same process fine.
+// It matches on /proc/PID/cmdline rather than the /proc/PID/exe link: reading
+// exe needs ptrace permission, which is refused across the user-namespace
+// boundary of a rootless container, so from inside a toolbox exe silently
+// finds nothing while cmdline works.
 //
-// Linux-only; elsewhere it reports nothing, which is the right failure. A
-// missing warning beats a wrong one.
+// Linux-only. Elsewhere it reports nothing: a missing warning beats a wrong one.
 func StillRunning(p platform.Info) []Running {
 	entries, err := os.ReadDir("/proc")
 	if err != nil {

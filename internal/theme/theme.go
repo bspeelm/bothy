@@ -1,14 +1,6 @@
-// Package theme resolves a colour palette for the whole workspace.
-//
-// Every tool bothy configures is themed from one 11-token Palette, so a theme
-// provider is a palette plus per-tool templates — there is no theme engine.
-//
-// Two sources fill a Palette:
-//
-//   - The built-in open Dracula palette (MIT), the only colour values in this
-//     repository.
-//   - A palette file the user points bothy at. See custom.go and
-//     docs/decisions.md ADR-006.
+// Package theme resolves one 11-token Palette for the whole workspace, from
+// the built-in open Dracula palette or a file the user points bothy at
+// (custom.go, ADR-006).
 package theme
 
 import (
@@ -62,10 +54,9 @@ func Open() Palette {
 	}
 }
 
-// Color looks a token up by name. This is the funcmap entry point used by
-// templates as {{ theme.Color "purple" }}, so an unknown token must be a hard
-// error — a template silently rendering an empty colour is the kind of failure
-// that only shows up as an unreadable pane.
+// Color looks a token up by name. It is the funcmap entry point templates call
+// as {{ theme.Color "purple" }}; an unknown token is a hard error, because an
+// empty colour shows up only as an unreadable pane.
 func (p Palette) Color(token string) (string, error) {
 	switch token {
 	case "fg", "foreground":
@@ -94,8 +85,8 @@ func (p Palette) Color(token string) (string, error) {
 	return "", fmt.Errorf("theme: unknown colour token %q", token)
 }
 
-// complete reports the tokens that are still empty. Fails an install
-// loudly rather than write a half-themed config.
+// missing reports the tokens that are still empty, so an install fails loudly
+// rather than writing a half-themed config.
 func (p Palette) missing() []string {
 	var out []string
 	for _, tok := range paletteTokens {
@@ -106,11 +97,9 @@ func (p Palette) missing() []string {
 	return out
 }
 
-// Resolve returns the palette to theme the workspace with.
-//
-// palettePath wins when set: it is the user's own file, and pointing bothy at
-// one is how any palette other than open Dracula gets in. Otherwise the named
-// built-in provider is used.
+// Resolve returns the palette to theme the workspace with. palettePath wins
+// when set: pointing bothy at a file is how any palette other than open
+// Dracula gets in.
 func Resolve(provider, palettePath string) (Palette, error) {
 	if palettePath != "" {
 		return Load(palettePath)

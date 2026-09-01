@@ -25,8 +25,7 @@ type launchMode struct {
 // graphics protocol; inside GNOME Terminal, Yazi degrades silently to block
 // art, so bothy opens a terminal that works instead.
 //
-// Every reason to stay put is checked before any reason to spawn: a spawn that
-// cannot work is worse than a degraded workspace.
+// Every reason to stay put is checked before any reason to spawn.
 func decideLaunch(p platform.Info, force string) launchMode {
 	switch force {
 	case "in-place":
@@ -61,11 +60,9 @@ func decideLaunch(p platform.Info, force string) launchMode {
 	return launchMode{Reason: "this terminal can draw images; running here"}
 }
 
-// isTerminal reports whether a stream is attached to something interactive —
-// stdout for whether there is a terminal to run in, stdin for whether anyone
-// is there to answer a prompt. The character-device test alone is not enough:
-// /dev/null is one too, so it is excluded by name, which covers redirects,
-// cron and systemd units without an ioctl or a dependency PLAN.md §13 forbids.
+// isTerminal reports whether a stream is an interactive terminal. /dev/null is
+// also a character device, so it is excluded explicitly; that covers redirects,
+// cron and systemd units without an ioctl (no x/term — PLAN.md §13).
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
@@ -77,9 +74,8 @@ func isTerminal(f *os.File) bool {
 	return true
 }
 
-// ghosttyCommand returns how to run ghostty, which is not always directly:
-// inside a container the terminal is a host application, so flatpak-spawn
-// hands the launch to the host, as the xdg-open shim does for file opening.
+// ghosttyCommand returns how to run ghostty. Inside a container it is a host
+// application, reached through flatpak-spawn --host.
 func ghosttyCommand(p platform.Info) ([]string, error) {
 	if path, err := exec.LookPath("ghostty"); err == nil {
 		return []string{path}, nil
@@ -94,11 +90,8 @@ func ghosttyCommand(p platform.Info) ([]string, error) {
 	return nil, fmt.Errorf("ghostty not found")
 }
 
-// spawnTerminal opens Ghostty with bothy's own config and runs bothy inside it.
-// --config-file is what keeps this isolated: Ghostty reads bothy's file and
-// never looks at ~/.config/ghostty. The palette goes into that file rather
-// than being named as a theme, because theme lookup paths are not relocatable
-// (ADR-009).
+// spawnTerminal opens Ghostty on bothy's own config and runs bothy inside it.
+// The palette is inlined because Ghostty theme lookup paths are not relocatable.
 func spawnTerminal(p platform.Info, dir, profileName string) error {
 	term, err := ghosttyCommand(p)
 	if err != nil {
