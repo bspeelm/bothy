@@ -143,6 +143,10 @@ func load() (platform.Info, config.Config, error) {
 // warnUnknownKeys reports unrecognised config keys once, on stderr so it
 // cannot corrupt --json output or a piped layout.
 func warnUnknownKeys(cfg config.Config) {
+	for _, k := range cfg.Unreadable {
+		fmt.Fprintf(os.Stderr, "bothy: config.toml: %s has a value bothy cannot read, "+
+			"so it is being ignored; 'bothy config set %s ...' rewrites the file\n", k, k)
+	}
 	for _, k := range cfg.Unknown {
 		if near := config.Nearest(k); near != "" {
 			fmt.Fprintf(os.Stderr, "bothy: config.toml: unknown key %q — did you mean %q?\n", k, near)

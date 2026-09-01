@@ -50,7 +50,7 @@ func TestWatermarkPointsAtTheFileYouNamed(t *testing.T) {
 // A path is somewhere a person types, so it can start with a tilde.
 func TestWatermarkExpandsATilde(t *testing.T) {
 	cfg := config.Default()
-	cfg.Workspace.Watermark = "~/pictures/art.png"
+	cfg.Workspace.BackgroundImage = "~/pictures/art.png"
 	p := platform.Info{Home: "/home/me", DataDir: "/home/me/.local/share"}
 
 	data := buildData(p, cfg, theme.Palette{})

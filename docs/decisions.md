@@ -710,6 +710,46 @@ a file bothy installs — including the arithmetic, because the useful part was
 never the picture but the trick of making a window-shaped canvas put art where
 a pane will be.
 
+## ADR-027 — A config bothy cannot read is a warning, never a refusal
+
+0.1.5 decided that an unknown key in `config.toml` is a warning: a config that
+refuses to load is worse than a typo, and one written by a newer bothy must not
+brick an older one. `Load`'s comment says exactly that.
+
+It handled unknown *names* and not unknown *types*, and 0.3.0 found the gap the
+expensive way. `workspace.watermark` changed from a boolean to a path; `Save`
+writes the whole struct, so every config bothy had ever written carried
+`watermark = false`; and go-toml refuses a boolean for a string field with a
+hard error. `Load` returned it. **Every command failed for every existing
+user, including the `config` that would have repaired it and the `doctor` that
+would have explained it.** It shipped, and was found by running the next
+feature against an ordinary machine.
+
+Two things change. The key is renamed to `background_image`, which it should
+have been anyway — named for what it is rather than what it is for — and the
+rename is what makes an old config meet the unknown-key path it already
+survives.
+
+And the general case is closed: a value bothy cannot read is dropped, named,
+and the file loads without it. The decoder stops at the first such key, so it
+is removed and the decode retried; otherwise every key after it would silently
+keep its default, which is a worse failure than the error it replaced. go-toml
+reports a row for a type error and leaves the key name empty, so the line is
+what there is to go on, and only a cut that leaves valid TOML is accepted — a
+half-removed multi-line value would turn one bad key into a broken file.
+
+The two are reported differently, because "did you mean `background_image`?"
+about `background_image` helps nobody.
+
+What this does not tolerate is a file that is not TOML. Reading a key bothy
+does not understand is a compatibility question; a syntax error is a mistake
+the author needs to hear about.
+
+The wider lesson is about the shape of the escape hatch rather than about
+TOML. A tolerance written for one failure mode will be read later as covering
+the category, by someone who checks the comment and not the code — and the
+comment here was right about the principle and silent about the case.
+
 ## ADR-026 — The code budget rises once, to 6,000
 
 ADR-010 capped code at 5,000 lines when there were 3,640 of them, and said the

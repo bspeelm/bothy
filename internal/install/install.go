@@ -245,7 +245,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		ThemeName:        name,
 		ImagePreviews:    g.Supported,
 		GraphicsReason:   g.Reason,
-		Watermark:        config.Expand(cfg.Workspace.Watermark, p.Home),
+		Watermark:        config.Expand(cfg.Workspace.BackgroundImage, p.Home),
 		WatermarkOpacity: "0.05",
 		Container:        p.InContainer(),
 		Opener:           opener(p),
