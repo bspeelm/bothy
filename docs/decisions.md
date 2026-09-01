@@ -109,7 +109,9 @@ And a workspace launched by `dev` gives no clue what launched it. `bothy` names
 itself, which matters when the thing you are debugging is your own setup.
 
 So: bare `bothy` launches the workspace, `bothy attach` reattaches, and
-`bothy dev` is retained as an alias for anyone who has it in muscle memory. The
+`bothy dev` is retained as an alias for anyone who has it in muscle memory.
+(**The alias is removed by ADR-024**; the verb's replacement by bare `bothy`
+stands.) The
 shell fragment still sets `EDITOR` and trims the prompt, because those are
 environment, not a launcher.
 
@@ -636,3 +638,37 @@ The line that stays: implicit navigation moves one pane, and nothing moves all
 of them. A hook that pushed every browser `cd` to the other panes would make
 the browser useless for browsing, which is the design this record exists to
 rule out.
+
+## ADR-024 — The cuts 1.0 planned, taken early
+
+`docs/plan-1.0.md` listed four things to remove before 1.0, on the grounds that
+each is something a newcomer has to read past. They are taken now instead,
+because the code budget wanted the room and because a deletion decided a month
+ago is not improved by waiting.
+
+**The watermark.** A Ghostty background-image trick, off by default, needing
+per-layout measuring to look right. It cost a config key, three fields on the
+template data, a branch in `plan`, a doctor check, an embedded PNG and a page
+of documentation — 34 lines of code for a thing whose own config comment
+conceded it was a nice touch rather than a feature.
+
+**`bothy lock` leaves the public help.** It stays a command and stops being
+advertised: it downloads half a gigabyte to recompute checksums, which is a
+maintainer's business and a surprising thing to offer everyone who types
+`bothy help`.
+
+**The plan documents move to `docs/history/`.** Three of the eight files in
+`docs/` were the plans for releases that already shipped. `plan-1.0.md` stays
+where it is, because it is the road right up until it has been travelled.
+
+**And `bothy dev` goes, which reverses ADR-008.** That record kept the verb as
+an alias "for anyone who has it in muscle memory", and the muscle memory it
+was protecting belonged to people who had the old shell function — a group
+that has not grown since.
+
+Removing it turned out not to save anything, and that is the interesting part.
+The verb was the only way to reach the launcher's flags: `bothy --in-place`
+answered "unknown command", so the alias was load-bearing for anyone who
+wanted anything other than the default. main now routes a leading flag to the
+launcher, which costs slightly more than the alias did and fixes a gap nobody
+had filed. The cut paid for itself in the wrong currency.

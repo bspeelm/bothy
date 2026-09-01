@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/render"
@@ -57,7 +56,6 @@ func TestInstallWritesNothingOutsideBothysTree(t *testing.T) {
 		info func(*platform.Info)
 	}{
 		{name: "defaults", mut: func(c *config.Config) {}},
-		{name: "watermark on", mut: func(c *config.Config) { c.Workspace.Watermark = true }},
 		{name: "vim config provided", mut: func(c *config.Config) { c.Editor.ProvideConfig = true }},
 		{
 			name: "inside a container",
@@ -93,7 +91,6 @@ func TestInstallNeverWritesTheFilesThatProvokedIsolation(t *testing.T) {
 	p := sandbox(t)
 	cfg := config.Default()
 	cfg.Editor.ProvideConfig = true
-	cfg.Workspace.Watermark = true
 
 	if _, err := Run(p, cfg, Options{}); err != nil {
 		t.Fatal(err)
@@ -235,7 +232,6 @@ func TestUninstallRemovesTheTreeAndKeepsYourSettings(t *testing.T) {
 func TestEveryGeneratedFileSaysItIsGenerated(t *testing.T) {
 	p := sandbox(t)
 	cfg := config.Default()
-	cfg.Workspace.Watermark = true
 	cfg.Editor.ProvideConfig = true
 
 	res, err := Run(p, cfg, Options{})
@@ -274,30 +270,6 @@ func TestOverridesAreAppended(t *testing.T) {
 	}
 	if strings.Index(s, "show_hidden = false") < strings.Index(s, "ratio") {
 		t.Error("the override must come after the template, or it would not win")
-	}
-}
-
-func TestWatermarkAssetIsCopiedIntact(t *testing.T) {
-	p := sandbox(t)
-	cfg := config.Default()
-	cfg.Workspace.Watermark = true
-
-	if _, err := Run(p, cfg, Options{}); err != nil {
-		t.Fatal(err)
-	}
-	got, err := os.ReadFile(filepath.Join(p.ConfigRoot(), "watermark.png"))
-	if err != nil {
-		t.Fatalf("watermark not written: %v", err)
-	}
-	if len(got) < 8 || string(got[1:4]) != "PNG" {
-		t.Fatal("watermark is not a PNG — a header was prepended")
-	}
-	want, err := bothy.Templates.ReadFile("templates/extras/watermark/tux.png")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(got) != string(want) {
-		t.Error("watermark bytes differ from the shipped asset")
 	}
 }
 

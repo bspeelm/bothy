@@ -55,12 +55,12 @@ func TestExtrasIsSettable(t *testing.T) {
 // false is exactly the silence config.toml stopped accepting in 0.1.5.
 func TestSetRefusesAMisspeltBoolean(t *testing.T) {
 	c := Default()
-	if err := c.Set("workspace.watermark", "flase"); err == nil {
-		t.Error("workspace.watermark accepted \"flase\" and read it as false")
+	if err := c.Set("editor.provide_config", "flase"); err == nil {
+		t.Error("editor.provide_config accepted \"flase\" and read it as false")
 	}
 	for _, v := range []string{"true", "yes", "on", "1", "false", "no", "off", "0"} {
-		if err := c.Set("workspace.watermark", v); err != nil {
-			t.Errorf("Set(workspace.watermark, %q) = %v", v, err)
+		if err := c.Set("editor.provide_config", v); err != nil {
+			t.Errorf("Set(editor.provide_config, %q) = %v", v, err)
 		}
 	}
 }

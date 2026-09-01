@@ -140,24 +140,3 @@ func checkXdgOpenShimGuard(env Env) Result {
 	}
 	return pass("xdg-open shim is guarded against host recursion")
 }
-
-func checkWatermarkImage(env Env) Result {
-	if !env.Config.Workspace.Watermark {
-		return skip("watermark is off")
-	}
-	if env.Config.Slots.Terminal != "ghostty" {
-		return skip("watermark needs ghostty")
-	}
-	path := filepath.Join(env.Platform.ConfigRoot(), "watermark.png")
-	fi, err := os.Stat(path)
-	if err != nil {
-		return fail("the watermark image is missing",
-			path+" does not exist; ghostty will silently draw nothing",
-			"run 'bothy install' to write it")
-	}
-	if fi.Size() == 0 {
-		return fail("the watermark image is empty", path+" is zero bytes",
-			"run 'bothy install' to rewrite it")
-	}
-	return pass("watermark image is in place")
-}

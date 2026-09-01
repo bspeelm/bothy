@@ -82,9 +82,6 @@ type Workspace struct {
 	Container string `toml:"container"`
 	// ProjectDir pins `dev` to one directory. Empty means the current one.
 	ProjectDir string `toml:"project_dir"`
-	// Watermark enables the Ghostty background-image trick. Off by default:
-	// it needs per-layout measuring to look right.
-	Watermark bool `toml:"watermark"`
 	// Launch decides whether `bothy` opens its own window or runs where it was
 	// typed: "auto" opens one only when this terminal cannot draw images,
 	// "here" never does, "window" always does. --in-place and --window

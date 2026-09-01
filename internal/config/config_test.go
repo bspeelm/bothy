@@ -75,19 +75,19 @@ func TestSetRejectsABadPaneFrames(t *testing.T) {
 func TestSetParsesBooleans(t *testing.T) {
 	for _, v := range []string{"true", "1", "yes"} {
 		c := Default()
-		if err := c.Set("workspace.watermark", v); err != nil {
+		if err := c.Set("editor.provide_config", v); err != nil {
 			t.Fatal(err)
 		}
-		if !c.Workspace.Watermark {
-			t.Errorf("watermark = false after setting %q", v)
+		if !c.Editor.ProvideConfig {
+			t.Errorf("provide_config = false after setting %q", v)
 		}
 	}
 	c := Default()
-	if err := c.Set("workspace.watermark", "no"); err != nil {
+	if err := c.Set("editor.provide_config", "no"); err != nil {
 		t.Fatal(err)
 	}
-	if c.Workspace.Watermark {
-		t.Error(`watermark = true after setting "no"`)
+	if c.Editor.ProvideConfig {
+		t.Error(`provide_config = true after setting "no"`)
 	}
 }
 

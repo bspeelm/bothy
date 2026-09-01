@@ -52,10 +52,13 @@ func TestEveryCommandIsInTheUsage(t *testing.T) {
 	usageEnd := strings.Index(body[usageStart:], "`\n")
 	usage := body[usageStart : usageStart+usageEnd]
 
-	// Aliases and the help paths do not need their own usage line.
+	// The help paths do not need their own usage line, and `lock` is a
+	// maintainer command: it downloads half a gigabyte to recompute checksums,
+	// and advertising it to everyone who types `bothy help` invites that.
 	undocumented := map[string]bool{
-		"dev": true, "version": true, "--version": true, "-v": true,
+		"version": true, "--version": true, "-v": true,
 		"help": true, "--help": true, "-h": true,
+		"lock": true,
 	}
 
 	for _, m := range regexp.MustCompile(`(?m)^\tcase "([a-z-]+)"`).FindAllStringSubmatch(body, -1) {

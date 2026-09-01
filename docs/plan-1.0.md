@@ -262,10 +262,11 @@ and one of them could be self-updated safely; a dnf- or dpkg-owned
 `/usr/bin/bothy` belongs to its package manager. The README lists
 "auto-updater" among the things bothy is not, and 1.0 keeps that line.
 
-**Cut before shipping:** the watermark extra and `docs/watermark.md`; the
-`bothy dev` alias; `bothy lock` from public help, since it is a maintainer
-command; and `docs/plan-0.1.x.md` into `docs/history/`. Someone opening
-`docs/` should find "what happens when I type bothy", not process artifacts.
+**Cut before shipping.** Done early, in 0.3.0, because the code budget wanted
+the room: the watermark extra and its doc, the `bothy dev` alias, `bothy lock`
+out of public help, and `docs/plan-0.1.x.md` into `docs/history/`. What
+remains for 1.0 is `docs/plan-1.0.md` itself, which is the road right up until
+it has been travelled.
 
 **Docs:** a README rewritten around "this is all there is, on purpose",
 leading with the one-command launch and the uninstall guarantee. One short

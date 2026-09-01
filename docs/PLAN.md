@@ -364,7 +364,7 @@ to sit here said the remaining work before v0.2.0 was to run bothy on a distro
 that was not Fedora. It now does, and CI keeps it that way: a container job
 installs into `fedora:44` and `ubuntu:24.04`, checks the whole doctor report
 against a table of expected severities, and uninstalls, asserting the tree is
-empty afterwards. See `docs/plan-0.1.3.md` for the milestone and ADR-011/012
+empty afterwards. See `docs/history/plan-0.1.3.md` for the milestone and ADR-011/012
 for the two decisions it forced.
 
 Four things were wrong and only ever visible on Fedora: every named podman
