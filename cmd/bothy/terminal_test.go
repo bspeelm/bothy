@@ -23,7 +23,7 @@ func TestForceFlagsWin(t *testing.T) {
 	clearDisplay(t)
 	p := platform.Info{Terminal: "gnome-terminal"}
 
-	if m := decideLaunch(p, "in-place"); m.Spawn {
+	if m := decideLaunch(p, "here"); m.Spawn {
 		t.Error("--in-place must never spawn")
 	}
 	if m := decideLaunch(p, "window"); !m.Spawn {
@@ -64,9 +64,9 @@ func TestNoDisplayRunsInPlace(t *testing.T) {
 // opens a window they did not ask for.
 func TestEveryDecisionCarriesAReason(t *testing.T) {
 	clearDisplay(t)
-	for _, force := range []string{"", "window", "in-place"} {
-		if m := decideLaunch(platform.Info{Terminal: "ghostty"}, force); m.Reason == "" {
-			t.Errorf("force=%q produced no reason", force)
+	for _, mode := range []string{"", "auto", "window", "here"} {
+		if m := decideLaunch(platform.Info{Terminal: "ghostty"}, mode); m.Reason == "" {
+			t.Errorf("mode=%q produced no reason", mode)
 		}
 	}
 }

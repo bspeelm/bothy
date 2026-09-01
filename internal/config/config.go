@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -83,6 +85,11 @@ type Workspace struct {
 	// Watermark enables the Ghostty background-image trick. Off by default:
 	// it needs per-layout measuring to look right.
 	Watermark bool `toml:"watermark"`
+	// Launch decides whether `bothy` opens its own window or runs where it was
+	// typed: "auto" opens one only when this terminal cannot draw images,
+	// "here" never does, "window" always does. --in-place and --window
+	// override it for a single run.
+	Launch string `toml:"launch"`
 	// PaneFrames is "full", "titles" or "none".
 	//
 	// Set explicitly rather than left to Zellij, whose default changed to
@@ -111,7 +118,7 @@ func Default() Config {
 		Theme: Theme{
 			Provider: "dracula",
 		},
-		Workspace: Workspace{PaneFrames: "full"},
+		Workspace: Workspace{PaneFrames: "full", Launch: "auto"},
 		Extras:    append([]string(nil), DefaultExtras...),
 	}
 }
@@ -197,12 +204,16 @@ func (c Config) Validate() error {
 				name, strings.Join(slotNames, ", "))
 		}
 	}
-	if c.Workspace.PaneFrames != "" {
-		switch c.Workspace.PaneFrames {
-		case "full", "titles", "none":
-		default:
-			return fmt.Errorf("config: workspace.pane_frames is %q, want full, titles or none",
-				c.Workspace.PaneFrames)
+	// The constraints Set applies, checked again for a config.toml written by
+	// hand. Stating them once means a new constrained key is enforced on both
+	// paths rather than on whichever one its author remembered.
+	for _, key := range slices.Sorted(maps.Keys(allowed)) {
+		field, err := fieldFor(reflect.ValueOf(c), key)
+		if err != nil || field.Kind() != reflect.String {
+			continue
+		}
+		if err := check(key, field.String()); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -248,60 +259,105 @@ func (c Config) ContainerFor(p platform.Info, installedIn string) string {
 }
 
 // Set applies a dotted key assignment, as used by `bothy config set`.
+//
+// The walk mirrors Keys(): both derive from the struct, so adding a field
+// makes it listable and settable at once. A hand-written switch beside a
+// reflect-derived Keys() drifts in one direction only -- towards keys that are
+// offered, suggested, and then refused.
+//
+// Only the assigned value is checked. Cross-field rules are left to Validate
+// at install time, because enforcing them per-assignment makes some orderings
+// impossible to type: a pair of keys valid only together cannot both be set
+// first.
 func (c *Config) Set(key, value string) error {
-	switch key {
-	case "profile":
-		c.Profile = value
-	case "slots.terminal":
-		c.Slots.Terminal = value
-	case "slots.mux":
-		c.Slots.Mux = value
-	case "slots.browser":
-		c.Slots.Browser = value
-	case "slots.editor":
-		c.Slots.Editor = value
-	case "slots.agent":
-		c.Slots.Agent = value
-	case "theme.provider":
-		c.Theme.Provider = value
-	case "theme.palette":
-		c.Theme.Palette = value
-	case "theme.vim_colorscheme":
-		c.Theme.VimColorscheme = value
-	case "theme.font":
-		c.Theme.Font = value
-	case "workspace.container":
-		c.Workspace.Container = value
-	case "workspace.project_dir":
-		c.Workspace.ProjectDir = value
-	case "passthrough":
-		// A comma-separated list, or "" to clear it.
-		c.Passthrough = nil
-		for _, slot := range strings.Split(value, ",") {
-			if slot = strings.TrimSpace(slot); slot != "" {
-				c.Passthrough = append(c.Passthrough, slot)
+	field, err := fieldFor(reflect.ValueOf(c).Elem(), key)
+	if err != nil {
+		return err
+	}
+	if err := check(key, value); err != nil {
+		return err
+	}
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(value)
+	case reflect.Bool:
+		b, err := parseBool(value)
+		if err != nil {
+			return fmt.Errorf("config: %s takes true or false, not %q", key, value)
+		}
+		field.SetBool(b)
+	case reflect.Slice:
+		field.Set(reflect.ValueOf(splitList(value)))
+	default:
+		return fmt.Errorf("config: %s cannot be set from the command line", key)
+	}
+	return nil
+}
+
+// fieldFor resolves a dotted key to the struct field it names, walking the
+// toml tags rather than the Go names so that the key someone types and the key
+// the file uses are the same string.
+func fieldFor(v reflect.Value, key string) (reflect.Value, error) {
+	for _, part := range strings.Split(key, ".") {
+		if v.Kind() != reflect.Struct {
+			return reflect.Value{}, fmt.Errorf("config: unknown key %q", key)
+		}
+		found := false
+		for i := 0; i < v.NumField(); i++ {
+			tag, _, _ := strings.Cut(v.Type().Field(i).Tag.Get("toml"), ",")
+			if tag == part && tag != "" && tag != "-" {
+				v, found = v.Field(i), true
+				break
 			}
 		}
-	case "editor.provide_config":
-		c.Editor.ProvideConfig = value == "true" || value == "1" || value == "yes"
-	case "workspace.pane_frames":
-		switch value {
-		case "full", "titles", "none":
-			c.Workspace.PaneFrames = value
-		default:
-			return fmt.Errorf("config: workspace.pane_frames must be full, titles or none")
+		if !found {
+			return reflect.Value{}, fmt.Errorf("config: unknown key %q", key)
 		}
-	case "workspace.watermark":
-		c.Workspace.Watermark = value == "true" || value == "1" || value == "yes"
-	default:
-		return fmt.Errorf("config: unknown key %q", key)
 	}
-	// Only the assigned value is validated here, not the configuration as a
-	// whole. Cross-field rules are checked at install time instead, because
-	// enforcing them per-assignment would make some orderings impossible to
-	// type: a pair of keys that are only valid together cannot both be set
-	// first.
-	return nil
+	return v, nil
+}
+
+// allowed lists the keys whose values are a closed set. Data rather than a
+// function per key, so that anything needing to know what a key accepts --
+// an error message, a test, one day a completion -- can read it.
+var allowed = map[string][]string{
+	"workspace.pane_frames": {"full", "titles", "none"},
+	"workspace.launch":      {"auto", "here", "window"},
+}
+
+// check applies the constraint on a key, if it has one. An empty value always
+// passes: it means "unset", which every key allows.
+func check(key, value string) error {
+	set, ok := allowed[key]
+	if !ok || value == "" || slices.Contains(set, value) {
+		return nil
+	}
+	return fmt.Errorf("config: %s wants one of %s, not %q", key, strings.Join(set, ", "), value)
+}
+
+// parseBool is stricter than strconv.ParseBool is lenient: a value it does not
+// recognise is a typo, and a typo that reads as false is the kind of silence
+// this config stopped accepting in 0.1.5.
+func parseBool(v string) (bool, error) {
+	switch strings.ToLower(v) {
+	case "true", "yes", "on", "1":
+		return true, nil
+	case "false", "no", "off", "0":
+		return false, nil
+	}
+	return false, fmt.Errorf("not a boolean")
+}
+
+// splitList reads a comma-separated value, as every list key in config.toml
+// takes from the command line. An empty value clears the list.
+func splitList(v string) []string {
+	var out []string
+	for _, item := range strings.Split(v, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 // Expand resolves a leading ~ against home. Exported because the CLI expands
