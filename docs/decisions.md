@@ -709,3 +709,39 @@ problem.
 a file bothy installs — including the arithmetic, because the useful part was
 never the picture but the trick of making a window-shaped canvas put art where
 a pane will be.
+
+## ADR-026 — The code budget rises once, to 6,000
+
+ADR-010 capped code at 5,000 lines when there were 3,640 of them, and said the
+general thing: when a measure and the thing it measures disagree, fix the
+measure; do not quietly move its threshold.
+
+They do not disagree here. The code cap counts code, code is what has grown,
+and it has grown for reasons anyone can inspect: three platforms where there
+was one, named sessions, tool upgrades against the lockfile, pinned plugins, a
+provider format that reads from data, an end-to-end job for macOS. Nothing in
+that list is bulk. So this is a threshold move, which is the case ADR-010 asks
+to be argued rather than performed — and the argument is not that 5,000 was
+wrong. It was right, and it has been spent.
+
+**Why 6,000 and not 5,500.** The road has three things that will each need
+room and are already decided: platform-specific code organised deliberately
+rather than by accident (#76), the provider format that lets a slot be added
+without Go (#69), and the multiplexer backend seam (#64). A cap that has to be
+raised again in two milestones is not a cap, it is a recurring negotiation.
+6,000 is chosen to be argued once.
+
+**What it costs.** The budget bites less often, and that is the point of a
+budget. Two things keep it honest anyway. The comment ratio from ADR-021 bounds
+prose independently, so the code cap no longer has to do both jobs at once —
+which is what made the old total tighten every time a feature landed. And the
+binary cap is unmoved at 10 MB, which is the limit a user can actually feel.
+
+**What was tried first.** Everything cheap. #72 read a provider's command from
+its own file and deleted three copies of the same map; the cuts 1.0 had already
+planned were taken early (ADR-024); a dead `ShareDir` went. Together they
+returned about thirty lines. A survey for more found one duplicated three-line
+helper, deliberately left duplicated because unifying it across a package
+boundary is worse Go, and no function longer than eighty lines including its
+comments. There is no fat. That finding is what makes this a threshold move
+rather than an excuse for one.
