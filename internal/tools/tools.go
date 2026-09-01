@@ -3,9 +3,11 @@
 //
 // The policy is PLAN.md §4: fill gaps, never replace. A tool already on PATH
 // that meets the minimum version is used as it is; only a missing or too-old
-// one is fetched. bothy never upgrades, removes, or asks a package manager for
-// anything, and a tool it does supply goes in its own bin/ — on PATH for
-// bothy's session only, so it never shadows your everyday one.
+// one is fetched. bothy never touches the system's copy and never asks a
+// package manager for anything, and a tool it does supply goes in its own
+// bin/ — on PATH for bothy's session only, so it never shadows your everyday
+// one. What it supplies it also keeps at the pinned version, which is the one
+// thing it does upgrade and only ever inside that directory.
 //
 // Minimum versions are "the oldest that actually works", not "the newest
 // available". For most of these almost any version does, so on a normally
@@ -14,6 +16,7 @@ package tools
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -183,24 +186,46 @@ func Resolve(t Tool, lookPath func(string) (string, error), version func(string)
 		Reason: fmt.Sprintf("%s is %s", path, v)}
 }
 
-// SystemLookPath and SystemVersion are the real implementations Resolve uses
-// in production.
-func SystemLookPath(bin string) (string, error) { return exec.LookPath(bin) }
+// SystemLookPath finds a binary on PATH, ignoring one directory -- which
+// callers set to bothy's own bin.
+//
+// bothy puts that directory on PATH for its own session, so a plain
+// exec.LookPath answers "does the system have this?" differently depending on
+// whether the question was asked from inside the workspace or outside it. What
+// the system has does not change with where you are standing, and neither
+// should the answer.
+func SystemLookPath(skip string) func(string) (string, error) {
+	skip = filepath.Clean(skip)
+	return func(bin string) (string, error) {
+		for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+			if dir == "" || (skip != "." && filepath.Clean(dir) == skip) {
+				continue
+			}
+			path := filepath.Join(dir, bin)
+			if fi, err := os.Stat(path); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+				return path, nil
+			}
+		}
+		return "", fmt.Errorf("%s not found in $PATH", bin)
+	}
+}
 
 func SystemVersion(path string) (string, error) {
 	out, err := exec.Command(path, "--version").Output()
 	return string(out), err
 }
 
-// ResolveAll decides for every named tool.
-func ResolveAll(names []string) ([]Decision, error) {
+// ResolveAll decides for every named tool, judging what the system has.
+// ownBin is bothy's own directory, left out of the search so that the same
+// question gets the same answer inside a bothy session and outside one.
+func ResolveAll(names []string, ownBin string) ([]Decision, error) {
 	var out []Decision
 	for _, n := range names {
 		t, err := Get(n)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, Resolve(t, SystemLookPath, SystemVersion))
+		out = append(out, Resolve(t, SystemLookPath(ownBin), SystemVersion))
 	}
 	return out, nil
 }

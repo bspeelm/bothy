@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/advice"
+	"github.com/bspeelm/bothy/internal/fetch"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/state"
 	"github.com/bspeelm/bothy/internal/theme"
@@ -27,7 +28,13 @@ func checkToolProvenance(env Env) Result {
 		return warn("could not read the tool definitions", err.Error(), "")
 	}
 
-	var missing, supplied, system []string
+	// The pins this bothy ships, so that a tool bothy supplied can be judged
+	// against them rather than against a minimum it has long since passed. A
+	// lockfile that will not load is not this check's business to report.
+	lock, lockErr := fetch.LoadLock()
+	m, mErr := state.Load(env.Platform.StateDir())
+
+	var missing, supplied, system, behind []string
 	for _, name := range names {
 		t, err := tools.Get(name)
 		if err != nil {
@@ -36,9 +43,14 @@ func checkToolProvenance(env Env) Result {
 		own := filepath.Join(env.Platform.BinDir(), t.Binary)
 		if fi, err := os.Stat(own); err == nil && fi.Mode()&0o111 != 0 {
 			supplied = append(supplied, name)
+			if lockErr == nil && mErr == nil {
+				if entry, ok := lock.Get(name); ok && !install.Supplied(env.Platform, m, name, entry.Version) {
+					behind = append(behind, fmt.Sprintf("%s (pinned at %s)", name, entry.Version))
+				}
+			}
 			continue
 		}
-		d := tools.Resolve(t, tools.SystemLookPath, tools.SystemVersion)
+		d := tools.Resolve(t, tools.SystemLookPath(env.Platform.BinDir()), tools.SystemVersion)
 		if d.Action == tools.Fetch {
 			missing = append(missing, name+" ("+d.Reason+")")
 			continue
@@ -46,6 +58,11 @@ func checkToolProvenance(env Env) Result {
 		system = append(system, name)
 	}
 
+	if len(behind) > 0 {
+		return warn("some tools bothy supplied are behind this release's pins",
+			strings.Join(behind, "; "),
+			"run 'bothy install' to bring them up to the pinned version")
+	}
 	if len(missing) > 0 {
 		return fail("some tools are missing or too old",
 			strings.Join(missing, "; "),
