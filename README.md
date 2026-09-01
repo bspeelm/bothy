@@ -60,13 +60,14 @@ says so, says what to type, and leaves it at that.
 
 ### Getting bothy
 
-Four ways in. They all arrive at the same program, the same version, and the
+Five ways in. They all arrive at the same program, the same version, and the
 same mild sense of anticlimax.
 
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
+| **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
 | **Go** | people who already have Go and are not sorry | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
 
@@ -83,6 +84,10 @@ to be; you will do this once.
 > On Silverblue and other image-based systems, `dnf` means `rpm-ostree
 > install` and a reboot, which is the price of an operating system that does
 > not change under you. The script needs neither.
+
+> The `.deb` is a file rather than a repository, so `apt upgrade` will not
+> bring you the next one; download it when you want it. Running a Debian
+> archive is a commitment, and this one has not made it.
 
 ### What gets installed
 
@@ -101,9 +106,13 @@ not that anyone trustworthy expected it. The distinction is on the roadmap,
 which is where distinctions go.
 
 If you already have good enough copies, bothy downloads nothing and tells you
-which of yours it is using. It never calls your package manager, never asks
-for root, and never adds anything to your `PATH`. It is aware that this is
-unusual, and would prefer not to discuss it.
+which of yours it is using. What it did fetch, it keeps: when a later bothy
+pins a newer version, the next `bothy install` fetches that one and leaves
+your own copies exactly where they were.
+
+It never calls your package manager, never asks for root, and never adds
+anything to your `PATH`. It is aware that this is unusual, and would prefer
+not to discuss it.
 
 Two things it will not install for you. Ghostty, because it ships no
 ready-made binaries and every route to it needs root. And the agent, because
@@ -122,6 +131,8 @@ quiet.
 | `bothy doctor` | What is wrong, and what to do about it (`--json`, for machines that want to know) |
 | `bothy install` | Apply your settings again after you have changed them |
 | `bothy tools` | Which tools are in use, and where they came from, in case of dispute |
+| `bothy upgrade` | How to upgrade this copy, for the way you installed it |
+| `bothy outdated` | Which pinned tools have newer releases upstream (`--json`) |
 | `bothy config set <key> <value>` | Change a setting |
 | `bothy layout` | Print the layout it would open, should you doubt it |
 | `bothy theme example` | Print a blank palette, for filling in |
@@ -236,8 +247,13 @@ as pictures rather than as a suggestion of pictures. `--in-place` and
 `--window` overrule that judgement in either direction, for those who know
 better, or think they do. If you overrule it every time, make it the standing
 answer with `bothy config set workspace.launch here`, or `window` for the
-opposite; the flags still win for a single run. With no graphical display — over SSH, say — it stays
-where it is, which is generally the sensible thing to do when somewhere else.
+opposite; the flags still win for a single run. With no graphical display —
+over SSH, say — it stays where it is, which is generally the sensible thing to
+do when somewhere else.
+
+iTerm2 draws images too, by a protocol of its own that Zellij does not carry,
+so previews there arrive as characters after all. The doctor says which of the
+two is at fault rather than leaving you to adjust the wrong setting.
 
 Inside a Toolbx or Distrobox container, bothy remembers which container it
 put its tools in and goes back there when you launch it from the host. If you
@@ -246,16 +262,18 @@ into its own folder, and the result works from either side. It has, on the
 whole, had enough of being surprised by containers, and has written some of
 this down.
 
-As for which machines: Fedora and Ubuntu, on every release, installed into a
-container, exercised, and thrown away. That is the whole of what supported
-means here — not that it ought to work, but that something proved it did this
-morning.
+As for which machines: Fedora and Ubuntu in containers, and macOS on a Mac, on
+every release — installed, exercised, uninstalled, and the whole doctor report
+compared against what it ought to have said. That is the whole of what
+supported means here: not that it ought to work, but that something proved it
+did this morning.
 
-macOS is a different sentence. The binaries are built, every tool is pinned
-for it, and the install advice knows about Homebrew. Nothing has ever run
-there. It will install and it will mostly work, and it will never open its own
-window, because it goes looking for a display in the places Linux keeps one.
-Untested is the honest word, and it stays until a machine says otherwise.
+macOS took eight releases to earn that sentence, having been listed from the
+first on the strength of the binaries being built, which is not the same
+thing. The first Mac to run it found a file opener naming a program macOS does
+not have; the first machine in CI found an uninstall that reported success and
+left the binary behind. Both are fixed. Neither would have been found by
+reading the code.
 
 Anywhere else, bothy runs and the doctor tells you what it cannot do on that
 machine. Nobody has checked. It does not pretend otherwise.
