@@ -285,6 +285,10 @@ Recorded so they are decided rather than pending.
   internally. A second agent pane is a token sink, not a workflow.
 - **A diff pane or review mode.** lazygit is one keypress away in the shell
   pane. That is the review mode.
+- **Moving a running workspace to another directory.** Panes navigate
+  independently and nothing moves all of them at once (ADR-023). Each
+  directory has its own named session, so switching projects opens a second
+  room rather than re-homing the first.
 - **Editing the agent's configuration, hooks, or credentials.** Already a
   documented non-goal, and it stays one.
 - **A plugin API or a background service.** Still on the "not" list, unchanged.

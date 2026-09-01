@@ -600,3 +600,39 @@ assert that nothing exists outside bothy's tree any more, so it asserts that
 anything which does is named after a tool bothy runs — matching the tool's own
 name rather than allowing `~/.local/share` wholesale, because a rule that
 permits a directory permits everything that lands in it.
+
+## ADR-023 — Panes navigate independently, and the room does not move
+
+Every pane starts where `bothy` was launched, because the rendered layout sets
+no `cwd` on any of them and Zellij inherits the directory it was started in.
+After that they are independent: the browser can wander off, the side shell can
+`cd` elsewhere, and the agent stays where it began. That independence is the
+point — the side pane exists so you can look at something the agent is not
+looking at.
+
+A `bothy cd` was proposed to re-home all three at once, for the afternoon when
+you switch projects. It is not being built, and the reason is that the problem
+it was filed against no longer exists.
+
+The motivation was that changing project meant "tearing down a session that had
+state in it — agent context, a lazygit view, a shell history". Since sessions
+were named after their directory, it does not. `cd ~/other && bothy` opens a
+second room; the first keeps running, detached, with its conversation intact,
+and `bothy attach` returns to it. Nothing is torn down, so nothing needs
+re-homing.
+
+Two things would also have been wrong with it. **The agent cannot move.** Claude
+Code and most others pin their working directory at startup, so "move the room"
+is really "move the two panes that matter least and restart the one that
+matters most" — and ADR-016 says the agent is the point. **And the session name
+would start lying.** A room named `bothy-thisproject` sitting in another
+directory makes `bothy ls` wrong and makes a later `bothy` in that directory
+open a third session rather than find the second.
+
+What was missing was not a command but a sentence, so the README now says how
+to keep several rooms and move between them.
+
+The line that stays: implicit navigation moves one pane, and nothing moves all
+of them. A hook that pushed every browser `cd` to the other panes would make
+the browser useless for browsing, which is the design this record exists to
+rule out.
