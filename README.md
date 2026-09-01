@@ -231,15 +231,28 @@ into its own folder, and the result works from either side. It has, on the
 whole, had enough of being surprised by containers, and has written some of
 this down.
 
+As for which machines: Fedora and Ubuntu, on every release, installed into a
+container, exercised, and thrown away. That is the whole of what supported
+means here — not that it ought to work, but that something proved it did this
+morning.
+
+macOS is a different sentence. The binaries are built, every tool is pinned
+for it, and the install advice knows about Homebrew. Nothing has ever run
+there. It will install and it will mostly work, and it will never open its own
+window, because it goes looking for a display in the places Linux keeps one.
+Untested is the honest word, and it stays until a machine says otherwise.
+
+Anywhere else, bothy runs and the doctor tells you what it cannot do on that
+machine. Nobody has checked. It does not pretend otherwise.
+
 ## What bothy is not
 
-- A Windows tool, unless you count WSL, which you may
-- A tmux setup, though it has been asked
 - A plugin marketplace or extension API
 - A bundle of the tools. It downloads their official releases and checks them, which is different, and the difference is the point
 - An LSP or debugger manager
 - A background service, an auto-updater, or a collector of telemetry. It does not run when you are not looking, and has nothing to report if it did
 - A manager for your agent's config, keys or hooks. Those are yours, and so are the consequences
+- A sandbox. The agent runs as you, in your repository, with your permissions. Its edits and commits are real and are not bothy's to undo. Uninstalling removes bothy — its tools, its configs — and nothing the agent did
 - A Flatpak. Flathub does not accept command-line software, and bothy downloads its tools as it goes, which Flatpak packaging was invented to prevent
 - Ambitious
 
@@ -249,12 +262,15 @@ yours, and it does not need to be thanked.
 ## Contributing
 
 See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding a tool
-means writing a config file and some templates. If it seems to need Go, stop;
-something else has gone wrong, and it is probably ours. Most contributions so
+bothy fetches is one config file. Adding one it configures is a file, some
+templates, and a single branch. Only the multiplexer needs Go that reads the
+layout and writes something else; if anything else seems to, stop, because
+something has gone wrong, and it is probably ours. Most contributions so
 far have been to the reasons rather than the code, which is either a good sign
 or the only one.
 
-Why things are the way they are is recorded in
+What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). Why
+things are the way they are is recorded in
 [`docs/decisions.md`](docs/decisions.md). It is longer than the code it
 explains, and on balance that is the right way round. The plan for the
 project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
