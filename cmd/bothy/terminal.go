@@ -25,13 +25,16 @@ type launchMode struct {
 // graphics protocol; inside GNOME Terminal, Yazi degrades silently to block
 // art, so bothy opens a terminal that works instead.
 //
+// mode is workspace.launch, or the flag that overrode it for this run:
+// "here" and "window" settle the question, "auto" and "" ask it.
+//
 // Every reason to stay put is checked before any reason to spawn.
-func decideLaunch(p platform.Info, force string) launchMode {
-	switch force {
-	case "in-place":
-		return launchMode{Reason: "--in-place was given"}
+func decideLaunch(p platform.Info, mode string) launchMode {
+	switch mode {
+	case "here":
+		return launchMode{Reason: "asked to run in this terminal"}
 	case "window":
-		return launchMode{Spawn: true, Reason: "--window was given"}
+		return launchMode{Spawn: true, Reason: "asked for a window"}
 	}
 
 	// We are the process the spawned terminal started; another would recurse.

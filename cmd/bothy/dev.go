@@ -33,17 +33,12 @@ func cmdDev(args []string) error {
 	if *window && *inPlace {
 		return fmt.Errorf("--window and --in-place contradict each other")
 	}
-	force := ""
-	if *window {
-		force = "window"
-	} else if *inPlace {
-		force = "in-place"
-	}
-
 	p, cfg, err := load()
 	if err != nil {
 		return err
 	}
+
+	mode := launchModeFor(cfg, *window, *inPlace)
 
 	// The layout starts its own agent; running from inside one would nest a second.
 	if agent, nested := nestedAgent(); nested {
@@ -75,7 +70,7 @@ func cmdDev(args []string) error {
 
 	// Open a terminal that can do the job, if this one cannot. Before the
 	// container hop, so the window opens once, on the host.
-	if mode := decideLaunch(p, force); mode.Spawn {
+	if decided := decideLaunch(p, mode); decided.Spawn {
 		if err := spawnTerminal(p, target, name); err != nil {
 			// Not fatal: the workspace still runs here, without image previews.
 			fmt.Fprintf(os.Stderr, "bothy: %v\n         running in this terminal instead\n", err)
@@ -140,6 +135,20 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	env := install.SessionEnv(p, cfg)
 	session := sessionName(dir)
 	return runWithEnv(env, bin, launchArgs(session, layoutFile, liveSessions(bin, env))...)
+}
+
+// launchModeFor resolves workspace.launch against the flags. The setting is
+// the standing answer and a flag overrides it for one run, which is the point
+// of the setting: preferring to stay put should not mean typing --in-place
+// every time.
+func launchModeFor(cfg config.Config, window, inPlace bool) string {
+	switch {
+	case window:
+		return "window"
+	case inPlace:
+		return "here"
+	}
+	return cfg.Workspace.Launch
 }
 
 // sessionName is the multiplexer session for a project directory. One session

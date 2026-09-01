@@ -222,7 +222,9 @@ If your terminal can draw images (Ghostty, Kitty, WezTerm), bothy runs in it.
 If it cannot, bothy opens a Ghostty window instead, so that previews come out
 as pictures rather than as a suggestion of pictures. `--in-place` and
 `--window` overrule that judgement in either direction, for those who know
-better, or think they do. With no graphical display — over SSH, say — it stays
+better, or think they do. If you overrule it every time, make it the standing
+answer with `bothy config set workspace.launch here`, or `window` for the
+opposite; the flags still win for a single run. With no graphical display — over SSH, say — it stays
 where it is, which is generally the sensible thing to do when somewhere else.
 
 Inside a Toolbx or Distrobox container, bothy remembers which container it
