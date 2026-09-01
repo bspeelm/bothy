@@ -64,6 +64,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"terminal-capability":   doctor.Warn, // nothing here can draw images: the one expected warning
 	"passthrough":           doctor.Skip, // none configured
 	"isolation":             doctor.Pass,
+	"config-keys":           doctor.Pass, // the only config is the one the test wrote
 	"watermark-image":       doctor.Skip, // off by default
 	"zellij-config":         doctor.Pass,
 	"terminfo":              doctor.Pass, // only because prep installed infocmp

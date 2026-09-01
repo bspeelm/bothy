@@ -123,7 +123,23 @@ func main() {
 func load() (platform.Info, config.Config, error) {
 	p := platform.Detect()
 	cfg, err := config.Load(p)
+	warnUnknownKeys(cfg)
 	return p, cfg, err
+}
+
+// warnUnknownKeys says once, on stderr, what `bothy doctor` says at length.
+//
+// Every command that reads the config goes through here, because the whole
+// problem with an unrecognised key was that nothing ever mentioned it. stderr
+// so it cannot corrupt `--json` output or a piped layout.
+func warnUnknownKeys(cfg config.Config) {
+	for _, k := range cfg.Unknown {
+		if near := config.Nearest(k); near != "" {
+			fmt.Fprintf(os.Stderr, "bothy: config.toml: unknown key %q — did you mean %q?\n", k, near)
+			continue
+		}
+		fmt.Fprintf(os.Stderr, "bothy: config.toml: unknown key %q\n", k)
+	}
 }
 
 func cmdInstall(args []string) error {
