@@ -98,8 +98,8 @@ newer bothy carries newer configs — and a launch does not re-render them.
 
 ### What gets installed
 
-If you have none of them already, bothy downloads these nine tools, about
-131 MB in total:
+If you have none of them already, bothy downloads these nine tools — about
+131 MB of archives, which unpack to roughly 124 MB of binaries:
 
 | | | | |
 |---|---|---|---|
@@ -246,7 +246,7 @@ for a new tool means writing a config file and some templates, not Go code.
 
 Why things are the way they are is recorded in
 [`docs/decisions.md`](docs/decisions.md), and the plan for the project is in
-[`PLAN.md`](PLAN.md).
+[`PLAN.md`](docs/PLAN.md).
 
 ## Credits and licence
 
