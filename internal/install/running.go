@@ -16,25 +16,16 @@ type Running struct {
 	Cmdline string
 }
 
-// StillRunning finds processes executing binaries from bothy's bin.
+// StillRunning finds processes executing binaries from bothy's bin, so that
+// uninstall can warn rather than delete a multiplexer out from under a live
+// session (Linux keeps the inode; the session can never be reattached).
 //
-// This exists because uninstall deleted a multiplexer out from under a live
-// session. The process kept running — Linux holds the inode open — but its
-// binary was gone, so the session could never be attached to again and its
-// memory could not be reclaimed until reboot. Removing files a running process
-// depends on is a thing an uninstaller should notice, not something the user
-// discovers later.
+// It matches on /proc/PID/cmdline rather than the /proc/PID/exe link: reading
+// exe needs ptrace permission, which is refused across the user-namespace
+// boundary of a rootless container, so from inside a toolbox exe silently
+// finds nothing while cmdline works.
 //
-// It matches on /proc/PID/cmdline rather than the /proc/PID/exe link, which is
-// the obvious choice and the wrong one. Reading the exe link needs ptrace
-// permission, and that is refused across the user-namespace boundary of a
-// rootless container — so from inside a toolbox it silently found nothing,
-// while cmdline read the very same process fine. In an environment built on
-// containers with a shared home, "silently found nothing" is the failure mode
-// that matters.
-//
-// Linux-only. Elsewhere it reports nothing, which is the right failure: a
-// missing warning beats a wrong one.
+// Linux-only. Elsewhere it reports nothing: a missing warning beats a wrong one.
 func StillRunning(p platform.Info) []Running {
 	entries, err := os.ReadDir("/proc")
 	if err != nil {

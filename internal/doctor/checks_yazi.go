@@ -12,16 +12,9 @@ import (
 	"github.com/bspeelm/bothy/internal/probe"
 )
 
-// The file browser's checks. The first of them is the highest-value check in
-// the whole doctor: Yazi discards its entire configuration when one key is
-// wrong, and says so only on stderr, so a silent run is the thing to assert.
-
-// yaziComplaint matches the noise Yazi makes when it rejects a config.
-//
-// This is the single highest-value check bothy has. On a bad config Yazi prints
-// "Press <Enter> to continue with preset settings" and then runs with *none* of
-// your configuration — not the broken key, the whole file. Everything looks
-// almost right, which is far worse than a crash.
+// yaziComplaint matches the noise Yazi makes when it rejects a config. On a
+// bad config Yazi prints "Press <Enter> to continue with preset settings" and
+// runs with none of your configuration — the whole file, not the bad key.
 var yaziComplaint = regexp.MustCompile(`(?i)must be|invalid|preset|cannot|failed`)
 
 // staleTable matches a real [manager] table header, not a mention of one.
@@ -107,9 +100,8 @@ func checkYaziConfigKeys(env Env) Result {
 		b, _ := os.ReadFile(filepath.Join(env.Platform.ConfigRoot(), "yazi", name))
 		return string(b)
 	}
-	// Anchored to the start of a line: a config that *documents* the rename in
-	// a comment is correct, and matching that comment would fail every config
-	// bothy itself writes.
+	// Anchored to the start of a line: bothy's own configs document the rename
+	// in a comment, and matching that comment would fail them.
 	if staleTable.MatchString(read("yazi.toml")) {
 		stale = append(stale, "[manager] should be [mgr] (renamed in 25.4)")
 	}
@@ -127,13 +119,9 @@ func checkYaziConfigKeys(env Env) Result {
 }
 
 // checkYaziPlugins reports plugins bothy's config wants and does not have.
-//
-// This is a warning rather than a failure because the generated config is
-// written to match what is installed, so a missing plugin costs a feature
-// rather than breaking the workspace. That was not always true: an earlier
-// version referenced all four unconditionally and installed none, producing a
-// config that failed only at launch — and `yazi --clear-cache`, which the
-// config check uses, does not execute init.lua, so nothing caught it.
+// A warning, not a failure: the generated config matches what is installed.
+// It needs its own check because `yazi --clear-cache`, which the config check
+// uses, does not execute init.lua, so a missing plugin surfaces only at launch.
 func checkYaziPlugins(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
 		return skip("bothy is not managing yazi's config")
@@ -159,9 +147,7 @@ func checkYaziPlugins(env Env) Result {
 	return pass(fmt.Sprintf("all %d yazi plugins installed", len(plugins)))
 }
 
-// checkImagePreviews reports which side of the ADR-007 gate this machine is on.
-// It is deliberately never a failure: both answers are correct, and the value
-// is in saying which one is in force and why.
+// checkImagePreviews reports which side of the ADR-007 gate this machine is on. Never a failure.
 func checkImagePreviews(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")

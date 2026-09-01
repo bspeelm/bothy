@@ -1,8 +1,5 @@
-// Command bothy sets up and launches a terminal workspace.
-//
-// Subcommand dispatch is a plain switch rather than a CLI framework. PLAN.md §8
-// puts the dependency ceiling at go-toml plus the standard library, and the
-// switch below is smaller than the flag definitions a framework would need.
+// Command bothy sets up and launches a terminal workspace. Dispatch is a
+// plain switch; PLAN.md §8 caps dependencies at go-toml.
 package main
 
 import (
@@ -18,18 +15,13 @@ import (
 
 // Version is stamped by the release build's -ldflags.
 //
-// It must stay a plain constant string: `-X` silently does nothing to a
+// It must stay a plain string literal: `-X` silently does nothing to a
 // variable initialised by a function call, so folding the fallback below into
-// this declaration disables the stamping it was meant to complement. Found by
-// checking that -X still worked, which it had quietly stopped doing.
+// this declaration disables the stamping it was meant to complement.
 var Version = "dev"
 
-// version reports the build's version.
-//
-// A `go install` binary gets no ldflags, so without this it would report "dev"
-// and every bug report from that install path would name a version that does
-// not exist. Go embeds the module version in the build info of every binary,
-// which covers exactly that case.
+// version reports the build's version. A `go install` binary gets no ldflags,
+// so it falls back to the module version Go embeds in build info.
 func version() string {
 	if Version != "dev" {
 		return Version
@@ -66,9 +58,6 @@ changes. Everything bothy writes lives under ~/.local/share/bothy, and
 `
 
 func main() {
-	// Bare `bothy` launches the workspace. That is the command people type
-	// every day, so it is the one that costs nothing to type; `bothy help`
-	// is there for everything else.
 	if len(os.Args) < 2 {
 		if err := cmdDev(nil); err != nil {
 			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
@@ -85,7 +74,6 @@ func main() {
 	case "doctor":
 		err = cmdDoctor(args)
 	case "dev":
-		// Retained so `bothy dev` keeps working; bare `bothy` is the same thing.
 		err = cmdDev(args)
 	case "attach":
 		err = cmdAttach(args)
@@ -122,7 +110,6 @@ func main() {
 	}
 }
 
-// load is the common preamble: detect the machine, read the config.
 func load() (platform.Info, config.Config, error) {
 	p := platform.Detect()
 	cfg, err := config.Load(p)
@@ -130,11 +117,8 @@ func load() (platform.Info, config.Config, error) {
 	return p, cfg, err
 }
 
-// warnUnknownKeys says once, on stderr, what `bothy doctor` says at length.
-//
-// Every command that reads the config goes through here, because the whole
-// problem with an unrecognised key was that nothing ever mentioned it. stderr
-// so it cannot corrupt `--json` output or a piped layout.
+// warnUnknownKeys reports unrecognised config keys once, on stderr so it
+// cannot corrupt --json output or a piped layout.
 func warnUnknownKeys(cfg config.Config) {
 	for _, k := range cfg.Unknown {
 		if near := config.Nearest(k); near != "" {

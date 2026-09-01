@@ -1,8 +1,6 @@
-// Package config is the user's answer to "what should my workspace be".
-//
-// It holds slot choices, theme selection and the handful of machine-specific
-// values that used to be hardcoded in a hand-edited .bashrc — the container
-// name and the pinned project directory in particular.
+// Package config is the user's answer to "what should my workspace be":
+// slot choices, theme, and the machine-specific values such as container
+// name and project directory.
 package config
 
 import (
@@ -83,21 +81,19 @@ type Workspace struct {
 	// ProjectDir pins `dev` to one directory. Empty means the current one.
 	ProjectDir string `toml:"project_dir"`
 	// Watermark enables the Ghostty background-image trick. Off by default:
-	// it is a nice touch, not a feature, and it needs per-layout measuring.
+	// it needs per-layout measuring to look right.
 	Watermark bool `toml:"watermark"`
 	// PaneFrames is "full", "titles" or "none".
 	//
-	// Zellij 0.45 added this and made "titles" the default, which draws a
-	// heading above each pane instead of a box around it. The origin setup
-	// predates that and had boxes, so bothy asks for "full" — the workspace
-	// should look the same on a machine that gets zellij 0.45 as on one that
-	// had 0.42, rather than quietly changing because an upstream default did.
+	// Set explicitly rather than left to Zellij, whose default changed to
+	// "titles" in 0.45 — the workspace should look the same across zellij
+	// versions rather than following an upstream default.
 	PaneFrames string `toml:"pane_frames"`
 }
 
-// DefaultExtras is the set of small CLI tools the workspace assumes are there.
-// delta is in the list because the git pager wiring is part of the setup being
-// ported; the rest are what Yazi's previews and the side pane lean on.
+// DefaultExtras are the CLI tools Yazi's previews, search and jump commands
+// and the side pane lean on. delta is the exception — nothing bothy generates
+// references it; see issue #45.
 var DefaultExtras = []string{"lazygit", "delta", "fzf", "ripgrep", "fd", "zoxide", "jq"}
 
 // Default is the shipped configuration: the origin setup, with every
@@ -182,13 +178,12 @@ func Save(p platform.Info, cfg Config) error {
 	return os.WriteFile(path, append([]byte(header), out...), 0o644)
 }
 
-// Validate catches the configuration mistakes that would otherwise surface as
-// a broken workspace rather than an error message.
-// slotNames are the slots a passthrough entry may name. Kept beside Slots so
-// adding a field and forgetting this list is a compile-time-adjacent mistake
-// rather than a silent one -- the test asserts they agree.
+// slotNames are the slots a passthrough entry may name. A test asserts it
+// matches Slots.
 var slotNames = []string{"terminal", "mux", "browser", "editor", "agent"}
 
+// Validate catches the configuration mistakes that would otherwise surface as
+// a broken workspace rather than an error message.
 func (c Config) Validate() error {
 	if c.Profile == "" {
 		return fmt.Errorf("config: profile is empty")
@@ -309,9 +304,8 @@ func (c *Config) Set(key, value string) error {
 	return nil
 }
 
-// Expand resolves a leading ~ against home. Exported because the CLI has to
-// do the same thing to a --dir argument, and two spellings of tilde expansion
-// is one more than this project needs.
+// Expand resolves a leading ~ against home. Exported because the CLI expands
+// --dir the same way.
 func Expand(path, home string) string {
 	if path == "~" {
 		return home

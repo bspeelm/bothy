@@ -1,16 +1,6 @@
-# helix is advised, never installed -- and unlike vim and nano, it could not be
-# installed even if the policy changed.
-#
-# bothy supplies no editor at all. Editors are the most personal tool in the
-# workspace and the one people already have, so the editor slot names the
-# binary and sets EDITOR; it does not fetch anything. That is a deliberate
-# choice and helix is not an exception to it.
-#
-# helix does have one property the others do not: it publishes only tar.xz,
-# which the standard library cannot unpack and PLAN.md §13's dependency
-# ceiling forbids adding a decompressor for. So if the no-editors decision
-# were ever reversed, helix would still be the one slot that could not be
-# filled. See docs/decisions.md ADR-014.
+# helix is advised, never installed. bothy supplies no editor at all (ADR-014)
+# -- and helix publishes only tar.xz, which bothy cannot unpack, so it could
+# not be supplied even if that changed.
 
 name = "helix"
 what = "the editor in the editor profile"

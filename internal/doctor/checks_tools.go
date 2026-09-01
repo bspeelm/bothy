@@ -13,17 +13,11 @@ import (
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
-// Checks about the tools themselves: where each came from, whether bothy can
-// still reach it, and whether the agent and the palette are usable.
+// Checks about the tools: where each came from, and whether bothy can reach it.
 
 // checkToolProvenance reports where each tool came from and whether it is
-// still good enough. This replaces revision 1's PATH-shadowing check, which
-// mattered only because bothy installed into ~/.local/bin; a tool bothy
-// supplies now lives in its own bin and is on PATH for its session alone.
-//
-// The failure it exists to catch: a system tool below the minimum with nothing
-// supplied to cover it, which is a workspace that will misbehave in a way the
-// individual tool never complains about.
+// still good enough. The failure it catches: a system tool below the minimum
+// with nothing supplied to cover it.
 func checkToolProvenance(env Env) Result {
 	if r, ok := env.elsewhere(); ok {
 		return r
@@ -61,14 +55,8 @@ func checkToolProvenance(env Env) Result {
 		len(system), len(supplied)))
 }
 
-// checkToolsReachable catches tools recorded at one side of a container
-// boundary and looked for at the other.
-//
-// Home is shared between a host and its toolboxes; PATH is not. An install run
-// inside a container records yazi at /usr/bin/yazi, which simply does not
-// exist on the host — so launching from the host opened a pane that died with
-// "command not found: yazi", with nothing to suggest why. The launcher now
-// hops back to where the tools are; this reports the case where it cannot.
+// checkToolsReachable catches tools recorded on one side of a container
+// boundary and looked for on the other. Home is shared; PATH is not.
 func checkToolsReachable(env Env) Result {
 	if r, ok := env.elsewhere(); ok {
 		return r
@@ -124,15 +112,8 @@ func checkAgent(env Env) Result {
 	return pass(bin + " is on PATH")
 }
 
-// checkEditor is the counterpart to checkAgent, and existed for neither until
-// now: a configured editor that is not installed produced a pane running a
-// missing command, an EDITOR pointing at nothing, and a doctor reporting
-// everything fine.
-//
-// bothy supplies no editor. That is deliberate -- an editor is the most
-// personal tool in the workspace and the one people already have -- but it
-// means the editor slot is entirely a claim about the machine, and a claim
-// about the machine is exactly what the doctor is for.
+// checkEditor: bothy supplies no editor, so the editor slot is entirely a
+// claim about the machine, which is what the doctor is for.
 func checkEditor(env Env) Result {
 	if r, ok := env.elsewhere(); ok {
 		return r

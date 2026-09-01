@@ -9,26 +9,17 @@ import (
 	"github.com/bspeelm/bothy/internal/install"
 )
 
-// checkLayoutBuilt compares the layout Zellij actually resolved against the
-// profile that described it.
-//
-// The renderer owns the KDL and a golden test proves what it emits, so this is
-// not guarding a mistake bothy makes. It guards the other side: that Zellij
-// *interprets* that KDL the way it did when the renderer was written. A change
-// in how a future Zellij reads a layout would show up here and nowhere else.
-//
-// It only runs inside a live session, keyed on ZELLIJ_SESSION_NAME, so it
-// checks the session you are in rather than guessing among leftovers from
-// other ones. Everywhere else it skips.
+// checkLayoutBuilt compares the layout Zellij resolved against the profile.
+// The renderer's golden test covers what bothy emits; this covers whether
+// Zellij still interprets it the same way. Runs only inside a live session
+// (ZELLIJ_SESSION_NAME); skips everywhere else.
 func checkLayoutBuilt(env Env) Result {
 	session := os.Getenv("ZELLIJ_SESSION_NAME")
 	if session == "" {
 		return skip("not inside a zellij session")
 	}
-	// Only a session bothy launched. Being inside *a* zellij session says
-	// nothing about whether its layout came from bothy's profile, and comparing
-	// someone else's layout against bothy's pane count would report a
-	// discrepancy that is nobody's bug. BOTHY_SESSION is set by SessionEnv.
+	// Only a session bothy launched: another session's layout has nothing to
+	// do with bothy's profile. BOTHY_SESSION is set by SessionEnv.
 	if os.Getenv("BOTHY_SESSION") == "" {
 		return skip("this zellij session was not launched by bothy")
 	}
@@ -43,8 +34,7 @@ func checkLayoutBuilt(env Env) Result {
 
 	got, ok := countContentPanes(string(body))
 	if !ok {
-		// The serialisation changed shape. Saying nothing beats reporting a
-		// number derived from a format this code no longer understands.
+		// The serialisation changed shape; a count from it would mean nothing.
 		return skip("could not read the resolved layout's shape")
 	}
 
@@ -77,13 +67,9 @@ func sessionLayoutPath(home, session string) (string, error) {
 	return matches[0], nil
 }
 
-// countContentPanes counts the panes actually running something in the first
-// tab, which is the number a profile's PaneCount describes.
-//
-// Three things in the resolved file would corrupt a naive count, and each is
-// the reason for a line below: the whole layout is repeated inside
-// new_tab_template, floating_panes adds panes nobody asked for (Zellij's own
-// about-screen tip lands there), and the tab-bar and status-bar are panes too.
+// countContentPanes counts panes running something in the first tab. Three
+// things would corrupt a naive count: new_tab_template repeats the layout,
+// floating_panes adds Zellij's own tip pane, and the bars are panes too.
 func countContentPanes(kdl string) (int, bool) {
 	lines := strings.Split(kdl, "\n")
 

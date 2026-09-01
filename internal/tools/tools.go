@@ -58,13 +58,9 @@ func (t Tool) Asset(p platform.Info, version string) (string, error) {
 	return strings.ReplaceAll(pattern, "{version}", version), nil
 }
 
-// ChecksumFile is the release asset carrying this tool's own sha256 for one
-// platform, or "" when the project publishes none.
-//
-// Two shapes are in use upstream and one field covers both: a sibling beside
-// each asset ("{asset}.sha256"), or one manifest for the whole release
-// ("checksums.txt"). What is inside them is the same either way -- lines of
-// "<sha256>  <filename>" -- so the parser does not need to know which it got.
+// ChecksumFile is the release asset carrying this tool's own sha256, or "".
+// Two upstream shapes — a sibling per asset or one manifest — with the same
+// "<sha256>  <filename>" lines inside.
 func (t Tool) ChecksumFile(p platform.Info, version string) (string, error) {
 	if t.Checksums == "" {
 		return "", nil

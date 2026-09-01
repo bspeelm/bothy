@@ -1,12 +1,5 @@
-# Ghostty is advised, never installed.
-#
-# It publishes no release binaries at all, so there is nothing for bothy to
-# fetch, and every install path goes through a package manager as root. On an
-# image-based host that also means a reboot — bothy could start the job and not
-# finish it, which is worse than telling you the command.
-#
-# What bothy can do is give you the *right* command, and keep you away from the
-# repository that cost the author of this project an afternoon.
+# Ghostty is advised, never installed: it publishes no release binaries, and
+# every install path needs root (and on image-based hosts, a reboot).
 
 name = "ghostty"
 what = "a terminal that can draw inline images"
@@ -19,9 +12,7 @@ debian        = "see https://ghostty.org/docs/install — Debian has no official
 arch          = "sudo pacman -S ghostty"
 darwin        = "brew install --cask ghostty"
 
-# Both of these are Copr repositories, so they are advice for Fedora and noise
-# anywhere else. distros scopes them; without it an Ubuntu user was told to
-# stay away from a repository they cannot enable in the first place.
+# Copr repositories, so they apply to Fedora only.
 [[avoid]]
 repo    = "copr pgdev/ghostty"
 why     = "no builds for current Fedora; it blocks rpm-ostree upgrades until removed"

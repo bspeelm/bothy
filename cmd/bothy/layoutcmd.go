@@ -37,10 +37,8 @@ func cmdLayout(args []string) error {
 	return nil
 }
 
-// cmdTheme prints a blank palette. This is the whole mechanism for using a
-// palette other than the built-in one: fill in eleven colours, point bothy at
-// the file. Nothing about any particular theme is built in, and a palette you
-// have licensed never leaves your machine.
+// cmdTheme prints a blank palette. Filling in eleven colours and pointing bothy
+// at the file is the whole mechanism for a custom palette; no theme is built in.
 func cmdTheme(args []string) error {
 	if len(args) == 0 || args[0] != "example" {
 		return fmt.Errorf("usage: bothy theme example")

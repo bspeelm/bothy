@@ -11,11 +11,10 @@ import (
 	bothy "github.com/bspeelm/bothy"
 )
 
-// The desktop entry is the one file bothy will write outside its own tree, and
-// only when explicitly asked. It has to live in the desktop's search path to
-// work at all, so isolation cannot cover it — which is exactly why it is a
-// separate command rather than part of `bothy install`, prints what it is about
-// to do, and can be undone.
+// The desktop entry is the one file bothy writes outside its own tree: it has
+// to live in the desktop's search path to work at all. Hence a separate
+// command rather than part of `bothy install`, one that says what it is about
+// to do and can be undone.
 func cmdDesktop(args []string) error {
 	fs := flag.NewFlagSet("desktop-entry", flag.ExitOnError)
 	doInstall := fs.Bool("install", false, "write the entry (outside bothy's tree)")

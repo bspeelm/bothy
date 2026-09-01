@@ -1,14 +1,9 @@
 # Note the leading v in the asset name, which the others do not have.
 #
-# On Debian and Ubuntu the package is fd-find and the binary is installed as
-# `fdfind`, because `fd` was already taken by fdclone. So LookPath("fd") misses
-# and bothy fetches its own copy even on a machine that has one.
-#
-# That is the right outcome, and deliberate. What bothy promises a session is
-# that `fd` is on PATH -- for you to type, and for yazi and lazygit to find
-# when they shell out. A binary called `fdfind` does not satisfy that, and the
-# only way to make it would be for bothy to invent the name Debian renamed to
-# avoid a clash. A 3.7 MB download is the cheaper mistake.
+# Debian and Ubuntu install the binary as `fdfind`, so LookPath("fd") misses
+# and bothy fetches its own copy even where one exists. That is deliberate:
+# what bothy promises a session is that `fd` is on PATH, for you to type and
+# for yazi and lazygit to find when they shell out.
 name        = "fd"
 binary      = "fd"
 repo        = "sharkdp/fd"

@@ -23,12 +23,9 @@ jobs:
       - run: make check
 
   isolation:
-    # ADR-009 as a gate. Installing must write nothing outside bothy's own
-    # directory, in any configuration.
-    #
-    # This job previously filtered on a test name that no longer existed, and
-    # `go test -run` exits 0 when its filter matches nothing — so it was green
-    # and testing nothing. The filter is now asserted to match.
+    # ADR-009 as a gate: installing must write nothing outside bothy's own
+    # directory. `go test -run` exits 0 when its filter matches nothing, so the
+    # filter is asserted to match.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,12 +60,7 @@ jobs:
     #
     # The assertions are Go, in cmd/bothy/container_test.go, behind a build tag
     # so `make check` needs neither a container runtime nor a network. Docker
-    # rather than podman: podman writes name= into /run/.containerenv for every
-    # container it runs, and bothy used to read a name there as evidence of
-    # Toolbx. That is fixed, but Docker is what the runner has.
-    #
-    # Not a required check yet. It downloads nine tools from GitHub releases on
-    # every run, and it should prove it is stable before it can block a merge.
+    # rather than podman: it is what the runner has.
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -81,11 +73,8 @@ jobs:
       # the runner's glibc.
       - run: make build
 
-      # Pulled here, with retries, rather than left to the test. Docker Hub
-      # returned a 502 on one run of this job and took three passing subtests
-      # down with the one that never got a container. As an advisory job that
-      # is noise; as a required check it would block every merge on a registry
-      # hiccup, so it has to be flaky-proofed before it can be required.
+      # Pulled here with retries rather than left to the test: a registry
+      # hiccup would otherwise block every merge.
       - name: pull the base images
         run: |
           set -euo pipefail
@@ -102,17 +91,14 @@ jobs:
           done
 
       - name: install, verify and uninstall in each container
-        # pipefail is not on by default, and without it `go test | tee` reports
-        # tee's exit code -- so a failing test produced a green job. That is
-        # the same "green and testing nothing" failure the isolation job below
-        # was written to prevent, and it happened here on the first run.
+        # pipefail, or `go test | tee` reports tee's exit code and a failing
+        # test is green.
         run: |
           set -o pipefail
           go test ./cmd/bothy/ -tags container -timeout 20m -v \
             -run TestBothyInstallsInAContainer | tee container.log
-          # `go test -run` exits 0 when its filter matches nothing, so a
-          # drifted filter or build tag would be green and test nothing. This
-          # project has already shipped that bug once; assert each distro ran.
+          # `go test -run` exits 0 when its filter matches nothing; assert
+          # each distro ran.
           for distro in fedora ubuntu; do
             grep -qE -- "--- PASS: .*/${distro}" container.log || {
               echo "::error::no subtest ran for ${distro} — the -run filter or the build tag has drifted"
@@ -122,10 +108,8 @@ jobs:
 
   deb:
     # The .deb only exists once a release is published, so without this the
-    # first time anyone runs `apt install` on one is after the tag is pushed
-    # and irrevocable. --snapshot builds the whole artifact set and publishes
-    # none of it, which is close enough: what goes wrong with a .deb is its
-    # metadata, and that comes from the same config either way.
+    # first `apt install` of one happens after the tag is irrevocable.
+    # --snapshot builds the artifact set and publishes none of it.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

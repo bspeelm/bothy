@@ -1,8 +1,7 @@
 // Package layout turns a profile into a Zellij layout.
 //
-// Users write profiles; bothy writes KDL. That split exists because Zellij's
-// layout language has two traps that cost real debugging time, documented in
-// docs/origin-cheatsheet.md §3 and encoded here so nobody meets them again:
+// Users write profiles; bothy writes KDL, because Zellij's layout language has
+// two traps (docs/origin-cheatsheet.md §3):
 //
 //  1. split_direction="vertical" produces *columns*, not rows — the opposite of
 //     what the word suggests. A profile says "columns" and means columns.
@@ -31,9 +30,8 @@ type Profile struct {
 	Name        string `toml:"name"`
 	Description string `toml:"description"`
 
-	// TabBar and StatusBar are Zellij's own plugin panes. They are fixed line
-	// counts, not percentages, which is why they are flags rather than rows:
-	// a row carries a percentage, and these cannot.
+	// TabBar and StatusBar are fixed line counts, not percentages, so they are
+	// flags rather than rows.
 	TabBar    *bool `toml:"tab_bar"`
 	StatusBar *bool `toml:"status_bar"`
 
@@ -280,18 +278,10 @@ func writeCommand(b *strings.Builder, indent, cmd string) error {
 	return nil
 }
 
-// splitCommand splits a command line into words the way a shell would, which
-// is to say honouring quotes.
-//
-// strings.Fields was used here, and the README promises the agent slot takes
-// "any command you name" -- so `claude --append-system-prompt "be terse"`
-// became the two arguments `"be` and `terse"`, and Zellij passed both on
-// literally. An empty command indexed parts[0] and panicked.
-//
-// This is deliberately not a shell. There is no expansion, no globbing and no
-// operators; quotes group words and a backslash escapes the next character,
-// which is the whole of what a command line in a config file needs. PLAN.md
-// §13 caps dependencies at go-toml, and thirty lines beats a parser.
+// splitCommand splits a command line into words the way a shell would,
+// honouring quotes, so `claude --append-system-prompt "be terse"` yields
+// three arguments. It is deliberately not a shell: no expansion, globbing
+// or operators. PLAN.md §13 caps dependencies at go-toml.
 func splitCommand(s string) ([]string, error) {
 	var (
 		parts []string

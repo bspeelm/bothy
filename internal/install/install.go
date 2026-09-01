@@ -218,19 +218,10 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 		}
 	}
 
-	// Inside a container there is no desktop to open a file with, so the
-	// opener forwards to the host. The shim lives in bothy's own bin/, which
-	// is on PATH for bothy's session only — revision 1 put it in ~/.local/bin,
-	// where it was on the host's PATH too and needed a guard against the host
-	// executing it and recursing into itself. Scoping removes that hazard; the
-	// guard stays anyway, because it is three lines and PATH is fickle.
-	//
-	// SharedHome rather than InContainer: the shim forwards through
-	// flatpak-spawn, which exists in Toolbx and Distrobox and nowhere else. A
-	// plain podman or docker container has no host session to reach, so
-	// writing it there produced a shim that could not work -- and then passed
-	// the opener check, because that check only asks whether xdg-open
-	// resolves and this put something on PATH that answered to the name.
+	// Inside Toolbx/Distrobox the opener forwards to the host via flatpak-spawn.
+	// Keyed on SharedHome, not InContainer: a plain podman or docker container
+	// has no host session, and a shim there would satisfy the opener check
+	// without working. The shim keeps its own guard because PATH is fickle.
 	if p.SharedHome {
 		out = append(out, file{
 			Dest: filepath.Join(p.BinDir(), "xdg-open"), Tool: "shell",
@@ -280,9 +271,8 @@ func muxBinary(cfg config.Config) string {
 	return cfg.Slots.Mux
 }
 
-// EditorBinary maps an editor slot to the command it runs. Exported because
-// the doctor has to check the same binary the launcher will use; two spellings
-// of that mapping is how a check comes to report on the wrong thing.
+// EditorBinary maps an editor slot to the command it runs. Exported so the
+// doctor checks the same binary the launcher uses.
 func EditorBinary(slot string) string {
 	switch slot {
 	case "helix":
@@ -361,22 +351,16 @@ func slug(name string) string {
 // Telling them is a handful of environment variables scoped to one process
 // tree, so the user's shell keeps its own PATH and EDITOR.
 //
-// The doctor uses this too, deliberately. A check that runs a tool with a
-// different config than the launcher will is worse than no check, because it
-// reports confidently about the wrong file.
+// The doctor uses this too, so checks run tools with the launcher's config.
 func SessionEnv(p platform.Info, cfg config.Config) []string {
 	env := newEnv(os.Environ())
 
-	// bothy's own bin first, so a tool it had to supply is used here and only
-	// here. Nothing it installs changes what a command means in your shell.
+	// bothy's own bin first, for this session only.
 	env.set("PATH", p.BinDir()+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	// Passthrough must *unset*, not merely decline to set. The session inherits
-	// the current environment, so if one of these is already exported — by a
-	// bothy session this was launched from, or by hand — declining to set it
-	// leaves the inherited value in place and the tool quietly uses bothy's
-	// config anyway. Found by the test suite failing when run from inside a
-	// bothy session, which is the only place the difference shows.
+	// Passthrough must *unset*, not merely decline to set: the session inherits
+	// the current environment, so an already-exported value would stay in place
+	// and the tool would use bothy's config anyway.
 	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
 		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
 	} else {
