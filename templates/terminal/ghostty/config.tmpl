@@ -36,3 +36,18 @@ font-family = {{ .Font }}
 
 # Make URLs clickable.
 link-url = true
+{{ if .Watermark }}
+# A terminal cannot scope a background image to one pane, but the image can be
+# made to *land* on one: a mostly-transparent canvas the shape of the window,
+# with the art composited at the percentage where the pane sits. `fit = stretch`
+# maps it onto the window, so those percentages hold at any resolution.
+#
+# Do not use `fit = none` with a corner anchor — that positions in absolute
+# pixels and is correct on exactly one monitor. `position` is ignored under
+# stretch. See docs/watermark.md for the recipe, and put your own opacity in
+# an override if this one is too faint.
+background-image = {{ .Watermark }}
+background-image-opacity = {{ .WatermarkOpacity }}
+background-image-fit = stretch
+background-image-repeat = false
+{{- end }}

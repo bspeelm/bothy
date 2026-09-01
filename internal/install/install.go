@@ -40,10 +40,15 @@ type Data struct {
 	Opener     string
 	OpenerDesc string
 
-	EditorBin      string
-	AgentBin       string
-	BrowserBin     string
-	VimColorscheme string
+	// Watermark is the image to sit behind the terminal, already expanded.
+	// WatermarkOpacity is not configurable: tune it in an override, which is
+	// how every other ghostty setting is tuned.
+	Watermark        string
+	WatermarkOpacity string
+	EditorBin        string
+	AgentBin         string
+	BrowserBin       string
+	VimColorscheme   string
 
 	Font       string
 	ProjectDir string
@@ -236,21 +241,23 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 	g := probe.CheckGraphics(ToolPath(p, muxBinary(cfg)), p.Terminal)
 
 	d := Data{
-		Theme:          pal,
-		ThemeName:      name,
-		ImagePreviews:  g.Supported,
-		GraphicsReason: g.Reason,
-		Container:      p.InContainer(),
-		Opener:         opener(p),
-		OpenerDesc:     openerDesc(p),
-		ContainerName:  ContainerFor(p, cfg),
-		EditorBin:      EditorBinary(cfg.Slots.Editor),
-		AgentBin:       agentBinary(cfg.Slots.Agent),
-		BrowserBin:     cfg.Slots.Browser,
-		Font:           cfg.Theme.Font,
-		ProjectDir:     cfg.Workspace.ProjectDir,
-		PaneFrames:     cfg.Workspace.PaneFrames,
-		Plugins:        InstalledPlugins(p),
+		Theme:            pal,
+		ThemeName:        name,
+		ImagePreviews:    g.Supported,
+		GraphicsReason:   g.Reason,
+		Watermark:        config.Expand(cfg.Workspace.Watermark, p.Home),
+		WatermarkOpacity: "0.05",
+		Container:        p.InContainer(),
+		Opener:           opener(p),
+		OpenerDesc:       openerDesc(p),
+		ContainerName:    ContainerFor(p, cfg),
+		EditorBin:        EditorBinary(cfg.Slots.Editor),
+		AgentBin:         agentBinary(cfg.Slots.Agent),
+		BrowserBin:       cfg.Slots.Browser,
+		Font:             cfg.Theme.Font,
+		ProjectDir:       cfg.Workspace.ProjectDir,
+		PaneFrames:       cfg.Workspace.PaneFrames,
+		Plugins:          InstalledPlugins(p),
 	}
 	d.VimColorscheme = cfg.Theme.VimColorscheme
 	if d.VimColorscheme == "" {
