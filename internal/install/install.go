@@ -33,6 +33,11 @@ type Data struct {
 
 	Container     bool
 	ContainerName string
+	// Opener is the command Yazi hands a file to, and OpenerDesc is what Yazi
+	// shows for it. A machine fact rather than a provider one, so it is
+	// decided here rather than by conditionals in the template.
+	Opener     string
+	OpenerDesc string
 
 	EditorBin      string
 	AgentBin       string
@@ -244,6 +249,8 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		ImagePreviews:    g.Supported,
 		GraphicsReason:   g.Reason,
 		Container:        p.InContainer(),
+		Opener:           opener(p),
+		OpenerDesc:       openerDesc(p),
 		ContainerName:    ContainerFor(p, cfg),
 		EditorBin:        EditorBinary(cfg.Slots.Editor),
 		AgentBin:         agentBinary(cfg.Slots.Agent),
@@ -269,6 +276,38 @@ func muxBinary(cfg config.Config) string {
 		return ""
 	}
 	return cfg.Slots.Mux
+}
+
+// opener is the command that hands a file to the desktop.
+//
+// There is no portable answer. xdg-open is the freedesktop convention and does
+// not exist on macOS, which has `open`. Inside a container there is a third
+// answer: the app databases live on the host, so a local xdg-open would be a
+// working binary with no viewers behind it, and the file has to go out.
+func opener(p platform.Info) string {
+	switch {
+	case p.InContainer():
+		return "flatpak-spawn --host xdg-open"
+	case p.OS == "darwin":
+		return "open"
+	}
+	return "xdg-open"
+}
+
+// OpenerBinary is the program the opener runs, for a check that wants to know
+// whether it is there. The container opener forwards through flatpak-spawn, so
+// that is the binary that has to exist here.
+func OpenerBinary(p platform.Info) string {
+	return strings.Fields(opener(p))[0]
+}
+
+// openerDesc is what Yazi shows beside the opener, which is worth saying when
+// the file is leaving this machine's namespace.
+func openerDesc(p platform.Info) string {
+	if p.InContainer() {
+		return "Open on host"
+	}
+	return "Open"
 }
 
 // EditorBinary maps an editor slot to the command it runs. Exported so the

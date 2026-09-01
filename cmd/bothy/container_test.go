@@ -73,8 +73,8 @@ var onlineExpectation = map[string]doctor.Severity{
 	"watermark-image": doctor.Skip, // off by default
 	"zellij-config":   doctor.Pass,
 	"terminfo":        doctor.Pass, // only because prep installed infocmp
-	// Warn, and correctly so: the forwarding shim is only written where there
-	// is a host to forward to, and neither base image ships xdg-open. There is
+	// Warn, and correctly so: in a container the opener forwards to the host,
+	// and neither base image ships flatpak-spawn to forward with. There is
 	// nothing to open a file with here and nothing bothy can do about it.
 	"opener":              doctor.Warn,
 	"xdg-open-shim-guard": doctor.Skip, // no shared home, so no shim to guard
