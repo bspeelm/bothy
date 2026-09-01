@@ -54,6 +54,10 @@
           {
             "context": "container",
             "integration_id": 15368
+          },
+          {
+            "context": "macos",
+            "integration_id": 15368
           }
         ]
       }

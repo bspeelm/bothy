@@ -4,14 +4,15 @@ BINARY   := bothy
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS  := -s -w -X main.Version=$(VERSION)
 
-# PLAN.md §3: the core binary stays under 10 MB and the core source under ~5k
-# LOC. Checked, not aspired to.
+# PLAN.md §3: the core binary stays under 10 MB, and the core source under a
+# line count. Checked, not aspired to.
 #
 # Two source limits: code is capped outright, and comments are capped as a
 # share of it, so prose has to stay proportionate to what it explains rather
-# than compete with it for room. See ADR-010, ADR-015 and ADR-021.
+# than compete with it for room. See ADR-010, ADR-015, ADR-021 and ADR-026 --
+# the last for why the code cap is 6,000 rather than the 5,000 it began at.
 MAX_BINARY_BYTES  := 10485760
-MAX_CODE_LINES    := 5000
+MAX_CODE_LINES    := 6000
 MAX_COMMENT_RATIO := 25
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
