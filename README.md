@@ -192,15 +192,30 @@ tools and goes back there when you launch it from the host. If you install
 from a container that has none of them, it downloads the lot into its own
 folder and the result works from either side.
 
+As for which machines: Fedora and Ubuntu, on every release, installed into a
+container and exercised and thrown away. That is the whole of what supported
+means here — not that it ought to work, but that something proved it did this
+morning.
+
+macOS is a different sentence. The binaries are built, every tool is pinned
+for it, and the install advice knows about Homebrew, but nothing has ever run
+there. It will install and it will mostly work; it will also never open its
+own window, because it looks for a display in the places Linux keeps one.
+Untested, which is the honest word.
+
+Anywhere else, bothy runs and the doctor tells you what it cannot do on that
+machine. Nobody has checked, and it does not pretend otherwise.
+
 ## What bothy is not
 
-- A Windows tool, unless you count WSL, which you may
-- A tmux setup
 - A plugin system, a marketplace, or an extension API
 - A bundle of the tools. It fetches their official releases and checks them
 - Anything to do with language servers or debuggers
 - A background service, an auto-updater, or a collector of telemetry
 - A manager for your agent's config, keys, or hooks
+- **A sandbox.** The agent runs as you, in your repository, with your
+  permissions. Its edits are real and are not bothy's to undo. Uninstalling
+  removes bothy, not anything the agent did
 - A Flatpak. Flathub does not take command-line software, and bothy downloads
   things as it goes, which Flatpak was invented to prevent
 - Ambitious
@@ -211,11 +226,14 @@ yours, and it does not need to be thanked.
 ## Contributing
 
 See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding a tool
-means writing a config file and some templates; if it seems to need Go, stop,
-because something else is wrong. Most contributions so far have been to the
+bothy fetches is one config file. Adding one it configures is a file, some
+templates and a single branch. Only the multiplexer needs Go that reads the
+layout and writes something else; if anything else seems to, stop, because
+something else is wrong. Most contributions so far have been to the
 reasons rather than the code, which is either a good sign or the only sign.
 
-The reasons things are the way they are live in
+What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). The
+reasons things are the way they are live in
 [`docs/decisions.md`](docs/decisions.md). They are longer than the code they
 explain, and on balance that is the right way round.
 
