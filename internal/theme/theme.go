@@ -94,7 +94,7 @@ func (p Palette) Color(token string) (string, error) {
 	return "", fmt.Errorf("theme: unknown colour token %q", token)
 }
 
-// complete reports the tokens that are still empty. Used to fail an install
+// complete reports the tokens that are still empty. Fails an install
 // loudly rather than write a half-themed config.
 func (p Palette) missing() []string {
 	var out []string

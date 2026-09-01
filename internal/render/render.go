@@ -2,11 +2,10 @@
 // tools against.
 //
 // Everything it writes goes inside bothy's own tree (ADR-009), which is what
-// lets this package be as small as it is. Revision 1 needed backups, content
-// hashes and drift detection because it wrote into files the user owned;
-// isolation removes the problem rather than managing it.
+// lets this package be as small as it is: no backups, no content hashes, no
+// drift detection, because it never writes a file the user owns.
 //
-// Two things survive from that design and earn their place:
+// Two properties it does keep:
 //
 //   - Every generated file says it is generated, and names where to put your
 //     own changes. A file with no provenance is a file nobody dares edit.

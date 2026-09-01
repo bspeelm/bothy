@@ -181,7 +181,7 @@ func detectContainer() (ContainerKind, string) { return detectContainerIn("/") }
 // detectContainerIn is detectContainer against an arbitrary root, so that the
 // marker files can be tested. Reading absolute paths directly made this the
 // one piece of detection that could only be exercised by running inside the
-// thing it detects — which is how the bug below survived.
+// thing it detects.
 func detectContainerIn(root string) (ContainerKind, string) {
 	marker := func(name string) bool {
 		_, err := os.Stat(filepath.Join(root, name))

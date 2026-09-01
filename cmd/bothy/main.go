@@ -18,18 +18,13 @@ import (
 
 // Version is stamped by the release build's -ldflags.
 //
-// It must stay a plain constant string: `-X` silently does nothing to a
+// It must stay a plain string literal: `-X` silently does nothing to a
 // variable initialised by a function call, so folding the fallback below into
-// this declaration disables the stamping it was meant to complement. Found by
-// checking that -X still worked, which it had quietly stopped doing.
+// this declaration disables the stamping it was meant to complement.
 var Version = "dev"
 
-// version reports the build's version.
-//
-// A `go install` binary gets no ldflags, so without this it would report "dev"
-// and every bug report from that install path would name a version that does
-// not exist. Go embeds the module version in the build info of every binary,
-// which covers exactly that case.
+// version reports the build's version. A `go install` binary gets no ldflags,
+// so it falls back to the module version Go embeds in build info.
 func version() string {
 	if Version != "dev" {
 		return Version
@@ -66,9 +61,7 @@ changes. Everything bothy writes lives under ~/.local/share/bothy, and
 `
 
 func main() {
-	// Bare `bothy` launches the workspace. That is the command people type
-	// every day, so it is the one that costs nothing to type; `bothy help`
-	// is there for everything else.
+	// Bare `bothy` launches the workspace: the daily command costs nothing to type.
 	if len(os.Args) < 2 {
 		if err := cmdDev(nil); err != nil {
 			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
@@ -122,7 +115,6 @@ func main() {
 	}
 }
 
-// load is the common preamble: detect the machine, read the config.
 func load() (platform.Info, config.Config, error) {
 	p := platform.Detect()
 	cfg, err := config.Load(p)
@@ -131,10 +123,8 @@ func load() (platform.Info, config.Config, error) {
 }
 
 // warnUnknownKeys says once, on stderr, what `bothy doctor` says at length.
-//
-// Every command that reads the config goes through here, because the whole
-// problem with an unrecognised key was that nothing ever mentioned it. stderr
-// so it cannot corrupt `--json` output or a piped layout.
+// Every command that reads the config goes through here, so an unrecognised
+// key is always mentioned; stderr, so it cannot corrupt `--json` or a layout.
 func warnUnknownKeys(cfg config.Config) {
 	for _, k := range cfg.Unknown {
 		if near := config.Nearest(k); near != "" {

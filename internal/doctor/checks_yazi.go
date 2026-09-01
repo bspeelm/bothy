@@ -128,12 +128,13 @@ func checkYaziConfigKeys(env Env) Result {
 
 // checkYaziPlugins reports plugins bothy's config wants and does not have.
 //
-// This is a warning rather than a failure because the generated config is
-// written to match what is installed, so a missing plugin costs a feature
-// rather than breaking the workspace. That was not always true: an earlier
-// version referenced all four unconditionally and installed none, producing a
-// config that failed only at launch — and `yazi --clear-cache`, which the
-// config check uses, does not execute init.lua, so nothing caught it.
+// A warning rather than a failure: the generated config is written to match
+// what is actually installed, so a missing plugin costs a feature rather than
+// breaking the workspace.
+//
+// It needs its own check because `yazi --clear-cache`, which the config check
+// uses, does not execute init.lua — so a config referencing a plugin that is
+// not there fails only at launch, where nothing is watching.
 func checkYaziPlugins(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
 		return skip("bothy is not managing yazi's config")

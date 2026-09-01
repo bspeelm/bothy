@@ -83,21 +83,21 @@ type Workspace struct {
 	// ProjectDir pins `dev` to one directory. Empty means the current one.
 	ProjectDir string `toml:"project_dir"`
 	// Watermark enables the Ghostty background-image trick. Off by default:
-	// it is a nice touch, not a feature, and it needs per-layout measuring.
+	// it needs per-layout measuring to look right.
 	Watermark bool `toml:"watermark"`
 	// PaneFrames is "full", "titles" or "none".
 	//
-	// Zellij 0.45 added this and made "titles" the default, which draws a
-	// heading above each pane instead of a box around it. The origin setup
-	// predates that and had boxes, so bothy asks for "full" — the workspace
-	// should look the same on a machine that gets zellij 0.45 as on one that
-	// had 0.42, rather than quietly changing because an upstream default did.
+	// Set explicitly rather than left to Zellij, whose default changed to
+	// "titles" in 0.45 — the workspace should look the same across zellij
+	// versions rather than following an upstream default.
 	PaneFrames string `toml:"pane_frames"`
 }
 
 // DefaultExtras is the set of small CLI tools the workspace assumes are there.
-// delta is in the list because the git pager wiring is part of the setup being
-// ported; the rest are what Yazi's previews and the side pane lean on.
+// Yazi's previews and the side pane lean on most of them.
+//
+// delta is the exception: nothing bothy generates references it, and it is on
+// PATH for the session and nothing more. See issue #45.
 var DefaultExtras = []string{"lazygit", "delta", "fzf", "ripgrep", "fd", "zoxide", "jq"}
 
 // Default is the shipped configuration: the origin setup, with every

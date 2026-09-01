@@ -1,13 +1,9 @@
 // Package state records what bothy installed.
 //
-// It is deliberately small. Revision 1 of PLAN.md needed a manifest of every
-// config file bothy wrote, the backup it took first, and the hash of what it
-// left behind, because uninstall had to reverse edits to files bothy did not
-// own. Under isolation (ADR-009) none of that applies: every config bothy
-// generates lives inside its own tree, so removing the tree removes them, and
-// the only thing worth recording is which *binaries* were installed — those go
-// in bothy's bin/, and what is worth recording about them is the version and
-// checksum each was installed at.
+// It is deliberately small. Under isolation (ADR-009) every config bothy
+// generates lives inside its own tree, so removing the tree removes them; the
+// only thing worth recording is which *binaries* went into bothy's bin/, at
+// what version and checksum.
 package state
 
 import (
@@ -28,15 +24,14 @@ type Manifest struct {
 	Version   int       `json:"version"`
 	UpdatedAt time.Time `json:"updated_at"`
 	// BothyVer is the version that generated the configs beside this file.
-	// The templates are compiled into the binary, so a newer bothy carries
-	// newer templates -- and a launch does not re-render, so knowing which
-	// one wrote them is the only way to notice they are stale.
+	// The templates are compiled into the binary and a launch does not
+	// re-render, so knowing which bothy wrote them is the only way to notice
+	// they are stale.
 	BothyVer string `json:"bothy_version"`
 	// InstalledIn is the container bothy resolved its tools in, or "" for the
-	// host. It matters because home is shared but PATH is not: tools found at
-	// /usr/bin inside a container are simply absent on the host, so a launch
-	// from the other side finds nothing. Recorded so `bothy` can go back to
-	// where its tools actually are.
+	// host. Home is shared but PATH is not: tools at /usr/bin inside a
+	// container are absent on the host, so a launch from the other side needs
+	// this to find its way back to them.
 	InstalledIn string   `json:"installed_in,omitempty"`
 	Binaries    []Binary `json:"binaries"`
 }
@@ -78,13 +73,12 @@ func Load(stateDir string) (*Manifest, error) {
 	return &m, nil
 }
 
-// Save writes the manifest atomically. A half-written manifest would leave
+// Save writes the manifest atomically: a half-written manifest would leave
 // uninstall unable to account for installed binaries.
-// bothyVer is the version of bothy doing the writing. It is stamped rather
-// than left to the caller because the point of recording it is that it is
-// always right, and a field the caller may forget is a field that is empty on
-// the machines that most need it -- this one was declared and never written by
-// any version of bothy until now.
+//
+// bothyVer is stamped here rather than left to the caller because the point of
+// recording it is that it is always right, and a field the caller may forget
+// is empty on the machines that most need it.
 func (m *Manifest) Save(stateDir, bothyVer string) error {
 	m.Version = ManifestVersion
 	m.BothyVer = bothyVer

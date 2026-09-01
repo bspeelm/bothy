@@ -125,11 +125,9 @@ func (e Env) lookPath(name string) (string, error) {
 // elsewhere reports that the workspace runs in another container, so a check
 // that inspects tools here would be inspecting the wrong machine.
 //
-// This is the fifth time in this project that something looked at one
-// environment and reported on another. The pattern is worth naming: bothy
-// straddles a host and a container that share a home directory, so "where am I"
-// and "where does the work happen" are different questions, and any check that
-// conflates them is confidently wrong.
+// bothy straddles a host and a container that share a home directory, so
+// "where am I" and "where does the work happen" are different questions. A
+// check that conflates them is confidently wrong rather than merely silent.
 func (e Env) elsewhere() (Result, bool) {
 	if e.RunsIn == "" {
 		return Result{}, false

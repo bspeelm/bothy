@@ -12,18 +12,15 @@ import (
 
 // Graphics is the verdict on whether inline image previews will actually work.
 //
-// This exists because the origin setup turned image previews off, and that was
-// the right call at the time and is the wrong call now. Zellij 0.42 could not
-// pass the Kitty graphics protocol through: previews fell back to chafa block
-// art, and Zellij's mangled reply to Yazi's capability query was parsed as
-// keystrokes, firing a phantom "Find next" on every preview. Zellij 0.45.0
-// implemented Kitty graphics and 0.45.1 fixed image sizing and stopped
-// advertising Sixel support the terminal does not have.
+// Zellij below 0.45.0 cannot pass the Kitty graphics protocol through:
+// previews fall back to chafa block art, and Zellij's mangled reply to Yazi's
+// capability query is parsed as keystrokes, firing a phantom "Find next" on
+// every preview. 0.45.1 fixed image sizing and stopped advertising Sixel the
+// terminal does not have. Hence a version gate rather than a permanent
+// workaround — ADR-007.
 //
-// So the workaround is gated rather than deleted or made permanent — see
-// docs/decisions.md ADR-007. Reason is carried alongside the verdict because
-// "previews are off" without a reason is exactly the kind of unexplained
-// behaviour this project exists to remove.
+// Reason travels with the verdict: "previews are off" without one is the kind
+// of unexplained behaviour the doctor exists to remove.
 type Graphics struct {
 	Supported bool
 	Reason    string
@@ -96,13 +93,11 @@ type Version struct{ Major, Minor, Patch int }
 
 // versionPattern finds a dotted version anywhere in a string.
 //
-// Scanning for the pattern rather than splitting on whitespace matters more
-// than it looks: tools do not agree on where the number goes. jq prints
-// "jq-1.8.1" with the number glued to the name, and lazygit prints
-// "commit=, build date=, ..., version=0.47.2, os=linux". An earlier parser here
-// only accepted a token *starting* with a digit and quietly decided both tools
-// had no version at all — which made bothy offer to download replacements for
-// two perfectly good binaries.
+// Scanning for the pattern rather than splitting on whitespace, because tools
+// do not agree on where the number goes: jq prints "jq-1.8.1" with the number
+// glued to the name, lazygit prints "commit=, build date=, ...,
+// version=0.47.2, os=linux". Requiring a token that *starts* with a digit
+// finds neither, and a tool with no detectable version gets replaced.
 var versionPattern = regexp.MustCompile(`([0-9]+)\.([0-9]+)(?:\.([0-9]+))?`)
 
 // ParseVersion pulls the first dotted version out of a tool's version output.

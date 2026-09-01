@@ -9,12 +9,10 @@ import (
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
-// cmdLock regenerates bothy.lock.
-//
-// It is a maintainer command, run in the repository and committed. It is
-// deliberately not part of `bothy install`: an installer that quietly moves
-// its own pins produces builds nobody can reproduce, and a checksum that
-// updates itself verifies nothing.
+// cmdLock regenerates bothy.lock. It is a maintainer command, run in the
+// repository and committed, deliberately not part of `bothy install`: an
+// installer that quietly moves its own pins produces builds nobody can
+// reproduce, and a checksum that updates itself verifies nothing.
 func cmdLock(args []string) error {
 	fs := flag.NewFlagSet("lock", flag.ExitOnError)
 	path := fs.String("out", fetch.LockPath, "lockfile to write")

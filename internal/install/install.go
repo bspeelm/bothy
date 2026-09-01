@@ -219,18 +219,15 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	}
 
 	// Inside a container there is no desktop to open a file with, so the
-	// opener forwards to the host. The shim lives in bothy's own bin/, which
-	// is on PATH for bothy's session only — revision 1 put it in ~/.local/bin,
-	// where it was on the host's PATH too and needed a guard against the host
-	// executing it and recursing into itself. Scoping removes that hazard; the
-	// guard stays anyway, because it is three lines and PATH is fickle.
+	// opener forwards to the host. The shim lives in bothy's own bin/, on
+	// PATH for bothy's session alone; it keeps a containerenv guard anyway,
+	// because home is shared and the host would otherwise exec it and recurse.
 	//
 	// SharedHome rather than InContainer: the shim forwards through
-	// flatpak-spawn, which exists in Toolbx and Distrobox and nowhere else. A
-	// plain podman or docker container has no host session to reach, so
-	// writing it there produced a shim that could not work -- and then passed
-	// the opener check, because that check only asks whether xdg-open
-	// resolves and this put something on PATH that answered to the name.
+	// flatpak-spawn, which exists in Toolbx and Distrobox and nowhere else. In
+	// a plain podman or docker container it would be a shim that cannot work
+	// and still satisfies the opener check, which only asks whether xdg-open
+	// resolves.
 	if p.SharedHome {
 		out = append(out, file{
 			Dest: filepath.Join(p.BinDir(), "xdg-open"), Tool: "shell",

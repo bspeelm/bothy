@@ -17,7 +17,7 @@ import (
 // still reach it, and whether the agent and the palette are usable.
 
 // checkToolProvenance reports where each tool came from and whether it is
-// still good enough. This replaces revision 1's PATH-shadowing check, which
+// still good enough. It supersedes a PATH-shadowing check, which
 // mattered only because bothy installed into ~/.local/bin; a tool bothy
 // supplies now lives in its own bin and is on PATH for its session alone.
 //

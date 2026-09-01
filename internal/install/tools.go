@@ -48,12 +48,9 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 		return nil, err
 	}
 
-	// The manifest is written on every path, offline included. An earlier
-	// version returned early when offline and never recorded where the install
-	// happened, so `bothy` launched from the host could not find its way back
-	// to the container holding the tools. Skipping downloads is not a reason
-	// to skip bookkeeping — and this is the third short-circuit in this project
-	// to swallow a step someone added after it.
+	// Written on every path, offline included: the launcher reads InstalledIn
+	// to find its way back to the container holding the tools, and skipping
+	// downloads is not a reason to skip that.
 	m, err := state.Load(p.StateDir())
 	if err != nil {
 		return nil, err

@@ -14,27 +14,17 @@ import (
 
 // MaxFile caps a single extracted file, guarding against a decompression bomb
 // in an archive whose checksum we trust but whose contents we have not seen.
-// The two are independent guards rather than a ratio -- MaxFile is smaller
-// than MaxAsset, which reads oddly because a compressed archive is normally
-// smaller than its contents. Neither number is near anything real; they exist
-// so a malformed or hostile archive cannot exhaust memory.
+// It is an independent guard rather than a ratio against MaxAsset; neither
+// number is near anything real, they exist so a malformed or hostile archive
+// cannot exhaust memory.
 const MaxFile = 128 << 20 // 128 MiB
 
-// Extract pulls the wanted binaries out of a downloaded asset.
-//
-// Release archives disagree about layout: some put the binary at the root,
-// some inside a versioned directory, and jq ships a bare binary with no
-// archive at all. Rather than encode each layout as data — one more thing per
-// tool to get wrong — this matches on basename anywhere in the archive, which
-// is true of every asset bothy fetches.
 // safeEntry refuses an archive entry that tries to escape where it is put.
 //
-// Nothing here is written to a path the archive chose -- the bytes go into a
-// map keyed by the name that was *asked* for, and the caller decides where it
-// lands -- so a traversing entry was already harmless. But taking "passwd"
-// out of an entry called "../../etc/passwd" and carrying on treats a hostile
-// archive as an ordinary one. An asset that contains such a path is not a
-// release bothy should be unpacking, whatever it happens to be called.
+// Nothing is written to a path the archive chose -- the bytes go into a map
+// keyed by the name that was *asked* for, and the caller decides where it
+// lands -- so a traversing entry is already harmless. It is refused anyway: an
+// asset containing such a path is not a release bothy should be unpacking.
 func safeEntry(name string) error {
 	clean := path.Clean(filepath.ToSlash(name))
 	if path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
@@ -58,6 +48,13 @@ func archiveExt(name string) string {
 	return ""
 }
 
+// Extract pulls the wanted binaries out of a downloaded asset.
+//
+// Release archives disagree about layout: some put the binary at the root,
+// some inside a versioned directory, and jq ships a bare binary with no
+// archive at all. Rather than encode each layout as data — one more thing per
+// tool to get wrong — this matches on basename anywhere in the archive, which
+// is true of every asset bothy fetches.
 func Extract(body []byte, assetName string, want []string) (map[string][]byte, error) {
 	wanted := map[string]bool{}
 	for _, w := range want {
@@ -76,11 +73,9 @@ func Extract(body []byte, assetName string, want []string) (map[string][]byte, e
 		return nil, fmt.Errorf("%s is tar.xz, which bothy cannot unpack without a new dependency", assetName)
 	default:
 		// A bare binary, like jq's -- but only when the name does not look
-		// like an archive at all. This branch used to accept anything it did
-		// not recognise, so an asset shipped as .tar.bz2 or .tar.zst would
-		// have had the *compressed archive* written out as the executable,
-		// mode 0755. The checksum cannot catch that: the archive is exactly
-		// what was pinned. It would surface as a mystery at exec time.
+		// like an archive at all. Accepting anything unrecognised would write
+		// a compressed archive out as the executable, mode 0755, and the
+		// checksum cannot catch that: the archive is exactly what was pinned.
 		if ext := archiveExt(assetName); ext != "" {
 			return nil, fmt.Errorf("%s is %s, which bothy cannot unpack", assetName, ext)
 		}

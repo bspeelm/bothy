@@ -15,8 +15,7 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
-// cmdDev launches the workspace. This is the command the `dev` shell function
-// calls, and the one moment the whole project exists to make good.
+// cmdDev launches the workspace, and is what the `dev` shell function calls.
 func cmdDev(args []string) error {
 	fs := flag.NewFlagSet("dev", flag.ExitOnError)
 	dir := fs.String("dir", "", "directory to open in (default: the current one)")
@@ -27,10 +26,8 @@ func cmdDev(args []string) error {
 		return err
 	}
 
-	// `dev attach` reattaches rather than starting a second session. After
-	// flag parsing, not before: checking args[0] first meant
-	// `bothy dev --profile x attach` saw "--profile" and fell through to a
-	// fresh launch, silently ignoring the word the user ended the line with.
+	// `dev attach` reattaches rather than starting a second session. Checked
+	// after parsing, not on args[0], so flags may precede the word.
 	if fs.NArg() > 0 && fs.Arg(0) == "attach" {
 		return cmdAttach(fs.Args()[1:])
 	}
@@ -50,9 +47,7 @@ func cmdDev(args []string) error {
 	}
 
 	// The layout starts its own agent. Running `dev` from inside an agent
-	// session gives you a second one nested in the first, which is confusing
-	// rather than useful — and the origin cheat sheet had to warn about it in
-	// prose because nothing enforced it.
+	// session would nest a second one in the first.
 	if agent, nested := nestedAgent(); nested {
 		return fmt.Errorf("already inside %s, and the layout would start another one\n"+
 			"      exit this session first, then run bothy", agent)
@@ -75,16 +70,13 @@ func cmdDev(args []string) error {
 		name = cfg.Profile
 	}
 
-	// Set up on first run rather than refusing and naming another command.
-	// Before the layout is rendered, so a cancelled or failed setup leaves no
-	// debris behind.
+	// Before the layout is rendered, so a cancelled setup leaves no debris.
 	if err := ensureInstalled(p, cfg); err != nil {
 		return err
 	}
 
-	// Open a terminal that can do the job, if this one cannot. Decided before
-	// the container hop so the window opens once, on the host, rather than the
-	// hop happening first and the spawn being attempted from inside.
+	// Open a terminal that can do the job, if this one cannot. Before the
+	// container hop, so the window opens once, on the host.
 	if mode := decideLaunch(p, force); mode.Spawn {
 		if err := spawnTerminal(p, target, name); err != nil {
 			// A terminal that will not open is a reason to carry on here, not
@@ -95,9 +87,8 @@ func cmdDev(args []string) error {
 		}
 	}
 
-	// On the host with a container configured, hop in: the multiplexer and the
-	// tools live inside, home is shared, so $PWD means the same thing on both
-	// sides. This is the case a plain shell alias cannot handle.
+	// On the host with a container configured, hop in: the tools live inside
+	// and home is shared, so $PWD means the same thing on both sides.
 	if !p.InContainer() {
 		if container := install.ContainerFor(p, cfg); container != "" {
 			return hopIntoContainer(container, target, name)
@@ -107,14 +98,11 @@ func cmdDev(args []string) error {
 	return launch(p, cfg, target, name)
 }
 
-// launch renders the profile and hands off to the multiplexer, with an
-// environment that points every tool at bothy's tree.
+// launch renders the profile and hands off to the multiplexer.
 //
-// This is where isolation actually happens. The configs were written into
-// bothy's directory by install; nothing reads them unless the tools are told
-// to, and telling them is a handful of environment variables scoped to this
-// one process tree. Your shell keeps its own PATH and EDITOR, and your
-// ~/.config is neither read nor written.
+// This is where isolation happens: the tools read bothy's configs only because
+// environment variables scoped to this one process tree point them there. Your
+// shell keeps its own PATH and EDITOR, and your ~/.config is untouched.
 func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	prof, err := install.LoadProfile(p, profileName)
 	if err != nil {
@@ -125,12 +113,8 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 		return err
 	}
 
-	// The guard stays here, in the function that does the writing, even though
-	// cmdDev now sets up before calling it. A check that lives next to its
-	// caller protects that one caller; a check that lives next to the write
-	// protects the write. This one exists because launch used to render the
-	// layout first and fail afterwards, leaving a directory tree on a machine
-	// that had just been told nothing was installed.
+	// The guard belongs beside the write rather than beside cmdDev's setup
+	// call: a check next to one caller protects only that caller.
 	if _, err := os.Stat(p.ConfigRoot()); err != nil {
 		return fmt.Errorf("no workspace configured yet\n"+
 			"      bothy keeps everything in one directory, derived from $HOME:\n"+
@@ -138,9 +122,8 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 			"      that directory does not exist. 'bothy install' creates it.", p.ConfigRoot())
 	}
 
-	// Zellij reads layouts from disk, so the rendered profile goes into
-	// bothy's own layout directory. It is regenerated every launch, which is
-	// also why editing it by hand does nothing.
+	// Zellij reads layouts from disk, so the rendered profile goes into bothy's
+	// own layout directory. Regenerated every launch: editing it does nothing.
 	layoutDir := filepath.Join(install.ZellijDir(p), "layouts")
 	if err := os.MkdirAll(layoutDir, 0o755); err != nil {
 		return err
@@ -173,7 +156,6 @@ func lookPathIn(p platform.Info, name string) (string, error) {
 	return exec.LookPath(name)
 }
 
-// hopIntoContainer runs `bothy dev` again, inside the container.
 func hopIntoContainer(container, dir, profile string) error {
 	// --in-place: whatever decided to hop already settled the terminal
 	// question, and the copy inside the container must not reopen it.
@@ -184,13 +166,8 @@ func hopIntoContainer(container, dir, profile string) error {
 }
 
 // containerHop runs one shell command inside a container, through whichever of
-// toolbox and distrobox is installed.
-//
-// It exists because only one of its two callers used to do this. `bothy dev`
-// tried toolbox and then distrobox; `bothy attach` tried toolbox and stopped,
-// so on a host whose container is a distrobox -- which is the realistic case
-// anywhere that is not Fedora -- attach quietly skipped the hop and reported
-// that zellij was not installed. True of the host, and beside the point.
+// toolbox and distrobox is installed. Shared, so `dev` and `attach` cannot
+// diverge on which they support.
 func containerHop(container, command string) error {
 	if bin, err := exec.LookPath("toolbox"); err == nil {
 		return runInteractive(bin, "run", "--container", container, "bash", "-lc", command)
@@ -218,14 +195,11 @@ func cmdAttach(args []string) error {
 }
 
 // attachPlan is what `bothy attach` will do: hop into the container the
-// workspace lives in, or run the multiplexer here.
-//
-// It exists as a value because attach was the one command with no tests, and
-// it had collected four bugs that a test would have caught the moment it was
-// written. Resolution is now something you can hold and assert about.
+// workspace lives in, or run the multiplexer here. A value, so the resolution
+// can be asserted about in tests.
 type attachPlan struct {
-	// Container is the container the session lives in, and Command the shell
-	// line to run there. Both empty when attaching here.
+	// Container and Command are the container and the shell line to run in it,
+	// both empty when attaching here.
 	Container string
 	Command   string
 	// Bin, Args and Env are the multiplexer to run in this shell.
@@ -244,10 +218,8 @@ func planAttach(p platform.Info, cfg config.Config, args []string) (attachPlan, 
 			return attachPlan{Container: container, Command: attachCommand(mux, args)}, nil
 		}
 	}
-	// lookPathIn, not exec.LookPath: bothy's own bin comes first. Resolving
-	// through the ambient PATH meant that on a machine where bothy had
-	// supplied zellij -- the gap-filling case this project exists for --
-	// attach reported "zellij is not installed" while `bothy` launched fine.
+	// lookPathIn, not exec.LookPath: bothy's own bin comes first, so a
+	// multiplexer bothy supplied is found even when the ambient PATH has none.
 	bin, err := lookPathIn(p, mux)
 	if err != nil {
 		return attachPlan{}, fmt.Errorf("%s is not installed", mux)
@@ -255,18 +227,15 @@ func planAttach(p platform.Info, cfg config.Config, args []string) (attachPlan, 
 	return attachPlan{
 		Bin:  bin,
 		Args: append([]string{"attach"}, args...),
-		// The client reads config too -- keybindings in particular -- so an
-		// attach without this reads your zellij config while the session it
-		// joins was launched with bothy's.
+		// The client reads config too -- keybindings in particular -- so
+		// without this an attach reads your zellij config while the session
+		// it joins was launched with bothy's.
 		Env: install.SessionEnv(p, cfg),
 	}, nil
 }
 
-// attachCommand builds the shell line for the container hop.
-//
-// Quoted, because this is interpolated into `bash -lc`. hopIntoContainer
-// three functions below has always quoted what it embeds; this joined raw,
-// so a session name with a space in it split into two arguments.
+// attachCommand builds the shell line for the container hop. Quoted, because
+// it is interpolated into `bash -lc`.
 func attachCommand(mux string, args []string) string {
 	parts := make([]string, 0, len(args)+2)
 	parts = append(parts, shellQuote(mux), "attach")
@@ -278,8 +247,7 @@ func attachCommand(mux string, args []string) string {
 
 // nestedAgent reports whether this shell is already inside an agent session.
 // Each agent advertises itself differently, so this is a list rather than a
-// rule; an agent that sets nothing simply is not detected, which is why the
-// check is a refusal to nest rather than a promise never to.
+// rule, and a refusal to nest rather than a promise never to.
 func nestedAgent() (string, bool) {
 	for env, name := range map[string]string{
 		"CLAUDECODE":      "a Claude Code session",
@@ -319,8 +287,7 @@ func runWithEnv(env []string, name string, args ...string) error {
 	return err
 }
 
-// shellQuote makes a value safe to embed in the `bash -lc` string used for the
-// container hop.
+// shellQuote makes a value safe to embed in the `bash -lc` container hop.
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

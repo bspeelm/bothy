@@ -65,7 +65,6 @@ func cmdOutdated(args []string) error {
 	}
 
 	// Being out of date is a fact, not a failure: exiting non-zero here would
-	// make every scheduled run look broken. Only a check that could not be
-	// made is worth an error, and even then the rest of the report stands.
+	// make every scheduled run look broken.
 	return nil
 }

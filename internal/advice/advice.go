@@ -1,15 +1,15 @@
 // Package advice holds install instructions for the things bothy will not
 // install itself.
 //
-// Two of them, for different reasons. Ghostty publishes no release binaries and
-// every path to it runs a package manager as root — on an image-based host,
-// with a reboot — so bothy could start that job and not finish it, which is
-// worse than printing the command. The agent is a documented non-goal: install
-// methods change, auth is not bothy's business, and a workspace tool that
-// quietly installs an AI agent is doing something nobody asked it to.
+// Ghostty publishes no release binaries and every path to it runs a package
+// manager as root — on an image-based host, with a reboot — so bothy could
+// start that job and not finish it. The agent is a non-goal: install methods
+// change, auth is not bothy's business, and a workspace tool that quietly
+// installs an AI agent is doing something nobody asked for. Editors are the
+// most personal tool here and the one people already have.
 //
 // What bothy can do is name the right command for the machine it is on, and
-// keep people away from the repositories that are known to cause harm.
+// keep people away from repositories known to cause harm.
 package advice
 
 import (

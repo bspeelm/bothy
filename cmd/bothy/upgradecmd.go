@@ -12,18 +12,12 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
-// `bothy upgrade` -- how to upgrade this copy, and nothing else.
-//
-// It does not touch bothy's own binary. PLAN.md §11 rules out auto-updaters
-// and that stands; what §10 deferred was `bothy update`, which is a different
-// thing -- a command you type that tells you the right command. Re-running the
-// install script from inside the process it would replace is the kind of
-// clever that leaves a half-written binary on a bad network, and only one of
-// the five install channels could be handled that way in any case.
+// `bothy upgrade` -- how to upgrade this copy, and nothing else. It does not
+// touch bothy's own binary: PLAN.md §11 rules out auto-updaters, replacing the
+// running binary from inside it leaves a half-written one on a bad network,
+// and only one of the five install channels could work that way anyway.
 
-// Repo is bothy's own slug, for asking about its releases. It lived only in
-// bootstrap/install.sh, the spec and .goreleaser.yaml until something in Go
-// needed it.
+// Repo is bothy's own slug, for asking about its releases.
 const Repo = "bspeelm/bothy"
 
 func cmdUpgrade(args []string) error {
@@ -61,12 +55,9 @@ func cmdUpgrade(args []string) error {
 	return nil
 }
 
-// upgradeMethod works out how this copy was installed, and what would replace
-// it. Returns a sentence naming the owner and the command to run.
-//
-// os.Executable is the only evidence there is: nothing records how bothy was
-// installed, and the .desktop entry synthesises its Exec path rather than
-// observing one.
+// upgradeMethod works out how this copy was installed and what would replace
+// it. os.Executable is the only evidence there is: nothing records the install
+// method.
 func upgradeMethod(p platform.Info, ver string) (string, string) {
 	self, err := os.Executable()
 	if err == nil {
@@ -82,8 +73,7 @@ func upgradeMethod(p platform.Info, ver string) (string, string) {
 func describeInstall(self string, p platform.Info, ver string) (string, string) {
 	switch {
 	case strings.HasPrefix(self, "/usr/bin/"), strings.HasPrefix(self, "/usr/local/bin/"):
-		// A package manager owns it, and which one is a question about the
-		// machine rather than about the path.
+		// Which package manager is a question about the machine, not the path.
 		if _, err := exec.LookPath("rpm"); err == nil {
 			return "This copy is at " + self + ", which dnf owns:",
 				"sudo dnf upgrade bothy"
@@ -103,7 +93,7 @@ func describeInstall(self string, p platform.Info, ver string) (string, string) 
 
 	case p.LocalBin != "" && strings.HasPrefix(self, p.LocalBin):
 		// The script and `make install-binary` both land here and leave no
-		// trace of which ran -- but a source build says so in its version.
+		// trace of which ran, but a source build says so in its version.
 		if fetch.IsSourceBuild(ver) {
 			return "This copy is at " + self + " and its version is a git describe,\n" +
 					"so it was built from source:",

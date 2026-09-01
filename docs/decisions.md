@@ -317,3 +317,43 @@ sixteen passes and no failures. The slot was entirely a claim about the
 machine, which is the one kind of thing this project's doctor exists to check.
 It is checked now, with per-distribution advice in `slots/advice/`, the same
 shape Ghostty and the agent already use.
+
+## ADR-015 — Comments record intent; history lives in git and here
+
+ADR-010 argued that this project's comments are "where the reasons live" and
+must not be trimmed to satisfy a line count. That was right, and it was applied
+too broadly. Reasons are worth their room. Narrative is not, and about a
+quarter of the source had become narrative: what a function used to do, how a
+bug was found, how many times some mistake had recurred.
+
+The distinction that matters is not length. It is whether a comment would still
+make sense to somebody who had never seen the previous version of the code.
+
+> Zellij below 0.45.0 cannot pass the Kitty graphics protocol through, and its
+> mangled reply to Yazi's capability query is parsed as keystrokes.
+
+reads the same to a newcomer as to the person who debugged it, and it is the
+only thing standing between a future reader and deleting the version gate.
+Whereas
+
+> An earlier version returned early when offline and never recorded where the
+> install happened … and this is the third short-circuit in this project to
+> swallow a step someone added after it.
+
+says one useful thing — the manifest is written on every path because the
+launcher needs it — wrapped in three sentences of autobiography. The useful
+sentence survives; the rest belongs to `git log`.
+
+Two forces produced the drift, and both are worth naming. Writing a comment at
+the moment of fixing a bug makes the bug feel like the context, when the
+context is actually the constraint that made the bug possible. And ADR-010's
+separate line budget for prose, introduced to protect reasons, equally
+protected narration — a ceiling that permits growth is not a check on it.
+
+So: the rule is written down in `CLAUDE.md` where it will be read before code
+is written rather than after, and the total-line budget is lowered so that it
+binds. A bug still ships with the test or doctor check that catches it, and the
+test's name is where "this broke once" belongs.
+
+This is not a licence to write terse code. Every comment ADR-010 was defending
+is still here.

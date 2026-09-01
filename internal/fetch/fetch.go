@@ -85,14 +85,9 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 		return nil, fmt.Errorf("fetch: %w", err)
 	}
 	var installed []string
-	// Iterate the tool's own declared binaries, not the map's keys. Both are
-	// the same set by now -- Extract keeps only what was asked for -- but the
-	// names here come from slots/tools rather than from the archive, so the
-	// path being written is not derived from downloaded data at all. The
-	// previous form was safe for reasons a reader had to assemble from two
-	// places: that path.Base cannot return a separator, and that the
-	// allowlist had already filtered the key. Emergent safety is the kind
-	// that a later edit removes without noticing.
+	// Iterate the tool's own declared binaries, not the map's keys: the names
+	// here come from slots/tools rather than from the archive, so the path
+	// being written is not derived from downloaded data at all.
 	for _, name := range t.Binaries() {
 		content := found[name]
 		dest := filepath.Join(destDir, name)
@@ -152,11 +147,9 @@ func Sum(b []byte) string {
 // writeExecutable writes a binary atomically. The rename matters: a partially
 // written binary that is already on PATH is a worse failure than no binary.
 func writeExecutable(dest string, content []byte) error {
-	// A unique temporary name, not dest+".bothy-tmp". Two installs running at
-	// once -- or an install racing a doctor that regenerates a config --
-	// shared that one name, so one process could rename the other's
-	// half-written file into place and defeat the atomicity this function
-	// exists to provide.
+	// A unique temporary name, not dest+".bothy-tmp": two installs running at
+	// once would share that one name, and one could rename the other's
+	// half-written file into place, defeating the atomicity above.
 	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".bothy-*")
 	if err != nil {
 		return err

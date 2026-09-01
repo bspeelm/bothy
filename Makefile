@@ -7,15 +7,14 @@ LDFLAGS  := -s -w -X main.Version=$(VERSION)
 # PLAN.md §3: the core binary stays under 10 MB and the core source under ~5k
 # LOC. Checked, not aspired to.
 #
-# Two source limits, because one number could not tell code from prose. The
-# principle says "LOC", and comments are not code — this project's comments are
-# where the reasons live, and trimming them to pass a line count would delete
-# the most valuable thing in the repository to satisfy a proxy for the thing it
-# was meant to measure. So: code is capped at 5k, and total lines at 7k so the
-# prose cannot grow without limit either. See docs/decisions.md ADR-010.
+# Two source limits, because one number cannot tell code from prose. Comments
+# are not code, and the ones that explain why a choice is non-obvious are worth
+# their room (ADR-010). The ones that narrate how the code got here are not,
+# and a ceiling with slack in it permits those to accumulate (ADR-015) — so the
+# total is set close enough to bite.
 MAX_BINARY_BYTES := 10485760
 MAX_CODE_LINES   := 5000
-MAX_TOTAL_LINES  := 7000
+MAX_TOTAL_LINES  := 6500
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 

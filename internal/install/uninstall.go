@@ -13,37 +13,27 @@ type UninstallReport struct {
 	Removed []string
 	// Kept lists things deliberately left behind, with the reason.
 	Kept []string
-	// Orphaned lists processes that were still running binaries bothy
-	// removed. Reported rather than killed: they are the user's sessions,
-	// and killing someone's workspace to tidy up is not a trade uninstall
-	// gets to make on their behalf.
+	// Orphaned lists processes still running binaries bothy removed.
+	// Reported rather than killed: they are the user's sessions.
 	Orphaned []Running
 }
 
-// Uninstall removes bothy's tree.
-//
-// This is the whole of it, and that is the point of ADR-009. Revision 1 needed
-// a manifest replay — restore each backup, re-set each git key, skip anything
-// edited since — because it had written into files the user owned. bothy now
+// Uninstall removes bothy's tree, which under ADR-009 is all of it: bothy
 // writes only inside one directory, so removing that directory is exact by
-// construction rather than by careful bookkeeping.
+// construction rather than by bookkeeping.
 //
-// Two things are deliberately left: ~/.config/bothy, which is the user's own
-// settings and the thing worth keeping in git, and the bothy binary itself,
-// which is running this code.
+// Two things are left deliberately: ~/.config/bothy, which is the user's own
+// settings, and the binary, which is running this code.
 func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, error) {
 	rep := &UninstallReport{}
 
-	// Look for these first, and regardless of what is left to remove. A process
-	// running from a tree an *earlier* uninstall deleted is exactly as stuck,
-	// and reporting nothing because there is nothing left to delete would hide
-	// the problem the deletion caused.
+	// First, and regardless of what is left to remove: a process running from
+	// a tree some earlier uninstall deleted is exactly as stuck.
 	rep.Orphaned = StillRunning(p)
 
-	// Each step is independent. An earlier version returned early when the tree
-	// was already gone, which meant a second `bothy uninstall` skipped every
-	// step after it — including removing the binary, so uninstalling twice left
-	// bothy installed. Nothing here may short-circuit anything else.
+	// Each step is independent and none may short-circuit the rest: a tree
+	// that is already gone must not stop the binary being removed, or a second
+	// uninstall leaves bothy installed.
 	if err := removeTree(p, rep, dryRun); err != nil {
 		return nil, err
 	}
@@ -70,21 +60,12 @@ func removeTree(p platform.Info, rep *UninstallReport, dryRun bool) error {
 	return nil
 }
 
-// removeBinary removes bothy itself.
+// removeBinary removes bothy itself. A running process can unlink its own
+// executable on Linux — the inode survives until it exits.
 //
-// A running process can unlink its own executable on Linux — the inode
-// survives until it exits — so "remove it by hand" was caution with nothing
-// behind it, and an uninstaller that leaves itself installed has not finished.
-//
-// Only the running binary, and only when it is at the path bothy's own
-// bootstrap uses. A copy someone put in /usr/local/bin, or one a package
-// manager owns, is not bothy's to delete.
-//
-// That was the intent all along; the code checked whether ~/.local/bin/bothy
-// *existed* instead. So an rpm- or deb-installed bothy at /usr/bin, run as
-// `bothy uninstall`, deleted someone's leftover script install that it had
-// nothing to do with. os.Executable is the only thing that actually answers
-// "is this me".
+// Only the running binary, and only at the path bothy's own bootstrap uses.
+// A copy in /usr/local/bin, or one a package manager owns, is not bothy's to
+// delete — and os.Executable is the only thing that answers "is this me".
 func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool) {
 	self := runningBinary()
 	if self == "" || p.LocalBin == "" || filepath.Dir(self) != p.LocalBin {
@@ -108,11 +89,9 @@ func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool
 }
 
 // runningBinary is this process's own executable, symlinks resolved, or "" if
-// it cannot be determined -- in which case removing nothing is the right
-// answer.
-// osExecutable is a variable so a test can say which binary is running. Under
-// `go test` the real one is the test binary, which is never the thing being
-// uninstalled.
+// it cannot be determined — in which case removing nothing is right.
+// osExecutable is a variable so a test can say which binary is running: under
+// `go test` the real one is the test binary.
 var osExecutable = os.Executable
 
 func runningBinary() string {

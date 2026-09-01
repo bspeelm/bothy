@@ -12,7 +12,6 @@ import (
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
-// setupOptions controls one install pass.
 type setupOptions struct {
 	DryRun  bool
 	Offline bool
@@ -70,13 +69,9 @@ func setup(p platform.Info, cfg config.Config, opts setupOptions) error {
 	return nil
 }
 
-// ensureInstalled sets the workspace up if this is the first run.
-//
-// bothy used to refuse here and tell you to type `bothy install` — which it
-// already knew it needed, having just checked. Two commands to a working
-// workspace when one would do; `flatpak install` does not ask you to run
-// `flatpak configure` afterwards. `bothy install` still exists, because
-// re-applying after `bothy config set` is a real thing to want.
+// ensureInstalled sets the workspace up if this is the first run, rather than
+// refusing and naming a command it has just established is needed. `bothy
+// install` stays, for re-applying after `bothy config set`.
 func ensureInstalled(p platform.Info, cfg config.Config) error {
 	if _, err := os.Stat(p.ConfigRoot()); err == nil {
 		return nil

@@ -59,11 +59,11 @@ type PluginFailure struct {
 // EnsureYaziPlugins installs any missing plugin with Yazi's own package
 // manager, into bothy's config tree.
 //
-// This runs before the templates are rendered, because the generated config is
-// written to match what is actually installed. An earlier version referenced
-// all four unconditionally and installed none of them, which produced a config
-// that looked correct, passed `yazi --clear-cache` — that does not execute
-// init.lua — and failed only when the workspace was launched.
+// Runs before the templates are rendered, because the generated config is
+// written to match what is actually installed. Referencing a plugin that is
+// not there produces a config which looks correct and passes
+// `yazi --clear-cache` — that does not execute init.lua — then fails at
+// launch.
 func EnsureYaziPlugins(p platform.Info, offline bool) (*PluginReport, error) {
 	rep := &PluginReport{}
 	plugins, err := YaziPlugins()

@@ -55,10 +55,9 @@ func checkConfigAge(env Env) Result {
 	return pass("the configs were written by this bothy")
 }
 
-// checkConfigKeys catches the typo that used to cost nothing to make and
-// everything to find. `toml.Unmarshal` over the defaults accepted any key, so
-// `slots.borwser = "yazi"` loaded cleanly, did nothing, and kept doing nothing
-// -- on every machine, because the README says to carry ~/.config/bothy in git.
+// checkConfigKeys catches a typo that would otherwise cost nothing to make and
+// everything to find: an unrecognised key loads cleanly and does nothing, on
+// every machine, because ~/.config/bothy is meant to be carried in git.
 func checkConfigKeys(env Env) Result {
 	unknown := env.Config.Unknown
 	if len(unknown) == 0 {
@@ -84,16 +83,15 @@ func checkConfigKeys(env Env) Result {
 }
 
 // checkIsolation is the promise in ADR-009, checked rather than asserted:
-// bothy's tree exists, and the files revision 1 used to write are not there
-// with bothy's marker on them.
+// bothy's tree exists, and no file outside it carries bothy's marker.
 func checkIsolation(env Env) Result {
 	root := env.Platform.ConfigRoot()
 	if _, err := os.Stat(root); err != nil {
 		return fail("bothy's config tree is missing", root+" does not exist",
 			"run 'bothy install'")
 	}
-	// Files a previous revision wrote outside the tree. Finding one means an
-	// upgrade left something behind that nothing will now maintain.
+	// Paths an older bothy wrote outside the tree. Finding one means an
+	// upgrade left debris that nothing now maintains.
 	stale := []string{
 		filepath.Join(env.Platform.Home, ".bashrc.d", "bothy.sh"),
 		filepath.Join(env.Platform.LocalBin, "xdg-open"),

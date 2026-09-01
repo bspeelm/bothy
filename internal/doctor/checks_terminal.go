@@ -89,8 +89,8 @@ func checkTerminfo(env Env) Result {
 // root at /run/host. Everywhere else -- a plain container, or any machine whose
 // distribution has no package for this terminal, which on Ubuntu is every
 // machine -- the portable answer is to carry the compiled entry over from
-// somewhere that has it. "install the terminfo entry for xterm-ghostty", which
-// is what this used to say, names no package that exists.
+// somewhere that has it: "install the terminfo entry for xterm-ghostty" names
+// no package that exists.
 func terminfoFix(env Env, term string) string {
 	sub := term[:1]
 	if env.Platform.SharedHome {
