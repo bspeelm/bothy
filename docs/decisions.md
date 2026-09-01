@@ -566,3 +566,37 @@ lands.
 ADR-010's general point is the reason this record exists rather than a raised
 threshold: when a measure and the thing it measures disagree, fix the measure.
 It is a good rule and it caught its own second cap.
+
+## ADR-022 — bothy redirects caches, and names what the tools keep
+
+0.1.4 pointed `XDG_CACHE_HOME`, `XDG_STATE_HOME` and `XDG_DATA_HOME` into
+bothy's tree for every subprocess. It was written to close a real leak: the
+doctor runs `yazi --clear-cache` and `zellij setup --check`, both of which
+wrote outside the tree, so ADR-009 held for install and quietly failed at every
+other command.
+
+It closed that leak and opened a larger one. Neovim keeps its plugins in
+`$XDG_DATA_HOME/nvim`, zoxide keeps the directory database it has learned from
+you, lazygit keeps its state — and inside bothy every one of those tools found
+an empty directory instead. The workspace exists to run your tools, and it was
+running them with their memory removed. "Your editor is yours" cannot survive
+bothy pointing your editor somewhere your editor has never been.
+
+The distinction the original change missed is between a cache and everything
+else. **A cache is the tool's own scratch space**: losing it costs a rebuild
+and nothing more, so keeping it inside bothy's tree makes uninstall complete
+without taking anything from anyone. It is also what keeps `ya pkg`'s clone of
+the plugin repository somewhere uninstall can reach. **Data and state are
+yours**, and moving them is not isolation but amnesia.
+
+So `XDG_CACHE_HOME` stays and the other two go, and `bothy doctor` reports
+which tool directories live outside the tree and that uninstall will not remove
+them. The property is weaker and true, which beats stronger and false: bothy
+writes nothing outside its own tree, and names what the programs it starts
+write outside theirs.
+
+The container job's end-to-end assertion changes shape with it. It cannot
+assert that nothing exists outside bothy's tree any more, so it asserts that
+anything which does is named after a tool bothy runs — matching the tool's own
+name rather than allowing `~/.local/share` wholesale, because a rule that
+permits a directory permits everything that lands in it.

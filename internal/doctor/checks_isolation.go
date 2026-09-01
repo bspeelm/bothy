@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -11,6 +12,7 @@ import (
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/state"
+	"github.com/bspeelm/bothy/internal/tools"
 )
 
 // Checks that bothy's own tree is intact and that nothing lives outside it.
@@ -133,4 +135,50 @@ func checkProfileRenders(env Env) Result {
 			"a pane probably names a slot nothing fills")
 	}
 	return pass(fmt.Sprintf("profile %q renders (%d panes)", name, prof.PaneCount()))
+}
+
+// checkToolData reports what the tools bothy runs keep outside bothy's tree.
+//
+// Only XDG_CACHE_HOME is pointed inside it. A cache is a tool's own scratch
+// space: losing it costs a rebuild, so keeping it in the tree makes uninstall
+// complete without taking anything from anyone. Data and state are not that.
+// Neovim's plugins, zoxide's learned directories and lazygit's state are the
+// user's, and redirecting them hid all of it from the tools running in the
+// workspace.
+//
+// So they stay where the tool would have put them, and this says which. It is
+// the form of ADR-009 that is true: bothy writes nothing outside its own tree,
+// and names what the programs it starts write outside theirs.
+func checkToolData(env Env) Result {
+	state := os.Getenv("XDG_STATE_HOME")
+	if state == "" {
+		state = filepath.Join(env.Platform.Home, ".local", "state")
+	}
+
+	// Derived from the tools bothy may supply, plus the editor it launches, so
+	// that a tool added later is covered without a second list to remember.
+	names := map[string]bool{install.EditorBinary(env.Config.Slots.Editor): true}
+	if all, err := tools.Load(); err == nil {
+		for _, t := range all {
+			names[t.Name] = true
+		}
+	}
+	delete(names, "")
+
+	var found []string
+	for name := range names {
+		for _, dir := range []string{env.Platform.DataDir, state} {
+			path := filepath.Join(dir, name)
+			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+				found = append(found, path)
+			}
+		}
+	}
+	if len(found) == 0 {
+		return pass("the tools bothy runs keep nothing outside its tree")
+	}
+	sort.Strings(found)
+	return note(fmt.Sprintf("%d tool director(ies) live outside bothy's tree, on purpose", len(found)),
+		strings.Join(found, ", ")+" — your data, kept where the tool keeps it. "+
+			"'bothy uninstall' does not remove these")
 }

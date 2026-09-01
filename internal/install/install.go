@@ -385,22 +385,24 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 		env.set("VIMINIT", "source "+VimRC(p))
 	}
 
-	// The XDG directories, pointed inside bothy's tree.
+	// Cache only, and deliberately only cache.
 	//
-	// ADR-009 says bothy writes nothing outside its own directory, and until
-	// now that covered only the files bothy writes itself. It said nothing
-	// about what the tools bothy *runs* decide to write -- and they write
-	// plenty: `yazi --clear-cache` clears ~/.cache/yazi, `zellij setup
-	// --check` touches zellij's own cache and data directories, and both are
-	// invoked by the doctor, which uses this same environment. So the promise
-	// held for install and quietly leaked at every other command.
+	// A cache is a tool's own scratch space: throwing it away costs a rebuild
+	// and nothing else, so keeping it inside bothy's tree makes uninstall
+	// complete without taking anything from anyone. It is also what keeps
+	// `ya pkg`'s clone of the plugin repository where uninstall can reach it.
 	//
-	// plugins.go said this gap "has to be closed one subprocess at a time".
-	// It does not: the tools all agree on where to look, so telling them once
-	// closes it for every subprocess at once, including the ones added later.
+	// Data and state are not that. Neovim keeps its plugins in
+	// $XDG_DATA_HOME/nvim, zoxide keeps the directory database it has learned
+	// from you, lazygit keeps its state -- and redirecting those hid all of it
+	// from the tools running in the workspace. "Your editor is yours" cannot
+	// survive bothy pointing your editor at an empty directory.
+	//
+	// So the tools write their data where they always did, and the doctor
+	// reports what landed outside. That is the version of ADR-009 that is
+	// true: bothy writes nothing outside its own tree, and says plainly what
+	// the tools it runs write outside theirs.
 	env.set("XDG_CACHE_HOME", p.CacheDir())
-	env.set("XDG_STATE_HOME", p.StateDir())
-	env.set("XDG_DATA_HOME", p.ShareDir())
 
 	// Bothy's own tree, named rather than derived. The three variables above
 	// move where the tools look; this one keeps bothy itself looking here, so

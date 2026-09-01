@@ -151,6 +151,7 @@ func Checks() []Check {
 		{ID: "terminal-capability", Run: checkTerminalCapability},
 		{ID: "passthrough", Run: checkPassthrough},
 		{ID: "isolation", Run: checkIsolation},
+		{ID: "tool-data", Run: checkToolData},
 		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "config-age", Run: checkConfigAge},
 		{ID: "watermark-image", Run: checkWatermarkImage},
@@ -167,6 +168,11 @@ func Checks() []Check {
 }
 
 func pass(summary string) Result { return Result{Severity: Pass, Summary: summary} }
+
+// note is a pass with something to say: the answer is fine, and worth knowing.
+func note(summary, detail string) Result {
+	return Result{Severity: Pass, Summary: summary, Detail: detail}
+}
 func skip(summary string) Result { return Result{Severity: Skip, Summary: summary} }
 func fail(summary, detail, fix string) Result {
 	return Result{Severity: Fail, Summary: summary, Detail: detail, Fix: fix}
