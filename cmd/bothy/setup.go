@@ -28,7 +28,7 @@ func setup(p platform.Info, cfg config.Config, opts setupOptions) error {
 	// asks the multiplexer its version, so a zellij fetched now is the one the
 	// config is rendered for.
 	if !opts.DryRun {
-		treport, err := install.EnsureTools(p, cfg, opts.Offline,
+		treport, err := install.EnsureTools(p, cfg, opts.Offline, version(),
 			func(line string) { fmt.Println(line) })
 		if err != nil {
 			return err

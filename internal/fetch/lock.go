@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -145,6 +146,25 @@ func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (str
 		}
 	}
 	return "", fmt.Errorf("%s does not list %s", name, asset)
+}
+
+// gitDescribe matches the "-g<sha>" a `git describe` version carries.
+var gitDescribe = regexp.MustCompile(`-g[0-9a-f]{7,}`)
+
+// IsSourceBuild reports whether a version string came from `git describe`
+// rather than from a release tag -- which is to say whether it is *ahead* of
+// the tag it names rather than behind it.
+//
+// It matters twice, and both times the naive test is wrong. `make
+// install-binary` stamps git describe (Makefile), so the shape is
+// "v0.1.5-3-gabc1234-dirty", not "dev" -- only a bare `go build` yields that.
+// And comparing such a version against the latest release by string
+// inequality, which is all Update.Outdated does, would announce an upgrade to
+// someone who is already past it.
+func IsSourceBuild(v string) bool {
+	return v == "" || v == "dev" ||
+		strings.HasSuffix(v, "-dirty") ||
+		gitDescribe.MatchString(v)
 }
 
 // LatestRelease asks GitHub for a repository's latest release tag.

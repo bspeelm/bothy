@@ -187,3 +187,33 @@ func TestUpstreamSumErrorsWhenTheAssetIsAbsent(t *testing.T) {
 		t.Error("a checksum file that does not list the asset was accepted")
 	}
 }
+
+// The version shapes bothy actually reports, per install path. Getting this
+// wrong announces an upgrade to someone who is already past it: a git-describe
+// version is *ahead* of the tag it names, and Update.Outdated compares by
+// string inequality rather than by ordering.
+func TestIsSourceBuildKnowsWhichVersionsAreAhead(t *testing.T) {
+	for _, tc := range []struct {
+		name, version string
+		want          bool
+	}{
+		{"goreleaser release", "0.1.5", false},
+		{"rpm spec", "0.1.5", false},
+		{"go install via build info", "0.1.5", false},
+		{"ldflags keeping its v", "v0.1.5", false},
+		{"bare go build", "dev", true},
+		{"empty", "", true},
+		{"make install-binary at a tag", "v0.1.5-dirty", true},
+		{"make install-binary past a tag", "v0.1.5-3-gabc1234", true},
+		{"make install-binary past and dirty", "v0.1.5-3-gabc1234-dirty", true},
+		// A release whose version merely contains a hyphen is not a source
+		// build -- the marker is the git object, not the punctuation.
+		{"a prerelease tag", "1.0.0-rc.1", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsSourceBuild(tc.version); got != tc.want {
+				t.Errorf("IsSourceBuild(%q) = %v, want %v", tc.version, got, tc.want)
+			}
+		})
+	}
+}

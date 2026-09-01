@@ -451,6 +451,15 @@ func TestStillRunningIsQuietWhenNothingIs(t *testing.T) {
 // An uninstaller that leaves itself installed has not finished. A process can
 // unlink its own executable on Linux, so "remove it by hand" was caution with
 // nothing behind it.
+// asSelf makes the planted binary the one uninstall considers to be running,
+// which is what it would be on a real machine.
+func asSelf(t *testing.T, path string) {
+	t.Helper()
+	old := osExecutable
+	osExecutable = func() (string, error) { return path, nil }
+	t.Cleanup(func() { osExecutable = old })
+}
+
 func TestUninstallRemovesTheBinary(t *testing.T) {
 	p := sandbox(t)
 	if err := os.MkdirAll(p.LocalBin, 0o755); err != nil {
@@ -460,6 +469,7 @@ func TestUninstallRemovesTheBinary(t *testing.T) {
 	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	asSelf(t, self)
 	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -481,6 +491,7 @@ func TestUninstallKeepsTheBinaryWhenAsked(t *testing.T) {
 	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	asSelf(t, self)
 	if _, err := Uninstall(p, false, true); err != nil {
 		t.Fatal(err)
 	}
@@ -565,6 +576,7 @@ func TestUninstallWithNoTreeStillRemovesTheBinary(t *testing.T) {
 	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	asSelf(t, self)
 
 	// No install: bothy's tree does not exist at all.
 	if _, err := os.Stat(p.BothyDir()); err == nil {
@@ -589,6 +601,7 @@ func TestUninstallIsIdempotentAndFinishes(t *testing.T) {
 	if err := os.WriteFile(self, []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	asSelf(t, self)
 	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
 		t.Fatal(err)
 	}
@@ -624,7 +637,7 @@ func TestLaunchGoesBackToTheContainerItWasInstalledIn(t *testing.T) {
 	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := EnsureTools(p, config.Default(), true, nil); err != nil {
+	if _, err := EnsureTools(p, config.Default(), true, "0.1.5-test", nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := InstalledIn(p); got != "aip" {
@@ -655,5 +668,30 @@ func TestContainerPrecedence(t *testing.T) {
 	}
 	if got := config.Default().ContainerFor(platform.Info{}, "installed"); got != "installed" {
 		t.Errorf("got %q, want the install container as the fallback", got)
+	}
+}
+
+// An rpm- or deb-installed bothy at /usr/bin, run as `bothy uninstall`, used
+// to delete a ~/.local/bin/bothy it had nothing to do with -- someone's
+// leftover script install. removeBinary checked whether that path *existed*
+// rather than whether it was the binary doing the uninstalling, which is what
+// its own comment had always claimed.
+func TestUninstallLeavesABinaryItDoesNotOwn(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(p.LocalBin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stray := filepath.Join(p.LocalBin, "bothy")
+	if err := os.WriteFile(stray, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// This uninstall is being run by a package-managed copy.
+	asSelf(t, "/usr/bin/bothy")
+
+	if _, err := Uninstall(p, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stray); err != nil {
+		t.Error("uninstall deleted a binary that was not the one running")
 	}
 }

@@ -28,7 +28,7 @@ func TestSaveAndLoadRoundTrip(t *testing.T) {
 	m := &Manifest{InstalledIn: "bothy-test"}
 	m.RecordBinary(Binary{Name: "zellij", Path: "/b/zellij", Version: "0.45.1", SHA256: "aa", Source: "bothy"})
 	m.RecordBinary(Binary{Name: "jq", Path: "/usr/bin/jq", Version: "1.8.1", Source: "/usr/bin/jq"})
-	if err := m.Save(dir); err != nil {
+	if err := m.Save(dir, "0.1.5"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -70,7 +70,7 @@ func TestRecordBinaryReplacesByName(t *testing.T) {
 
 func TestSaveCreatesTheStateDirectory(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "state", "nested")
-	if err := (&Manifest{}).Save(dir); err != nil {
+	if err := (&Manifest{}).Save(dir, "0.1.5"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(ManifestPath(dir)); err != nil {
