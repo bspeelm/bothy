@@ -357,3 +357,38 @@ test's name is where "this broke once" belongs.
 
 This is not a licence to write terse code. Every comment ADR-010 was defending
 is still here.
+
+## ADR-016 — The agent is the point
+
+The README described bothy as "a turn-key terminal workspace" and listed the
+agent among its components as **Optional**. The default profile's own first
+line said something else:
+
+    # cockpit — the default: supervising an agent working on a repo.
+
+Both could not be the intent, and the disagreement was not cosmetic. It decided
+questions that were sitting open: whether delta earns its place or the side pane
+should become lazygit so a diff is one keypress away (#45), and whether agent
+definitions are worth moving out of a Go switch (#56). If the agent is one
+component among five, those are arbitrary. If it is the point, they are obvious.
+
+So: **the agent is the point.** bothy is a cockpit for working with a coding
+agent on a repository — the file browser is there to show what changed, the
+shell to check it, and the whole tree is disposable so the thing can be tried
+on a machine nobody wants to keep it on.
+
+This is a claim about *shape*, not about requirements. `slots.agent none` still
+produces a working workspace, bothy still installs no agent, and PLAN.md §11's
+non-goal — bothy does not manage the agent's config, keys or hooks — is
+untouched. What changes is which questions have easy answers.
+
+The alternative was to accept "terminal workspace" and rename `cockpit`, which
+is the honest version of the other choice. It was not taken because the
+narrower claim is the one nobody else makes. "One command opens yazi, zellij and
+an agent" is a layout file anyone can write; a disposable, verified box for
+watching an agent work is not, and every component already present was chosen
+for that job.
+
+The cost is a smaller audience by description. Someone wanting a terminal
+workspace with no agent will read the first line and leave, and that is the
+correct outcome — they were going to write the layout file themselves.

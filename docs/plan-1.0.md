@@ -9,6 +9,11 @@ vim navigation throughout, in one terminal window. It brings its own configs,
 verifies every download, never touches your dotfiles, and removes itself
 completely.
 
+**The agent is the point** (ADR-016), which is a claim about shape rather than
+requirements — `slots.agent none` still works, and bothy still installs no
+agent. It settles what the file browser and the side pane are *for*, which is
+what #45 and #56 were waiting on.
+
 **The restraint is the product.** bothy is not an IDE, not a plugin platform,
 not a multi-agent orchestrator, and is not going to become any of those. The
 "What bothy is not" list in the README is the most important section in it,

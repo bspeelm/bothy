@@ -9,15 +9,15 @@
 <h1 align="center">bothy</h1>
 
 <p align="center">
-  <em>a turn-key terminal workspace built from tools you already trust</em>
+  <em>a terminal cockpit for working with an AI coding agent — that leaves no trace</em>
 </p>
 
 > **bothy** *(n., Scottish)* — a small unlocked mountain shelter, free for anyone
 > to use, kept by two customs: leave it as you found it, and leave fuel for the
 > next visitor.
 
-One command opens a file browser, an AI coding agent and a shell, all in one
-terminal window that stays put:
+One command opens a coding agent, a file browser showing what it is touching,
+and a shell — all in one terminal window that stays put:
 
 ```sh
 cd ~/some-project
@@ -33,6 +33,13 @@ panes, then tells you what is broken and how to fix it. It leaves your dotfiles
 alone. Everything it manages lives in one directory, and `bothy uninstall`
 removes it.
 
+The default layout is built for one job: watching an agent work on a repository
+and staying in the loop while it does. The file browser is there so you can see
+what changed, the shell so you can check it, and the whole thing is disposable
+so you can try it on a machine you do not want to keep it on. bothy runs
+perfectly well with `slots.agent none` if you want the workspace without the
+agent — but the agent is what it was shaped around.
+
 ## Install
 
 ### What you need first
@@ -42,7 +49,7 @@ removes it.
 | **git** | Required. bothy uses it to fetch its Yazi plugins. |
 | **curl** or **wget** | Only for the install script below. |
 | **[Ghostty](https://ghostty.org)** | Recommended. Yazi can only draw real image previews in a terminal that supports them, which means Ghostty, Kitty or WezTerm. In anything else you get a rough approximation made of text characters. |
-| **an AI agent** | Optional. The middle pane runs `claude` by default and sits empty if you have not installed one. |
+| **an AI agent** | The main pane runs `claude` by default. bothy will not install one — install methods and credentials are yours — and `bothy doctor` names the command for the agent you have chosen. Set `slots.agent none` to run without one. |
 | **Go** and **make** | Only if you build from source. |
 
 bothy provides everything else. If any of these are missing, `bothy doctor`
