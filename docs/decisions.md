@@ -926,3 +926,44 @@ signature on an artifact can fix verifying the verifier, which is a property of
 bothy fetches are other projects' releases, pinned by checksum in `bothy.lock`
 and trust-on-first-use by construction — bothy cannot sign what it did not
 build. Those are different problems, and neither is this one.
+
+## ADR-031 — Platform differences are injected, and build tags need the compiler's permission
+
+Three platforms are on the road and nothing said whether bothy stays one source
+tree with runtime branching or splits into `//go:build` files. Deciding after
+the divergence exists means converting it, and the mux seam (#64) is where a
+platform-specific implementation first has somewhere to plug in.
+
+**The rule: inject what differs, and reach for a build tag only when the code
+cannot compile elsewhere.** The test is not "does this make sense on Windows"
+but "does the compiler reject it there". A tmux backend compiles everywhere and
+is simply not selected; `.desktop` entries compile on macOS and are merely
+meaningless, which is why ADR-018's guard is a runtime check. Neither is a build
+tag. An `ioctl` naming `TIOCGWINSZ` is, because no runtime branch saves a file
+the compiler has already refused.
+
+**When forced, the tagged file is a shim.** `termsize_unix.go` is twelve lines
+of syscall with no branching; the decision that uses it lives behind
+`install.go`'s `terminalSize` seam, which tests replace. What CI never compiles
+is then also what decides nothing. `TestPlatformSplitsStayShims` holds this: it
+lists every build-tagged shipping file with a line budget, fails on one that is
+not listed, and fails on one that grows.
+
+**Why not tags as the normal mechanism.** ADR-011 already answered this in
+miniature -- container detection could not be tested without being a container,
+so nobody had, and a test asserted the bug was correct. A `//go:build windows`
+file is the same shape: the Linux runner never compiles it, never vets it, never
+tests it. ADR-001 also chose Go for trivial cross-compilation, and tags spend
+it. And `Makefile`'s `SOURCES` has no tag awareness, so three platforms of
+source would count against a cap meant to bound one binary's complexity, while
+`MAX_BINARY_BYTES` correctly measures only the host's.
+
+**What this costs.** Removing the two termsize files entirely would be the
+purest reading and is not free: `syscall.TIOCGWINSZ` is undefined on Windows, so
+a single-file version needs `golang.org/x/sys` -- a second dependency, which
+PLAN.md §13 rules out. The exception is narrower than the dependency it avoids.
+
+**Where single-source genuinely cannot hold**, named rather than assumed:
+`bootstrap/install.sh` cannot serve native Windows, and a PowerShell twin is a
+second shell file where ADR-001 permits one. That is an ADR question rather than
+a build-tag question, and it is the real reason native Windows is post-1.0.

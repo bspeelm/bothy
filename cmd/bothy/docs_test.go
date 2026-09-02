@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -125,6 +126,60 @@ func TestEveryRelativeDocLinkResolves(t *testing.T) {
 				t.Errorf("%s links to %q, which does not exist",
 					filepath.Base(f), m[1])
 			}
+		}
+	}
+}
+
+// buildTagged is every shipping file the compiler picks by platform. ADR-031
+// allows one only where the code cannot compile elsewhere, and requires it to
+// stay a shim: the logic goes outside, behind a seam a test can replace, so
+// that what CI never compiles is also what decides nothing.
+//
+// A list rather than a rule about names, because adding one is the decision
+// the ADR asks to be taken deliberately. Tests are exempt -- they gate which
+// tests run, not what ships.
+var buildTagged = map[string]int{
+	"internal/platform/termsize_unix.go":  30, // ioctl TIOCGWINSZ; no such constant on Windows
+	"internal/platform/termsize_other.go": 12,
+}
+
+func TestPlatformSplitsStayShims(t *testing.T) {
+	root := "../.."
+	found := map[string]bool{}
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") ||
+			strings.HasSuffix(path, "_test.go") || strings.Contains(path, "/vendor/") {
+			return err
+		}
+		src, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(string(src), "//go:build") {
+			return nil
+		}
+		rel := strings.TrimPrefix(filepath.ToSlash(path), "../../")
+		found[rel] = true
+		limit, ok := buildTagged[rel]
+		if !ok {
+			t.Errorf("%s is built per platform and ADR-031 does not list it.\n"+
+				"Platform differences are injected at runtime unless the code cannot "+
+				"compile elsewhere; if this one cannot, add it here with the reason.", rel)
+			return nil
+		}
+		if n := bytes.Count(src, []byte("\n")); n > limit {
+			t.Errorf("%s is %d lines, over its %d-line shim budget -- "+
+				"CI never compiles the other side of a build tag, so logic here is "+
+				"logic nothing checks. Move it out behind a seam.", rel, n, limit)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path := range buildTagged {
+		if !found[path] {
+			t.Errorf("%s is listed as a platform split and no longer is; drop it", path)
 		}
 	}
 }
