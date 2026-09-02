@@ -154,14 +154,22 @@ func splitCommand(s string) ([]string, error) {
 		began bool // distinguishes "" as an argument from no argument
 		quote rune // 0, '\'' or '"'
 	)
-	for i, r := range s {
+	runes := []rune(s)
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
 		switch {
-		case r == '\\' && quote != '\'' && i+1 < len(s):
-			// A backslash escapes the next character, except inside single
-			// quotes, where a shell treats it literally.
-			continue
-		case i > 0 && s[i-1] == '\\' && quote != '\'':
-			cur.WriteRune(r)
+		case r == '\\' && quote != '\'' && i+1 < len(runes):
+			// Both characters are consumed here rather than skipping and
+			// looking back: a lookback cannot see a second backslash, because
+			// this branch has already taken it. Inside double quotes a shell
+			// escapes only these four, so "a\nb" keeps its backslash.
+			next := runes[i+1]
+			if quote == '"' && !strings.ContainsRune(`$`+"`"+`"\\`, next) {
+				cur.WriteRune(r)
+			} else {
+				i++
+				cur.WriteRune(next)
+			}
 			began = true
 		case quote != 0 && r == quote:
 			quote = 0
