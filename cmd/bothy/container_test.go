@@ -82,6 +82,8 @@ var onlineExpectation = map[string]doctor.Severity{
 	"tool-provenance": doctor.Pass,
 	"tools-reachable": doctor.Pass,
 	"theme-palette":   doctor.Skip, // the built-in palette
+	"theme-reached":   doctor.Pass, // the palette reaches the files the tools read
+	"session-named":   doctor.Skip, // nothing is inside a live session here
 }
 
 func TestBothyInstallsInAContainer(t *testing.T) {
