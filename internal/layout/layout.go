@@ -45,7 +45,7 @@ type Row struct {
 }
 
 // Pane is one region. Either Slot or Command identifies what runs in it; a
-// pane with neither is a plain shell, which is exactly what the side pane wants.
+// pane with neither is a plain shell, which the side pane wants.
 type Pane struct {
 	// Slot is resolved to a command by the caller ("browser" -> "yazi").
 	Slot string `toml:"slot"`

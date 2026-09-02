@@ -287,7 +287,7 @@ func OpenerBinary(p platform.Info) string {
 	return strings.Fields(opener(p))[0]
 }
 
-// openerDesc is what Yazi shows beside the opener, which is worth saying when
+// openerDesc is what Yazi shows beside the opener, which matters when
 // the file is leaving this machine's namespace.
 func openerDesc(p platform.Info) string {
 	if p.InContainer() {
@@ -396,7 +396,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	}
 
 	// Fedora's nano-default-editor exports EDITOR=nano from /etc/profile.d,
-	// and that is what yazi, lazygit and git shell out to. Setting it here
+	// and yazi, lazygit and git shell out to it. Setting it here
 	// covers bothy's panes without touching the user's shell config.
 	editor := EditorBinary(cfg.Slots.Editor)
 	env.set("EDITOR", editor)
@@ -422,7 +422,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// exits when the terminal reports 0x0. These are the fallback it reads
 	// next, corrected by SIGWINCH once the pane is sized. Unset when nothing
 	// was measured: an inherited size would be read as this pane's, and a
-	// wrong size is worse than none, which is what makes a tool ask the ioctl.
+	// wrong size is worse than none: none makes a tool ask the ioctl.
 	if cols, rows, ok := terminalSize(); ok {
 		env.set("COLUMNS", strconv.Itoa(cols))
 		env.set("LINES", strconv.Itoa(rows))
@@ -436,7 +436,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 }
 
 // env is an environment being assembled. It replaces rather than appends,
-// which is not a detail: with two PATH entries, which one a process sees
+// not a detail: with two PATH entries, which one a process sees
 // depends on the libc and on whether anything deduplicated it on the way
 // through, and the original stays first -- so bothy's tools are not found.
 type env struct {

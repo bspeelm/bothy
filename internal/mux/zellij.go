@@ -11,7 +11,7 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
-// Zellij is the multiplexer bothy ships with, and the only one CI tests.
+// Zellij is the multiplexer CI tests.
 type Zellij struct{}
 
 func (Zellij) Name() string { return "zellij" }
@@ -25,8 +25,8 @@ func (z Zellij) SessionEnv(p platform.Info) map[string]string {
 }
 
 // SessionName collapses everything outside [A-Za-z0-9_] to one dash, so "my
-// project" and "my/project" cannot reach one name by different routes. Zellij
-// uses the result as a directory under its cache.
+// project" and "my/project" cannot produce the same name. Zellij uses the
+// result as a cache directory.
 func (Zellij) SessionName(dir string) string {
 	var b strings.Builder
 	for _, r := range filepath.Base(filepath.Clean(dir)) {
@@ -46,8 +46,8 @@ func (Zellij) SessionName(dir string) string {
 	return "bothy-" + name
 }
 
-// Open writes the rendered layout where zellij will find it, then attaches.
-// Regenerated every launch, so editing the written file does nothing.
+// Open writes the rendered layout where zellij reads it, then attaches. The
+// file is regenerated every launch; editing it does nothing.
 func (z Zellij) Open(r Request) error {
 	kdl, err := layout.Render(r.Profile, r.Commands)
 	if err != nil {
@@ -71,8 +71,8 @@ func (z Zellij) Open(r Request) error {
 }
 
 // launchArgs must not carry --layout into a live session: zellij applies one
-// to an existing session by adding a tab, so a second `bothy` in the same
-// project would grow the workspace rather than return to it.
+// to an existing session by adding a tab, growing the workspace instead of
+// returning to it.
 func (Zellij) launchArgs(session, layoutFile string, live []string) []string {
 	if slices.Contains(live, session) {
 		return []string{"attach", session}
@@ -80,10 +80,10 @@ func (Zellij) launchArgs(session, layoutFile string, live []string) []string {
 	return []string{"--layout", layoutFile, "attach", "--create", session}
 }
 
-// discardDead removes a session of ours that has stopped. Attaching to an
-// EXITED session resurrects it, commands suspended behind "Waiting to run" and
-// a changed profile ignored; EXITED sessions are invisible to list-sessions,
-// so the live check cannot see it coming. Errors are ignored.
+// discardDead removes a stopped session. Attaching to an EXITED one
+// resurrects it with commands suspended behind "Waiting to run" and a changed
+// profile ignored. EXITED sessions are invisible to list-sessions. Errors are
+// ignored: usually there is no such session.
 func (Zellij) discardDead(bin string, env []string, session string) {
 	cmd := exec.Command(bin, "delete-session", session)
 	cmd.Env = env
@@ -109,7 +109,7 @@ func (Zellij) Live(bin string, env []string) []string {
 }
 
 // Panes asks zellij what it built. `action dump-layout` is documented; the
-// session_info cache holding the same KDL is not.
+// session_info cache holding the same KDL is private.
 func (Zellij) Panes(bin, session string, env []string) (int, bool) {
 	cmd := exec.Command(bin, "action", "dump-layout")
 	cmd.Env = env

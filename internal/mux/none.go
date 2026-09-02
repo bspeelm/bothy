@@ -2,9 +2,9 @@ package mux
 
 import "github.com/bspeelm/bothy/internal/platform"
 
-// None is the second implementation, and not hypothetical: `slots.mux = "none"`
-// is already accepted. The degenerate case -- no layout, no session, nothing
-// to count -- so an interface it cannot satisfy assumes a session exists.
+// None is the second implementation. `slots.mux = "none"` is already an
+// accepted config, and the case has no layout, no session and nothing to
+// count, so an interface it cannot satisfy assumes a session exists.
 type None struct{}
 
 func (None) Name() string                               { return "none" }
@@ -15,7 +15,7 @@ func (None) CurrentSession() string                     { return "" }
 func (None) Live(string, []string) []string             { return nil }
 func (None) Panes(string, string, []string) (int, bool) { return 0, false }
 
-// Open runs the agent here; there are no panes, so nothing is rendered.
+// Open runs the agent here. No panes, so nothing is rendered.
 func (None) Open(r Request) error {
 	cmd := r.Commands["agent"]
 	if cmd == "" {

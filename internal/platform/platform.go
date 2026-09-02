@@ -54,7 +54,7 @@ type Info struct {
 }
 
 // bothy's own tree. Everything bothy generates lives under BothyDir and
-// nothing outside it, which is what makes `uninstall` a directory removal
+// nothing outside it, so `uninstall` is a directory removal
 // rather than a manifest replay. See PLAN.md §2.
 
 // strandedSessionRoot recovers the tree for a shell inside a workspace that an
@@ -62,10 +62,9 @@ type Info struct {
 //
 // Those sessions set XDG_DATA_HOME into the tree without naming the tree, so
 // every command typed in them resolved one level deeper, and upgrading does
-// not fix a session already running. The recovery is exact rather than a
-// guess -- the tree is that directory's parent -- and BOTHY_SESSION is what
-// makes reading it safe, since only bothy sets it. Removable once no
-// pre-v0.3.1 session is plausibly still running.
+// not fix a running session. The tree is that directory's parent.
+// BOTHY_SESSION gates the lookup because only bothy sets it. Removable once no
+// pre-v0.3.1 session is running.
 func strandedSessionRoot() string {
 	if os.Getenv("BOTHY_SESSION") == "" {
 		return ""

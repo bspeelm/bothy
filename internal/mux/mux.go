@@ -1,11 +1,8 @@
-// Package mux is the seam between bothy's one workspace idea and the program
-// that arranges it. ADR-019 calls the multiplexer tier three: a renderer, not
-// a template -- zellij takes a declarative layout file at launch, tmux builds
-// the same arrangement with commands against a live session, and no amount of
-// data makes those one thing.
+// Package mux arranges the workspace. ADR-019 makes the multiplexer a
+// renderer rather than a template: zellij takes a layout file at launch, tmux
+// runs commands against a live session.
 //
-// The shape was measured, not designed: a throwaway tmux backend tested five
-// guesses about this boundary and corrected four (ADR-033, #64).
+// The interface below was shaped by a throwaway tmux backend (#64).
 package mux
 
 import (
@@ -22,37 +19,35 @@ type Backend interface {
 	// Name is the provider name, as slots.mux spells it.
 	Name() string
 
-	// Dir is where this backend's generated config lives. Owned here because
-	// the variable pointing the multiplexer at it is the backend's too.
+	// Dir is where the backend's generated config lives. Owned here because
+	// SessionEnv points the multiplexer at it.
 	Dir(p platform.Info) string
 
-	// SessionName turns a project directory into a name this backend can both
-	// create and address -- per-backend because tmux accepts "." and ":" and
-	// then cannot target the session, where zellij simply refuses them.
+	// SessionName turns a project directory into a name the backend can create
+	// and address. tmux accepts "." and ":" and then cannot target the
+	// session; zellij refuses them.
 	SessionName(dir string) string
 
-	// Open starts the workspace, or returns to it when it is already running,
-	// replacing this process. Rendering and launching are one method because
-	// they cannot be split: an interface returning layout text for the caller
-	// to write out cannot express tmux, which splits a live session.
+	// Open starts the workspace or returns to a running one, replacing this
+	// process. Rendering and launching are one call: tmux splits a live
+	// session, so there is no layout text to hand back first.
 	Open(Request) error
 
-	// Live is the sessions running. No sessions and no multiplexer are one
-	// answer here: creating is the right move for both.
+	// Live is the sessions running. No sessions and no multiplexer give the
+	// same answer: create.
 	Live(bin string, env []string) []string
 
-	// SessionEnv is what this backend needs in the session. Every backend's
-	// keys are unset before the chosen one's are set, because an inherited
-	// value would otherwise survive into it.
+	// SessionEnv is what the backend needs in the session. Every backend's keys
+	// are unset before the chosen one's are set: an inherited value survives
+	// into the session otherwise.
 	SessionEnv(p platform.Info) map[string]string
 
 	// CurrentSession is the session this shell is inside, "" when it is not.
 	CurrentSession() string
 
-	// Panes counts the panes carrying a command, so the doctor can compare what
-	// was built against what the profile described. A query rather than a file
-	// read -- `list-panes` for tmux, `action dump-layout` for zellij, whose
-	// session_info cache is a private path with a version directory in it.
+	// Panes counts the panes carrying a command, for comparison against the
+	// profile. A query, not a file read: `list-panes` for tmux, `action
+	// dump-layout` for zellij, whose session_info cache is private.
 	Panes(bin, session string, env []string) (int, bool)
 }
 
@@ -68,8 +63,8 @@ type Request struct {
 	Live     []string
 }
 
-// runReplacing hands stdio to the multiplexer; a non-zero exit is the
-// multiplexer's own answer, not a bothy error.
+// runReplacing hands stdio to the multiplexer. A non-zero exit is the
+// multiplexer's status, not a bothy error.
 func runReplacing(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env
@@ -83,8 +78,8 @@ func runReplacing(env []string, name string, args ...string) error {
 	return err
 }
 
-// backends is every multiplexer bothy knows -- a registry rather than build
-// tags (ADR-031): a backend compiles everywhere and is simply not selected.
+// backends is every multiplexer bothy knows. A registry, not build tags
+// (ADR-031): a backend compiles everywhere and is not selected.
 var backends = []Backend{Zellij{}, None{}}
 
 // For returns the backend filling the mux slot, false when bothy has no

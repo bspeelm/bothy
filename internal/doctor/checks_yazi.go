@@ -40,7 +40,7 @@ func checkYaziConfigDiscarded(env Env) Result {
 			"run 'bothy install' to install it")
 	}
 	// `ya cache clear` parses the config and exits without needing a terminal,
-	// which is what makes this a config check rather than a cache one. `ya env`
+	// so this is a config check rather than a cache one. `ya env`
 	// names the question better and cannot be used: it demands a tty, and the
 	// doctor has none in CI. ya ships inside yazi's own archive, so its absence
 	// is a partial install rather than a missing feature.

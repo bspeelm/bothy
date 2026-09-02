@@ -25,9 +25,9 @@ type launchMode struct {
 // the job: image previews need the Kitty graphics protocol, and inside GNOME
 // Terminal Yazi degrades to block art silently.
 //
-// mode is workspace.launch or the flag overriding it: "here" and "window"
-// settle the question, "auto" and "" ask it. Every reason to stay put is
-// checked before any reason to spawn.
+// mode is workspace.launch or the flag overriding it: "here" and "window" are
+// decisions, "auto" and "" are questions. Reasons to stay put are checked
+// before reasons to spawn.
 func decideLaunch(p platform.Info, mode string) launchMode {
 	switch mode {
 	case "here":
