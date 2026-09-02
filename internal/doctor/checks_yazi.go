@@ -31,7 +31,7 @@ func checkYaziConfigDiscarded(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
-	if env.Config.PassesThrough("yazi") {
+	if env.Config.PassesThrough("browser") {
 		return skip("yazi is passed through to your own config")
 	}
 	bin, err := env.lookPath("yazi")
@@ -92,7 +92,7 @@ func checkYaziConfigKeys(env Env) Result {
 	if r, ok := env.elsewhere(); ok {
 		return r
 	}
-	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
+	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("browser") {
 		return skip("bothy is not managing yazi's config")
 	}
 	var stale []string
@@ -123,7 +123,7 @@ func checkYaziConfigKeys(env Env) Result {
 // It needs its own check because `yazi --clear-cache`, which the config check
 // uses, does not execute init.lua, so a missing plugin surfaces only at launch.
 func checkYaziPlugins(env Env) Result {
-	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("yazi") {
+	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("browser") {
 		return skip("bothy is not managing yazi's config")
 	}
 	plugins, err := install.YaziPlugins()

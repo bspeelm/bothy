@@ -177,11 +177,13 @@ do.
 
 ```toml
 # ~/.config/bothy/config.toml
-passthrough = ["yazi"]
+passthrough = ["browser"]
 ```
 
 bothy then points Yazi at your config rather than its own, and does not read
-yours on the way past. To adjust bothy's config rather than replace it, put a
+yours on the way past. Name the slot rather than what is in it — `"yazi"` is
+understood too, and stops meaning anything the day you put something else in
+the browser slot. To adjust bothy's config rather than replace it, put a
 file in `~/.config/bothy/overrides/<tool>/<file>`. bothy adds it to the end
 of its own, so yours wins, which is the correct ending to most arguments
 between a tool and the person who has to use it.

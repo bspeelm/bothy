@@ -275,7 +275,7 @@ func (c Config) Validate() error {
 	// them here means a `bothy config set` mistake surfaces at the next
 	// command rather than as a workspace that opens wrong.
 	for _, name := range c.Passthrough {
-		if !slices.Contains(slotNames, name) {
+		if !slices.Contains(slotNames, name) && !c.namesAProvider(name) {
 			return fmt.Errorf("config: passthrough names %q, which is not a slot (%s)",
 				name, strings.Join(slotNames, ", "))
 		}
@@ -295,6 +295,18 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// namesAProvider reports whether a passthrough entry is a provider currently
+// filling a slot -- the spelling the README documented, which config.toml
+// files carry.
+func (c Config) namesAProvider(name string) bool {
+	for _, slot := range slotNames {
+		if c.ProviderFor(slot) == name {
+			return true
+		}
+	}
+	return false
+}
+
 // Palette resolves the configured theme, expanding ~ in the palette path so
 // that a hand-edited config.toml behaves the way its author expected.
 func (c Config) Palette(p platform.Info) (theme.Palette, error) {
@@ -302,13 +314,35 @@ func (c Config) Palette(p platform.Info) (theme.Palette, error) {
 }
 
 // PassesThrough reports whether a slot uses the user's own config directory.
+//
+// The argument is a slot -- "browser", not "yazi". config.toml accepts either
+// spelling: naming the provider passes through whichever slot it fills, and
+// stops meaning anything once something else fills it. Naming the slot is what
+// survives that, which is why it is the one the doctor asks for.
 func (c Config) PassesThrough(slot string) bool {
+	provider := c.ProviderFor(slot)
 	for _, s := range c.Passthrough {
-		if s == slot {
+		if s == slot || (provider != "" && s == provider) {
 			return true
 		}
 	}
 	return false
+}
+
+// ProviderFor is what fills a slot, or "" when the name is not a slot.
+//
+// Read off the toml tags on Slots rather than a switch, so a slot added there
+// is answerable here without a second list to keep in step -- the same reason
+// Keys() and Set() walk the struct.
+func (c Config) ProviderFor(slot string) string {
+	v := reflect.ValueOf(c.Slots)
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		if tag, _, _ := strings.Cut(t.Field(i).Tag.Get("toml"), ","); tag == slot {
+			return v.Field(i).String()
+		}
+	}
+	return ""
 }
 
 // PalettePath is the expanded custom palette file, or "" when none is set.
