@@ -10,6 +10,7 @@ import (
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/doctor"
 	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
@@ -32,7 +33,8 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	env := doctor.Env{
 		Platform: p, Config: cfg, ProfileName: cfg.Profile,
 		MuxBin:      install.ToolPath(p, cfg.Slots.Mux),
-		SessionName: sessionNameHere(),
+		SessionName: sessionNameHere(p, cfg),
+		Mux:         muxBackend(p, cfg),
 		RunsIn:      hopTarget(p, cfg),
 		Version:     version(),
 		// Check the tools the way bothy will actually run them.
@@ -117,12 +119,26 @@ func printCapabilities(rep doctor.Report, cfg config.Config) {
 
 // sessionNameHere is what bothy would call this directory's session, for the
 // check that asks whether the running one matches.
-func sessionNameHere() string {
+func sessionNameHere(p platform.Info, cfg config.Config) string {
 	dir, err := os.Getwd()
 	if err != nil {
 		return ""
 	}
-	return sessionName(dir)
+	b, _, err := muxPath(p, cfg)
+	if err != nil {
+		return ""
+	}
+	return b.SessionName(dir)
+}
+
+// muxBackend is the backend the doctor asks, or nil when the configured name
+// has no implementation -- which the checks report rather than crash on.
+func muxBackend(p platform.Info, cfg config.Config) mux.Backend {
+	b, _, err := muxPath(p, cfg)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 func mark(s doctor.Severity) string {

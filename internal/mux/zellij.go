@@ -1,0 +1,174 @@
+package mux
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
+)
+
+// Zellij is the multiplexer bothy ships with, and the only one CI tests.
+type Zellij struct{}
+
+func (Zellij) Name() string { return "zellij" }
+
+func (Zellij) Dir(p platform.Info) string {
+	return filepath.Join(p.ConfigRoot(), "zellij")
+}
+
+func (z Zellij) SessionEnv(p platform.Info) map[string]string {
+	return map[string]string{"ZELLIJ_CONFIG_DIR": z.Dir(p)}
+}
+
+// SessionName collapses everything outside [A-Za-z0-9_] to one dash, so "my
+// project" and "my/project" cannot reach one name by different routes. Zellij
+// uses the result as a directory under its cache.
+func (Zellij) SessionName(dir string) string {
+	var b strings.Builder
+	for _, r := range filepath.Base(filepath.Clean(dir)) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+			b.WriteRune(r)
+		default:
+			if !strings.HasSuffix(b.String(), "-") {
+				b.WriteRune('-')
+			}
+		}
+	}
+	name := strings.Trim(b.String(), "-")
+	if name == "" {
+		return "bothy"
+	}
+	return "bothy-" + name
+}
+
+// Open writes the rendered layout where zellij will find it, then attaches.
+// Regenerated every launch, so editing the written file does nothing.
+func (z Zellij) Open(r Request) error {
+	kdl, err := layout.Render(r.Profile, r.Commands)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join(z.Dir(r.Platform), "layouts")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	file := filepath.Join(dir, r.Profile.Name+".kdl")
+	if err := os.WriteFile(file, []byte(kdl), 0o644); err != nil {
+		return err
+	}
+	if err := os.Chdir(r.Dir); err != nil {
+		return err
+	}
+	if !slices.Contains(r.Live, r.Session) {
+		z.discardDead(r.Bin, r.Env, r.Session)
+	}
+	return runReplacing(r.Env, r.Bin, z.launchArgs(r.Session, file, r.Live)...)
+}
+
+// launchArgs must not carry --layout into a live session: zellij applies one
+// to an existing session by adding a tab, so a second `bothy` in the same
+// project would grow the workspace rather than return to it.
+func (Zellij) launchArgs(session, layoutFile string, live []string) []string {
+	if slices.Contains(live, session) {
+		return []string{"attach", session}
+	}
+	return []string{"--layout", layoutFile, "attach", "--create", session}
+}
+
+// discardDead removes a session of ours that has stopped. Attaching to an
+// EXITED session resurrects it, commands suspended behind "Waiting to run" and
+// a changed profile ignored; EXITED sessions are invisible to list-sessions,
+// so the live check cannot see it coming. Errors are ignored.
+func (Zellij) discardDead(bin string, env []string, session string) {
+	cmd := exec.Command(bin, "delete-session", session)
+	cmd.Env = env
+	_ = cmd.Run()
+}
+
+func (Zellij) CurrentSession() string { return os.Getenv("ZELLIJ_SESSION_NAME") }
+
+func (Zellij) Live(bin string, env []string) []string {
+	cmd := exec.Command(bin, "list-sessions", "--short", "--no-formatting")
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+	var live []string
+	for _, line := range strings.Split(string(out), "\n") {
+		if s := strings.TrimSpace(line); s != "" {
+			live = append(live, s)
+		}
+	}
+	return live
+}
+
+// Panes asks zellij what it built. `action dump-layout` is documented; the
+// session_info cache holding the same KDL is not.
+func (Zellij) Panes(bin, session string, env []string) (int, bool) {
+	cmd := exec.Command(bin, "action", "dump-layout")
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, false
+	}
+	return Zellij{}.countPanes(string(out))
+}
+
+// countPanes counts the panes carrying a command, encoding three facts: only
+// the first tab counts because new_tab_template repeats it, floating panes are
+// zellij's own tip window, and a plugin pane declares its plugin on the next
+// line.
+func (Zellij) countPanes(kdl string) (int, bool) {
+	lines := strings.Split(kdl, "\n")
+
+	inTab, depth, floatingDepth := false, 0, -1
+	count := 0
+	for i, raw := range lines {
+		line := strings.TrimSpace(raw)
+
+		if !inTab {
+			// Only the first tab; new_tab_template repeats it verbatim.
+			if strings.HasPrefix(line, "tab ") || line == "tab {" {
+				inTab, depth = true, 0
+			} else {
+				continue
+			}
+		}
+
+		opens := strings.Count(line, "{")
+		closes := strings.Count(line, "}")
+
+		if strings.HasPrefix(line, "floating_panes") && floatingDepth < 0 {
+			floatingDepth = depth
+		}
+
+		if floatingDepth < 0 && strings.HasPrefix(line, "pane") {
+			// A plugin pane declares its plugin on the following line.
+			isPlugin := i+1 < len(lines) && strings.Contains(lines[i+1], "plugin location=")
+			hasCommand := strings.Contains(line, "command=")
+			hasName := strings.Contains(line, "name=")
+			if !isPlugin && (hasCommand || hasName) {
+				count++
+			}
+		}
+
+		depth += opens - closes
+		if floatingDepth >= 0 && depth <= floatingDepth {
+			floatingDepth = -1
+		}
+		if depth <= 0 {
+			break // end of the first tab
+		}
+	}
+
+	if count == 0 {
+		return 0, false
+	}
+	return count, true
+}

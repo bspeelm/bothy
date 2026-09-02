@@ -1,4 +1,4 @@
-package doctor
+package mux
 
 import (
 	"os"
@@ -6,8 +6,11 @@ import (
 	"testing"
 )
 
-// The fixtures in testdata are real session-layout.kdl files, taken off a
-// working machine and scrubbed of its paths. Inventing a fixture here would
+// z is the backend under test.
+var z = Zellij{}
+
+// The fixtures in testdata are real resolved layouts, taken off a working
+// machine and scrubbed of its paths. Inventing a fixture here would
 // have tested my idea of the format rather than the format.
 //
 // Each was produced by the origin cockpit layout: yazi on top, an agent and a
@@ -22,7 +25,7 @@ func TestCountContentPanesOnRealResolvedLayouts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got, ok := countContentPanes(string(body))
+		got, ok := z.countPanes(string(body))
 		if !ok {
 			t.Errorf("%s: could not read the layout's shape", f)
 			continue
@@ -43,7 +46,7 @@ func TestCountIgnoresTheNewTabTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := countContentPanes(string(body)); got == 6 {
+	if got, _ := z.countPanes(string(body)); got == 6 {
 		t.Error("counted the new_tab_template copy as well as the real tab")
 	}
 }
@@ -72,7 +75,7 @@ func TestCountIgnoresFloatingAndPluginPanes(t *testing.T) {
     }
 }
 `
-	got, ok := countContentPanes(kdl)
+	got, ok := z.countPanes(kdl)
 	if !ok {
 		t.Fatal("could not read the shape")
 	}
@@ -84,27 +87,7 @@ func TestCountIgnoresFloatingAndPluginPanes(t *testing.T) {
 // A format this code no longer understands must skip, not report a number
 // derived from guesswork.
 func TestCountRefusesRatherThanGuess(t *testing.T) {
-	if _, ok := countContentPanes("something else entirely"); ok {
+	if _, ok := z.countPanes("something else entirely"); ok {
 		t.Error("claimed to understand a layout it did not")
-	}
-}
-
-func TestSessionLayoutPathIsGlobbedByVersion(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", "")
-	dir := filepath.Join(home, ".cache", "zellij", "0.45.1", "session_info", "my-session")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	want := filepath.Join(dir, "session-layout.kdl")
-	if err := os.WriteFile(want, []byte("layout {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	got, err := sessionLayoutPath(home, "my-session")
-	if err != nil {
-		t.Fatalf("not found: %v", err)
-	}
-	if got != want {
-		t.Errorf("got %s", got)
 	}
 }

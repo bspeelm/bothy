@@ -15,6 +15,7 @@ import (
 	"github.com/bspeelm/bothy/internal/advice"
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
 	"github.com/bspeelm/bothy/internal/render"
@@ -376,10 +377,17 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// Passthrough must *unset*, not merely decline to set: the session inherits
 	// the current environment, so an already-exported value would stay in place
 	// and the tool would use bothy's config anyway.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
-		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
-	} else {
-		env.unset("ZELLIJ_CONFIG_DIR")
+	// Every backend's variables are unset before the chosen one's are set, so
+	// switching multiplexers cannot leave the previous one's config pointed at.
+	for _, b := range mux.All() {
+		for k := range b.SessionEnv(p) {
+			env.unset(k)
+		}
+	}
+	if b, ok := mux.For(cfg.ProviderOrDefault("mux")); ok && !cfg.PassesThrough("mux") {
+		for k, v := range b.SessionEnv(p) {
+			env.set(k, v)
+		}
 	}
 	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
