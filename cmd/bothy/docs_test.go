@@ -104,7 +104,8 @@ func TestEveryRelativeDocLinkResolves(t *testing.T) {
 		t.Fatal(err)
 	}
 	files = append(files, filepath.Join(root, "README.md"),
-		filepath.Join(root, "CLAUDE.md"), filepath.Join(root, "NOTICE"))
+		filepath.Join(root, "CLAUDE.md"), filepath.Join(root, "NOTICE"),
+		filepath.Join(root, "CONTRIBUTING.md"), filepath.Join(root, "SECURITY.md"))
 
 	link := regexp.MustCompile(`\]\(([^)]+)\)`)
 	for _, f := range files {

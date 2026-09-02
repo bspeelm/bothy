@@ -1,0 +1,37 @@
+name: A provider bothy does not know
+description: A terminal, multiplexer, file browser, editor or agent bothy should be able to use
+labels: [provider]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Adding one is usually a single TOML file in `slots/` and no Go — see
+        [docs/adding-a-provider.md](https://github.com/bspeelm/bothy/blob/main/docs/adding-a-provider.md).
+        Pull requests welcome; this form is for asking, or for working out
+        whether it fits.
+
+  - type: input
+    id: what
+    attributes:
+      label: What, and which slot
+      placeholder: "helix, the editor slot"
+    validations:
+      required: true
+
+  - type: textarea
+    id: obtained
+    attributes:
+      label: How someone gets it
+      description: |
+        A release bothy could fetch (a GitHub repo with binaries), or an install
+        command per distribution that bothy would only advise.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Does bothy need to write config for it?
+      description: If so, what file and where. If it works with its own defaults, say that.
+    validations:
+      required: false
