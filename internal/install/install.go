@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	bothy "github.com/bspeelm/bothy"
@@ -377,6 +378,10 @@ func slug(name string) string {
 // tree, so the user's shell keeps its own PATH and EDITOR.
 //
 // The doctor uses this too, so checks run tools with the launcher's config.
+// terminalSize is a seam: the real one asks the terminal, which a test has
+// none of.
+var terminalSize = platform.TerminalSize
+
 func SessionEnv(p platform.Info, cfg config.Config) []string {
 	env := newEnv(os.Environ())
 
@@ -434,6 +439,22 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// that a `bothy doctor` typed in the shell pane inspects the workspace it
 	// is running in rather than an empty directory beneath it.
 	env.set("BOTHY_DIR", p.BothyDir())
+
+	// A pane's command can start before the multiplexer has sized its pty, and
+	// a pty nobody has sized reports 0x0. Yazi asks the terminal how big it is
+	// and exits when the answer is nothing -- so the workspace opens with a
+	// dead file browser and one line of error in it.
+	//
+	// These are the fallback yazi looks for next, and having them makes the
+	// race survivable rather than fatal. The values are this terminal's, not
+	// the pane's, so they are a starting guess: the multiplexer sends SIGWINCH
+	// the moment it sizes the pane and the tool corrects itself. Every tool
+	// worth the name prefers the ioctl and reads these only when it fails,
+	// which is exactly the case being covered.
+	if cols, rows, ok := terminalSize(); ok {
+		env.set("COLUMNS", strconv.Itoa(cols))
+		env.set("LINES", strconv.Itoa(rows))
+	}
 
 	env.set("BOTHY_SESSION", "1")
 	return env.slice()
