@@ -103,7 +103,7 @@ strictly true and pretending otherwise hides where the real cost is:
 
 | tier | what it takes | examples |
 |---|---|---|
-| **data** | one TOML file | every tool in `slots/tools/` |
+| **data** | one TOML file | every provider in `slots/` |
 | **data + a branch** | a file, templates, one arm in `install.plan()` | yazi, ghostty, vim |
 | **data + a renderer** | all of the above, plus Go that *interprets* the profile | the multiplexer |
 
@@ -163,7 +163,7 @@ Three rules keep it honest:
   line at the bottom, never the default. This is "fill gaps, never replace"
   applied to choices.
 - **Never recommend what it will not install.** Terminals and agents stay in
-  `slots/advice/` as instructions, listed separately from what bothy will fetch.
+  an `[advise]` block, listed separately from what bothy will fetch.
 - **Say what the stack cannot do.** Every plan ends with the capability lines. A
   stack that gives you panes and nothing else is still a stack; the user decides
   whether it is enough.

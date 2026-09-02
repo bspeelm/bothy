@@ -1,3 +1,49 @@
+# The file browser. Ships two binaries: yazi and its package manager, ya.
+#
+# Every current yazi-rs plugin refuses to load below 26.x with
+# "requires at least Yazi 26.x", and bothy's config uses the 26.x key names
+# ([mgr], and `url` in fetchers and filetype rules).
+
+name      = "yazi"
+what      = "the file browser"
+slot      = "browser"
+platforms = ["linux", "darwin"]
+provides  = ["images", "theme"]
+
+[fetch]
+binary      = "yazi"
+extra       = ["ya"]
+repo        = "sxyazi/yazi"
+min_version = "26.0.0"
+reason      = "the plugin ecosystem and bothy's config both require 26.x keys"
+
+[fetch.assets]
+linux_x86_64   = "yazi-x86_64-unknown-linux-musl.zip"
+linux_aarch64  = "yazi-aarch64-unknown-linux-musl.zip"
+darwin_x86_64  = "yazi-x86_64-apple-darwin.zip"
+darwin_aarch64 = "yazi-aarch64-apple-darwin.zip"
+
+[[file]]
+template = "templates/browser/yazi/yazi.toml.tmpl"
+dest     = "yazi/yazi.toml"
+
+[[file]]
+template = "templates/browser/yazi/keymap.toml.tmpl"
+dest     = "yazi/keymap.toml"
+
+[[file]]
+template = "templates/browser/yazi/init.lua.tmpl"
+dest     = "yazi/init.lua"
+
+[[file]]
+template = "templates/browser/yazi/theme.toml.tmpl"
+dest     = "yazi/theme.toml"
+
+[[file]]
+template = "templates/browser/yazi/enter-hint.lua.tmpl"
+dest     = "yazi/plugins/enter-hint.yazi/main.lua"
+when     = "no-images"
+
 # Yazi plugins bothy's generated config depends on.
 #
 # These are not decoration. bothy's init.lua, keymap.toml and yazi.toml all
@@ -23,8 +69,6 @@ name  = "git"
 use   = "yazi-rs/plugins:git"
 rev   = "c591a36e7263e95497715d525e9c46c2f0a880ac"
 gives = "per-file git status in the listing"
-# Needs both halves: a fetcher entry in yazi.toml and a setup call in init.lua.
-# With only one, it silently does nothing.
 needs = ["init", "fetcher"]
 
 [[plugin]]

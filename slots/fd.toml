@@ -4,14 +4,17 @@
 # and bothy fetches its own copy even where one exists. That is deliberate:
 # what bothy promises a session is that `fd` is on PATH, for you to type and
 # for yazi and lazygit to find when they shell out.
-name        = "fd"
-what        = "a faster find"
+
+name      = "fd"
+what      = "a faster find"
+platforms = ["linux", "darwin"]
+
+[fetch]
 binary      = "fd"
 repo        = "sharkdp/fd"
-platforms   = ["linux", "darwin"]
 min_version = "8.0.0"
 
-[assets]
+[fetch.assets]
 linux_x86_64   = "fd-v{version}-x86_64-unknown-linux-musl.tar.gz"
 linux_aarch64  = "fd-v{version}-aarch64-unknown-linux-gnu.tar.gz"
 darwin_x86_64  = "fd-v{version}-x86_64-apple-darwin.tar.gz"

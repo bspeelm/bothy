@@ -7,33 +7,24 @@ package advice
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/pelletier/go-toml/v2"
-
-	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 )
 
-// Advice is one thing bothy advises on but does not install.
+// Advice is a provider bothy advises on: its header, flattened with its
+// [advise] block. Projected from slots.Provider, so the file format has one
+// reader.
 type Advice struct {
 	slots.Header
-	Binary  string            `toml:"binary"`
-	Install map[string]string `toml:"install"`
-	Avoid   []Avoid           `toml:"avoid"`
+	slots.Advise
 }
 
-// Avoid is a repository known to cause a problem worse than the one it solves.
-type Avoid struct {
-	Repo string `toml:"repo"`
-	Why  string `toml:"why"`
-	// Distros limits the warning to the distributions it is about. Empty
-	// means everywhere. Without it bothy told Ubuntu users to avoid a Copr,
-	// which is advice about a repository they cannot enable.
-	Distros []string `toml:"distros"`
-}
+// Avoid is re-exported so callers need not know both packages. Distros limits
+// a warning to the distributions it is about: without it bothy told Ubuntu
+// users to avoid a Copr, which is advice about a repository they cannot enable.
+type Avoid = slots.Avoid
 
 // Get loads advice by name.
 // Binary is the command a provider is run as, which is not always its name:
@@ -48,15 +39,11 @@ func Binary(name string) string {
 }
 
 func Get(name string) (Advice, error) {
-	src, err := bothy.Slots.ReadFile(filepath.Join("slots", "advice", name+".toml"))
-	if err != nil {
+	pr, ok := slots.Get(name)
+	if !ok || pr.Advise == nil {
 		return Advice{}, fmt.Errorf("advice: no entry for %q", name)
 	}
-	var a Advice
-	if err := toml.Unmarshal(src, &a); err != nil {
-		return Advice{}, fmt.Errorf("advice: %s: %w", name, err)
-	}
-	return a, nil
+	return Advice{Header: pr.Header, Advise: *pr.Advise}, nil
 }
 
 // Command returns the install command for a machine. An image-based host is
@@ -83,7 +70,7 @@ func (a Advice) Command(p platform.Info) string {
 func (a Advice) Warnings(p platform.Info) string {
 	var out []string
 	for _, w := range a.Avoid {
-		if !w.appliesTo(p) {
+		if !appliesTo(w, p) {
 			continue
 		}
 		out = append(out, "avoid "+w.Repo+" — "+w.Why)
@@ -91,7 +78,7 @@ func (a Advice) Warnings(p platform.Info) string {
 	return strings.Join(out, "; ")
 }
 
-func (w Avoid) appliesTo(p platform.Info) bool {
+func appliesTo(w Avoid, p platform.Info) bool {
 	if len(w.Distros) == 0 {
 		return true
 	}

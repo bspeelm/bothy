@@ -5,11 +5,13 @@
 # quietly installs an AI agent is doing something its user did not ask for.
 # Naming the command is the whole of the help that is appropriate.
 
-name = "claude-code"
-what = "the agent that sits in the main pane"
-slot = "agent"
+name      = "claude-code"
+what      = "the agent that sits in the main pane"
+slot      = "agent"
 platforms = ["linux", "darwin"]
-binary = "claude"
 
-[install]
-default = "npm install -g @anthropic-ai/claude-code"
+[advise]
+binary      = "claude"
+
+[advise.install]
+default        = "npm install -g @anthropic-ai/claude-code"

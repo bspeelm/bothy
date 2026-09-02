@@ -3,6 +3,8 @@ package slots
 import (
 	"slices"
 	"testing"
+
+	bothy "github.com/bspeelm/bothy"
 )
 
 // Every provider has to be findable and describable, because the header is
@@ -29,15 +31,13 @@ func TestEveryProviderIsNamedAndDescribed(t *testing.T) {
 	}
 }
 
-// The two dialects are disjoint on disk, and All joining them is the whole
-// point of the package: a name must resolve to exactly one header whichever
-// directory it lives in.
-func TestGetReachesBothDialects(t *testing.T) {
+// A name resolves to exactly one provider, whichever way it is obtained.
+func TestGetReachesEveryProvider(t *testing.T) {
 	for _, tc := range []struct{ name, slot string }{
-		{"zellij", "mux"},       // slots/tools
-		{"yazi", "browser"},     // slots/tools
-		{"ghostty", "terminal"}, // slots/advice
-		{"vim", "editor"},       // slots/advice
+		{"zellij", "mux"},       // [fetch]
+		{"yazi", "browser"},     // [fetch]
+		{"ghostty", "terminal"}, // [advise]
+		{"vim", "editor"},       // [advise]
 		{"claude-code", "agent"},
 	} {
 		h, ok := Get(tc.name)
@@ -74,6 +74,75 @@ func TestExtrasFillNoSlot(t *testing.T) {
 		}
 		if h.Slot != "" {
 			t.Errorf("%s declares slot %q, but it is an extra", name, h.Slot)
+		}
+	}
+}
+
+// A template path that does not exist fails at install time, on someone else's
+// machine, having already written the files listed before it. The embed can be
+// checked here instead.
+func TestEveryTemplateAFileNamesExists(t *testing.T) {
+	all, err := All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	for _, pr := range all {
+		for _, f := range pr.Files {
+			if f.Template == "" || f.Dest == "" {
+				t.Errorf("%s has a [[file]] missing template or dest", pr.Name)
+				continue
+			}
+			if _, err := bothy.Templates.ReadFile(f.Template); err != nil {
+				t.Errorf("%s names template %q, which is not embedded", pr.Name, f.Template)
+			}
+			seen++
+		}
+	}
+	if seen == 0 {
+		t.Error("no provider generates any file, which cannot be right")
+	}
+}
+
+// The conditional files are the ones a reader of install.plan() used to be
+// able to see and now cannot, so the set is named here rather than trusted.
+func TestOnlyTheKnownFilesAreConditional(t *testing.T) {
+	all, err := All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"yazi/plugins/enter-hint.yazi/main.lua": "no-images",
+		"vim/vimrc":                             "provide-editor-config",
+		"vim/colors/{theme}.vim":                "provide-editor-config",
+	}
+	for _, pr := range all {
+		for _, f := range pr.Files {
+			if f.When == "" {
+				continue
+			}
+			if want[f.Dest] != f.When {
+				t.Errorf("%s writes %s when %q; the known set says %q",
+					pr.Name, f.Dest, f.When, want[f.Dest])
+			}
+			delete(want, f.Dest)
+		}
+	}
+	for dest := range want {
+		t.Errorf("%s was conditional and no longer is", dest)
+	}
+}
+
+// Every provider is obtainable one way or the other, or bothy has a name for
+// something it can neither install nor tell you how to install.
+func TestEveryProviderCanBeObtained(t *testing.T) {
+	all, err := All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pr := range all {
+		if pr.Fetch == nil && pr.Advise == nil {
+			t.Errorf("%s has neither [fetch] nor [advise]", pr.Name)
 		}
 	}
 }

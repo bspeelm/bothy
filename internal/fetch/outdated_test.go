@@ -45,8 +45,8 @@ func TestCheckOutdatedSpotsANewerRelease(t *testing.T) {
 		"sxyazi/yazi":       "v26.8.15",
 	})
 	ts := []tools.Tool{
-		{Header: slots.Header{Name: "zellij"}, Repo: "zellij-org/zellij"},
-		{Header: slots.Header{Name: "yazi"}, Repo: "sxyazi/yazi"},
+		{Header: slots.Header{Name: "zellij"}, Fetch: slots.Fetch{Repo: "zellij-org/zellij"}},
+		{Header: slots.Header{Name: "yazi"}, Fetch: slots.Fetch{Repo: "sxyazi/yazi"}},
 	}
 	got := CheckOutdated(ts, lockOf(map[string]string{"zellij": "0.45.1", "yazi": "26.8.15"}))
 
@@ -70,7 +70,7 @@ func TestCheckOutdatedSpotsANewerRelease(t *testing.T) {
 // rate-limiting it is worse than one that says nothing.
 func TestCheckOutdatedDoesNotCallAFailedCheckCurrent(t *testing.T) {
 	forge(t, map[string]string{}) // every repo 404s
-	ts := []tools.Tool{{Header: slots.Header{Name: "zellij"}, Repo: "zellij-org/zellij"}}
+	ts := []tools.Tool{{Header: slots.Header{Name: "zellij"}, Fetch: slots.Fetch{Repo: "zellij-org/zellij"}}}
 	got := CheckOutdated(ts, lockOf(map[string]string{"zellij": "0.45.1"}))
 
 	if len(got) != 1 {
@@ -87,11 +87,11 @@ func TestCheckOutdatedDoesNotCallAFailedCheckCurrent(t *testing.T) {
 	}
 }
 
-// A tool defined in slots/tools but missing from the lockfile is a gap worth
+// A tool defined in slots/ but missing from the lockfile is a gap worth
 // naming, not a tool that is up to date.
 func TestCheckOutdatedReportsAToolMissingFromTheLockfile(t *testing.T) {
 	forge(t, map[string]string{"sharkdp/fd": "v10.5.0"})
-	ts := []tools.Tool{{Header: slots.Header{Name: "fd"}, Repo: "sharkdp/fd"}}
+	ts := []tools.Tool{{Header: slots.Header{Name: "fd"}, Fetch: slots.Fetch{Repo: "sharkdp/fd"}}}
 	got := CheckOutdated(ts, lockOf(nil))
 
 	if len(got) != 1 || got[0].Reason == "" {
@@ -107,8 +107,8 @@ func TestCheckOutdatedReportsAToolMissingFromTheLockfile(t *testing.T) {
 func TestCheckOutdatedComparesDedecoratedVersions(t *testing.T) {
 	forge(t, map[string]string{"jqlang/jq": "jq-1.8.2", "BurntSushi/ripgrep": "15.2.0"})
 	ts := []tools.Tool{
-		{Header: slots.Header{Name: "jq"}, Repo: "jqlang/jq"},
-		{Header: slots.Header{Name: "rg"}, Repo: "BurntSushi/ripgrep"},
+		{Header: slots.Header{Name: "jq"}, Fetch: slots.Fetch{Repo: "jqlang/jq"}},
+		{Header: slots.Header{Name: "rg"}, Fetch: slots.Fetch{Repo: "BurntSushi/ripgrep"}},
 	}
 	got := CheckOutdated(ts, lockOf(map[string]string{"jq": "1.8.2", "rg": "15.2.0"}))
 	for _, u := range got {

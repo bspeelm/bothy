@@ -1,16 +1,17 @@
 # Git TUI for the side pane. Any recent version does.
 # Note the asset name carries the version without its leading v.
-name        = "lazygit"
-what        = "the git TUI"
+
+name      = "lazygit"
+what      = "the git TUI"
+platforms = ["linux", "darwin"]
+
+[fetch]
 binary      = "lazygit"
 repo        = "jesseduffield/lazygit"
-platforms   = ["linux", "darwin"]
 min_version = "0.40.0"
-
-# lazygit publishes one checksums.txt for the whole release.
 checksums   = "checksums.txt"
 
-[assets]
+[fetch.assets]
 linux_x86_64   = "lazygit_{version}_linux_x86_64.tar.gz"
 linux_aarch64  = "lazygit_{version}_linux_arm64.tar.gz"
 darwin_x86_64  = "lazygit_{version}_darwin_x86_64.tar.gz"
