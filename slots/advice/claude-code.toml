@@ -7,6 +7,8 @@
 
 name = "claude-code"
 what = "the agent that sits in the main pane"
+slot = "agent"
+platforms = ["linux", "darwin"]
 binary = "claude"
 
 [install]

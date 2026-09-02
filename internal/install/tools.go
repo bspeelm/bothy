@@ -40,7 +40,7 @@ type ToolFailure struct {
 func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer string, progress func(string)) (*ToolReport, error) {
 	rep := &ToolReport{Skipped: offline}
 
-	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
+	names, err := tools.Required(cfg.Providers(), cfg.Extras)
 	if err != nil {
 		return nil, err
 	}

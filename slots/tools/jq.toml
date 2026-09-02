@@ -1,8 +1,10 @@
 # jq ships a bare binary rather than an archive, and tags releases "jq-1.8.2"
 # rather than "v1.8.2" — both handled by the fetcher without special-casing jq.
 name        = "jq"
+what        = "a JSON processor"
 binary      = "jq"
 repo        = "jqlang/jq"
+platforms   = ["linux", "darwin"]
 min_version = "1.6.0"
 
 # jq publishes one sha256sum.txt for the whole release.
