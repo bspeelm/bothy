@@ -71,6 +71,32 @@ same mild sense of anticlimax.
 | **Go** | people who already have Go and are not sorry | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
 
+### Checking what you got
+
+Every release artifact is signed by the workflow that built it, in a public
+log — so a swapped download is detectable whether or not anyone checks.
+
+| installed with | checked by |
+|---|---|
+| dnf | dnf, against Copr's key — automatic |
+| `go install` | Go, against [sum.golang.org](https://sum.golang.org) — automatic |
+| script | a checksum, automatic; the signature on request |
+| `.deb` | the signature on request |
+| source | you compiled it yourself |
+
+The checksum catches a corrupted download. The signature also says the bytes
+came out of this repository's workflow; checking it needs the
+[`gh` CLI](https://cli.github.com), so it is opt-in. Without it you are
+trusting HTTPS and GitHub, as you do to clone the repository.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh -s -- --verify
+gh attestation verify ./bothy_*.deb --repo bspeelm/bothy --bundle attestation.jsonl
+```
+
+Take `attestation.jsonl` from the release page. Neither command needs a GitHub
+account, and neither passes quietly when it cannot check.
+
 Then, from any directory you happen to be in:
 
 ```sh
@@ -100,10 +126,9 @@ README rather than from `du`.
 | zellij | yazi | lazygit | ripgrep |
 | fzf | fd | jq | zoxide |
 
-Each download is checked against a recorded checksum before bothy keeps it.
-A checksum is not a signature; it proves the file is the one bothy expected,
-not that anyone trustworthy expected it. The distinction is on the roadmap,
-which is where distinctions go.
+Each is pinned to a version and a checksum in `bothy.lock`, and checked before
+bothy keeps it. These are other projects' releases, so a checksum is as far as
+it goes — bothy does not sign what it did not build.
 
 If you already have good enough copies, bothy downloads nothing and tells you
 which of yours it is using. What it did fetch, it keeps: when a later bothy

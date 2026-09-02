@@ -861,3 +861,68 @@ whether it is reasoning or a story, which is exactly CLAUDE.md's own test.
 **This is the tightening, not a habit of them.** ADR-010's rule cuts both ways:
 a threshold moved whenever it is inconvenient is not a threshold. It moved up
 once for code, argued in ADR-026, and down once for prose, argued here.
+
+## ADR-030 — Releases are signed by the workflow that built them
+
+`install.sh` checked a SHA-256 from `checksums.txt` and said plainly what that
+proved: the bytes match what the release page published. It could not prove who
+published them, because whoever could swap the archive could swap the checksum
+beside it. A compromised account defeated the check completely, and every
+install still said "checksum verified".
+
+Every release artifact is now signed by `actions/attest-build-provenance` in the
+workflow that built it — a Sigstore certificate bound to this repository and
+workflow, which the repository itself cannot mint.
+
+**Everything the release page offers, not just the archives.** The tarballs, the
+`.deb`, and `checksums.txt`. Signing the archives alone would leave the file the
+*default* install trusts swappable by exactly the person who could swap the
+artifact it vouches for, which is the hole this record exists to close.
+
+**Keyless, over a personal key.** minisign or signify would be smaller, but they
+make key custody a person's problem and rebuild the bootstrap question one layer
+up: the public key has to live somewhere other than this repository, or it is
+the checksum situation again. CI attestation has no private key to store,
+rotate, or leak.
+
+**Verification is opt-in, and that is forced rather than chosen.** `gh
+attestation verify` asks the GitHub API for the attestation, and asking needs a
+login — measured, not assumed: unauthenticated it answers *"To get started with
+GitHub CLI, please run: gh auth login"*. An installer that fails on a machine
+merely because `gh` is present would be worse than one that says what it did not
+check. So the default path is unchanged and names `--verify`, and `--verify`
+fails loudly rather than degrading: no verifier, no bundle, or a bad signature
+are each an error, never a quieter level of success.
+
+**The bundle is a release asset**, which is what makes the opt-in path usable
+without a GitHub account: `--bundle` reads the attestation from disk instead of
+from the API.
+
+**No doctor check.** A binary on disk may have arrived by rpm, deb, `go
+install`, or `make install-binary`, so a check answering "cannot verify" on most
+install paths is noise wearing a security badge, and it would make `gh` a
+dependency the doctor otherwise never has. Provenance is an install-time
+question and is answered there.
+
+**All five install paths, since signing one of them is not the question.**
+Three mechanisms, verified rather than assumed:
+
+| path | signed by | checked by |
+|---|---|---|
+| script | this attestation | you, `--verify` |
+| `.deb` | this attestation | you, `gh attestation verify --bundle` |
+| dnf | Copr's per-project key | dnf, `gpgcheck=1` in the repo file |
+| `go install` | the module checksum database | go, against `sum.golang.org` |
+| source | nothing | — |
+
+dnf and Go were already covered, and by better mechanisms than a README claim:
+both check without being asked. The two paths this record adds are the two that
+had a checksum or nothing.
+
+**What it does not close, stated so it is not found later.** `install.sh` is
+itself fetched unsigned over `curl`, and a source build trusts the clone: no
+signature on an artifact can fix verifying the verifier, which is a property of
+`curl | sh` and of `git clone` rather than an oversight. And the eight tools
+bothy fetches are other projects' releases, pinned by checksum in `bothy.lock`
+and trust-on-first-use by construction — bothy cannot sign what it did not
+build. Those are different problems, and neither is this one.
