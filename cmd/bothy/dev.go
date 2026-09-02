@@ -10,6 +10,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
@@ -87,12 +88,14 @@ func cmdDev(args []string) error {
 		}
 	}
 
-	return launch(p, cfg, target, name)
+	return launch(p, cfg, target, name, "")
 }
 
 // launch renders the profile and hands off to the multiplexer with the
 // session environment from install.SessionEnv, which is where isolation happens.
-func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
+// agentOverride replaces the agent pane's command when non-empty, which is
+// how `bothy confine` runs it inside a container without a second launch path.
+func launch(p platform.Info, cfg config.Config, dir, profileName, agentOverride string) error {
 	prof, err := install.LoadProfile(p, profileName)
 	if err != nil {
 		return err
@@ -110,9 +113,18 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	env := install.SessionEnv(p, cfg)
 	return backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: backend.SessionName(dir), Dir: dir,
-		Profile: prof, Commands: install.Commands(cfg), Env: env,
+		Profile: prof, Commands: commandsWith(cfg, agentOverride), Env: env,
 		Live: backend.Live(bin, env),
 	})
+}
+
+// commandsWith is the pane commands, with the agent replaced when confined.
+func commandsWith(cfg config.Config, agentOverride string) layout.Commands {
+	cmds := install.Commands(cfg)
+	if agentOverride != "" {
+		cmds["agent"] = agentOverride
+	}
+	return cmds
 }
 
 func muxNames() []string {

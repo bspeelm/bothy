@@ -1,0 +1,19 @@
+# The image bothy runs a confined agent in.
+#
+# bothy writes this file and does not build it. Building installs an agent,
+# and PLAN.md §11 keeps bothy out of that: agents change how they install,
+# they need credentials bothy has no business touching, and one installed
+# unasked is a workspace tool doing something nobody asked for.
+#
+# Edit it. Different agent, pinned version, extra tools -- it is yours once
+# written, and bothy will not overwrite it.
+
+FROM docker.io/library/node:22-slim
+
+RUN npm install -g @anthropic-ai/claude-code
+
+# HOME must exist and be writable by whichever uid bothy runs as, because the
+# agent keeps state beside its credentials.
+RUN mkdir -p /agent && chmod 777 /agent
+ENV HOME=/agent
+WORKDIR /work

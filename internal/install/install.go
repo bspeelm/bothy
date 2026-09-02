@@ -257,7 +257,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		OpenerDesc:       openerDesc(p),
 		ContainerName:    ContainerFor(p, cfg),
 		EditorBin:        EditorBinary(cfg.Slots.Editor),
-		AgentBin:         agentBinary(cfg.Slots.Agent),
+		AgentBin:         AgentBinary(cfg.Slots.Agent),
 		BrowserBin:       cfg.Slots.Browser,
 		Font:             cfg.Theme.Font,
 		ProjectDir:       cfg.Workspace.ProjectDir,
@@ -318,7 +318,8 @@ func EditorBinary(slot string) string {
 	return advice.Binary(slot)
 }
 
-func agentBinary(slot string) string {
+// AgentBinary is the command the agent slot runs as.
+func AgentBinary(slot string) string {
 	if slot == "" {
 		slot = "claude-code"
 	}
@@ -330,7 +331,7 @@ func Commands(cfg config.Config) layout.Commands {
 	return layout.Commands{
 		"browser": cfg.Slots.Browser,
 		"editor":  EditorBinary(cfg.Slots.Editor),
-		"agent":   agentBinary(cfg.Slots.Agent),
+		"agent":   AgentBinary(cfg.Slots.Agent),
 	}
 }
 

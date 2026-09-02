@@ -98,7 +98,7 @@ func TestDevLeavesNothingBehindWhenNotInstalled(t *testing.T) {
 		ConfigDir: filepath.Join(home, "config"),
 		LocalBin:  filepath.Join(home, "bin"),
 	}
-	err := launch(p, config.Default(), home, "cockpit")
+	err := launch(p, config.Default(), home, "cockpit", "")
 	if err == nil {
 		t.Fatal("expected a refusal when bothy is not installed")
 	}
