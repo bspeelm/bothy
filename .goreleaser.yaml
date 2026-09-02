@@ -53,7 +53,10 @@ homebrew_casks:
     repository:
       owner: bspeelm
       name: homebrew-bothy
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
+    # Set to false when the tap repository exists and HOMEBREW_TAP_TOKEN is a
+    # repository secret.
+    skip_upload: true
     homepage: https://github.com/bspeelm/bothy
     description: A turn-key terminal workspace built from tools you already trust
     # No dependencies declared: bothy fetches what it needs into its own tree,
@@ -66,7 +69,14 @@ aur_sources:
     description: A turn-key terminal workspace built from tools you already trust
     license: MIT
     maintainers: ['Bryan Speelman <bryspeelm@pm.me>']
-    private_key: "{{ .Env.AUR_KEY }}"
+    # Not published yet: AUR registration is paused, so no account exists to
+    # hold the key. Set to false when AUR_KEY is a repository secret.
+    #
+    # A literal rather than a template testing the environment, because that
+    # form cannot be verified without a real release -- and a release that
+    # fails on a missing credential fails after the tag is pushed.
+    skip_upload: true
+    private_key: '{{ envOrDefault "AUR_KEY" "" }}'
     git_url: ssh://aur@aur.archlinux.org/bothy.git
     depends: [glibc]
     makedepends: ['go>=1.24', git]
