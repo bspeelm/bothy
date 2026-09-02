@@ -326,6 +326,17 @@ func (c Config) Providers() []string {
 	return out
 }
 
+// ProviderOrDefault is what fills a slot, falling back to the shipped default
+// when config.toml omits it -- a hand-written file need not name every slot.
+// Three callers each kept their own copy of that fallback, and each spelled
+// the default as a literal.
+func (c Config) ProviderOrDefault(slot string) string {
+	if v := c.ProviderFor(slot); v != "" {
+		return v
+	}
+	return Default().ProviderFor(slot)
+}
+
 // ProviderFor is what fills a slot, or "" when the name is not a slot. Read
 // off the toml tags rather than a switch, so a slot added to Slots is
 // answerable here without a second list -- as with Keys() and Set().
