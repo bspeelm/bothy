@@ -221,3 +221,46 @@ func TestAnEmptyCommandIsAnErrorNotAPanic(t *testing.T) {
 }
 
 func boolp(b bool) *bool { return &b }
+
+// splitCommand claims to split "the way a shell would". These are the cases
+// where it did not: an escaped backslash lost both characters, because the
+// escape branch wrote nothing and relied on a lookback the first branch had
+// already consumed; and inside double quotes it escaped everything, where a
+// shell escapes only $ ` " and \.
+//
+// The wants are bash's own output, taken from `printf '%s\n'`.
+func TestSplitCommandKeepsBackslashesAShellWouldKeep(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want []string
+	}{
+		{`a\\b`, []string{`a\b`}},
+		{`echo "a\nb"`, []string{"echo", `a\nb`}},
+		{`grep "\d+" f`, []string{"grep", `\d+`, "f"}},
+		{`echo "say \"hi\""`, []string{"echo", `say "hi"`}},
+		{`echo "cost \$5"`, []string{"echo", `cost $5`}},
+		{`echo "back\\slash"`, []string{"echo", `back\slash`}},
+
+		// Unchanged: these already matched a shell.
+		{`grep \d+ f`, []string{"grep", "d+", "f"}},
+		{`grep '\d+' f`, []string{"grep", `\d+`, "f"}},
+		{`path\ with\ sp`, []string{"path with sp"}},
+		{`echo C:\Users\me`, []string{"echo", "C:Usersme"}},
+	} {
+		got, err := splitCommand(tc.in)
+		if err != nil {
+			t.Errorf("splitCommand(%q) = %v", tc.in, err)
+			continue
+		}
+		if len(got) != len(tc.want) {
+			t.Errorf("splitCommand(%q) = %q, want %q", tc.in, got, tc.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tc.want[i] {
+				t.Errorf("splitCommand(%q) = %q, want %q", tc.in, got, tc.want)
+				break
+			}
+		}
+	}
+}
