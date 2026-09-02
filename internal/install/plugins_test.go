@@ -132,3 +132,61 @@ func sandboxPlatform(t *testing.T) platform.Info {
 	}
 	return p
 }
+
+// `ya` records a hash of the plugin directory and refuses to touch a plugin
+// whose contents no longer match it -- that is how it spots edits made by
+// hand. bothy wrote the field empty on every run, which reads as an edit, so
+// bumping a pin aborted with "you have modified the contents of the plugin".
+// That is the one operation slots/yazi.toml documents.
+func TestWritePackageFileKeepsTheHashYaRecorded(t *testing.T) {
+	p := sandboxPlatform(t)
+	if err := os.MkdirAll(YaziDir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// What ya leaves behind after a successful install.
+	existing := `[plugin]
+
+[[plugin.deps]]
+use = "yazi-rs/plugins:git"
+rev = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+hash = "5bb0bfab901d3601c370eafdd66edd31"
+`
+	if err := os.WriteFile(packagePath(p), []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Bump the pin, as `bothy install` does after a rev changes in slots/.
+	err := writePackageFile(p, []Plugin{{
+		Name: "git", Use: "yazi-rs/plugins:git",
+		Rev: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deps := installedDeps(p)
+	if len(deps) != 1 {
+		t.Fatalf("wrote %d deps, want 1", len(deps))
+	}
+	if deps[0].Rev != "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" {
+		t.Errorf("rev = %q, want the bumped one", deps[0].Rev)
+	}
+	if deps[0].Hash != "5bb0bfab901d3601c370eafdd66edd31" {
+		t.Errorf("hash = %q, want ya's record carried across; ya reads an empty "+
+			"hash as a hand-edited plugin and refuses to update it", deps[0].Hash)
+	}
+}
+
+// A plugin ya has never installed has no hash to carry, and must not gain one.
+func TestWritePackageFileInventsNoHash(t *testing.T) {
+	p := sandboxPlatform(t)
+	if err := os.MkdirAll(YaziDir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := writePackageFile(p, []Plugin{{Name: "git", Use: "a/b:git", Rev: "c"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedDeps(p)[0].Hash; got != "" {
+		t.Errorf("hash = %q for a plugin never installed, want empty", got)
+	}
+}

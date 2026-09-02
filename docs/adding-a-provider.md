@@ -82,6 +82,19 @@ The keys are tried most-specific first — `<distro>-ostree`, distro, distro
 family, OS, `default` — so an image-based host gets the command that needs a
 reboot and everyone else does not.
 
+## `detect` — how bothy knows it is already running
+
+An agent that is already running must not get a second copy started in a pane
+of the first, so each names the environment variables it exports:
+
+```toml
+detect = ["CLAUDECODE", "CLAUDE_CODE_SSE"]
+```
+
+This lived in Go as well as here, and the two lists disagreed about which
+agents existed — aider had a guard and no provider. A test asserts every agent
+declares at least one and that each one reaches the guard.
+
 ## `[[file]]` — bothy generates its config
 
 ```toml

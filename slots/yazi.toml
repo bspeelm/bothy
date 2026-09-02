@@ -63,6 +63,12 @@ when     = "no-images"
 # the behaviour this pin exists to prevent.
 #
 # To move a pin: change the sha, install, and check the plugin still works.
+#
+# `hash` is not written here. ya keeps one in its own package.toml as a record
+# of what it deployed, and refuses to touch a plugin whose directory no longer
+# matches it. It ignores a hash it is handed -- given a wrong one it overwrites
+# it and reports success -- so a hash committed here would verify nothing. The
+# rev is the integrity pin: a full git SHA names its own content.
 
 [[plugin]]
 name  = "git"

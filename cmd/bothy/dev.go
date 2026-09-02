@@ -14,6 +14,7 @@ import (
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 // cmdDev launches the workspace: bare `bothy`, and `bothy` with any flag.
@@ -332,16 +333,22 @@ func attachCommand(mux string, args []string) string {
 }
 
 // nestedAgent reports whether this shell is already inside an agent session.
-// Each agent advertises itself differently, so this is a list.
+// Each agent advertises itself differently, so each says which variables it
+// exports -- the list used to live here as well as in slots/, and the two
+// disagreed about which agents existed.
 func nestedAgent() (string, bool) {
-	for env, name := range map[string]string{
-		"CLAUDECODE":      "a Claude Code session",
-		"CLAUDE_CODE_SSE": "a Claude Code session",
-		"AIDER_CHAT":      "an aider session",
-		"GEMINI_CLI":      "a Gemini CLI session",
-	} {
-		if os.Getenv(env) != "" {
-			return name, true
+	all, err := slots.All()
+	if err != nil {
+		return "", false
+	}
+	for _, pr := range all {
+		if pr.Slot != "agent" {
+			continue
+		}
+		for _, name := range pr.Detect {
+			if os.Getenv(name) != "" {
+				return pr.Name, true
+			}
 		}
 	}
 	return "", false
