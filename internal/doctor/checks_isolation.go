@@ -113,18 +113,36 @@ func checkPassthrough(env Env) Result {
 	if len(env.Config.Passthrough) == 0 {
 		return skip("no slots are passed through")
 	}
-	var lost []string
-	for _, slot := range env.Config.Passthrough {
-		switch slot {
-		case "yazi":
-			lost = append(lost, "yazi: bothy's image-preview handling and container-aware opener do not apply")
-		case "zellij":
-			lost = append(lost, "zellij: bothy's theme does not apply; your own keybindings do")
+
+	// Keyed on the slot, so it answers whichever spelling config.toml uses.
+	whatIsLost := map[string]string{
+		"browser": "bothy's image-preview handling and container-aware opener do not apply",
+		"mux":     "bothy's theme does not apply; your own keybindings do",
+	}
+	var lost, byProvider []string
+	for _, slot := range []string{"terminal", "mux", "browser", "editor", "agent"} {
+		if !env.Config.PassesThrough(slot) {
+			continue
+		}
+		if what := whatIsLost[slot]; what != "" {
+			lost = append(lost, slot+": "+what)
 		}
 	}
+	// A provider name works and does not survive changing that slot.
+	for _, name := range env.Config.Passthrough {
+		if env.Config.ProviderFor(name) == "" {
+			byProvider = append(byProvider, name)
+		}
+	}
+
+	fix := "remove it from passthrough in ~/.config/bothy/config.toml to use bothy's"
+	if len(byProvider) > 0 {
+		fix = "name the slot rather than what is in it — " +
+			strings.Join(byProvider, ", ") + " still works, but stops meaning anything " +
+			"if you change that slot"
+	}
 	return warn("using your own config for: "+strings.Join(env.Config.Passthrough, ", "),
-		strings.Join(lost, "; "),
-		"remove it from passthrough in ~/.config/bothy/config.toml to use bothy's")
+		strings.Join(lost, "; "), fix)
 }
 
 // checkProfileRenders catches a broken custom profile before launch.

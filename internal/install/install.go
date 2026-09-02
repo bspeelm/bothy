@@ -87,7 +87,7 @@ func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 
 	// Plugins first: the generated config is written to match what is actually
 	// installed, so it has to know before the templates render.
-	if !opts.DryRun && cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+	if !opts.DryRun && cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		pr, err := EnsureYaziPlugins(p, opts.Offline)
 		if err != nil {
 			return nil, err
@@ -167,7 +167,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 
 	// A slot passed through uses the user's own config directory, so writing
 	// bothy's version of it would leave files nothing ever reads.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
+	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
 		z := ZellijDir(p)
 		out = append(out,
 			file{Dest: filepath.Join(z, "config.kdl"), Tool: "zellij",
@@ -177,7 +177,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 		)
 	}
 
-	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		y := YaziDir(p)
 		out = append(out,
 			file{Dest: filepath.Join(y, "yazi.toml"), Tool: "yazi",
@@ -202,7 +202,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// The editor is yours. bothy sets $EDITOR for its own session and stops
 	// there — unless you have no config and want one, which is the same
 	// gap-filling rule the binaries follow.
-	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("editor") {
 		out = append(out,
 			file{Dest: VimRC(p), Tool: "vim",
 				Template: "templates/editor/vim/vimrc.tmpl"},
@@ -214,7 +214,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// Ghostty's config carries the palette inline rather than naming a theme:
 	// theme *lookup* paths are not relocatable, so a `theme = x` reference
 	// would send it hunting in ~/.config/ghostty/themes and defeat the point.
-	if cfg.Slots.Terminal == "ghostty" && !cfg.PassesThrough("ghostty") {
+	if cfg.Slots.Terminal == "ghostty" && !cfg.PassesThrough("terminal") {
 		out = append(out, file{
 			Dest: GhosttyConf(p), Tool: "ghostty",
 			Template: "templates/terminal/ghostty/config.tmpl",
@@ -391,12 +391,12 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// Passthrough must *unset*, not merely decline to set: the session inherits
 	// the current environment, so an already-exported value would stay in place
 	// and the tool would use bothy's config anyway.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
+	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
 		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
 	} else {
 		env.unset("ZELLIJ_CONFIG_DIR")
 	}
-	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
 	} else {
 		env.unset("YAZI_CONFIG_HOME")
@@ -411,7 +411,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 
 	// VIMINIT takes precedence over ~/.vimrc, so it is only set when bothy is
 	// providing a vim config. Otherwise vim is yours and loads yours.
-	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("editor") {
 		env.set("VIMINIT", "source "+VimRC(p))
 	}
 
@@ -451,9 +451,17 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// the moment it sizes the pane and the tool corrects itself. Every tool
 	// worth the name prefers the ioctl and reads these only when it fails,
 	// which is exactly the case being covered.
+	// Unset when there is nothing to ask, for the same reason passthrough
+	// unsets above: the session inherits this environment, so a value from an
+	// outer terminal -- or from an outer bothy session -- would stay in place
+	// and be read as this one's. A wrong size is worse than none, because none
+	// is what makes a tool ask the ioctl.
 	if cols, rows, ok := terminalSize(); ok {
 		env.set("COLUMNS", strconv.Itoa(cols))
 		env.set("LINES", strconv.Itoa(rows))
+	} else {
+		env.unset("COLUMNS")
+		env.unset("LINES")
 	}
 
 	env.set("BOTHY_SESSION", "1")
