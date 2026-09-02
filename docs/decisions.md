@@ -1111,6 +1111,12 @@ outside bothy's tree — measured here, on this repository, and undone. The wall
 is the mount set and the user namespace; SELinux confinement of the container
 would be a second one, and not at that price.
 
+**Uninstall names it.** `bothy uninstall` removes the tree and the binary; it
+cannot remove a container image it did not build. That image joins the two
+things already left and named -- `~/.config/bothy`, which is the user's, and
+the desktop entry. "Removing one directory removes bothy" is true of what bothy
+*writes*; what it *causes* is listed on the way out instead.
+
 **The toolbox hop.** bothy often runs inside a toolbox, where there is no
 podman, and the host's is reachable through `flatpak-spawn` — the hop the
 `xdg-open` shim already takes. Without either, confinement is unavailable and

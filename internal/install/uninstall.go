@@ -120,10 +120,9 @@ func runningBinary() string {
 
 // noteUserConfig mentions the settings directory, which is the user's and is
 // never removed — it is the one thing worth keeping in git.
-// noteConfineImage names the container image, which is the one thing bothy can
-// cause to exist outside its own tree. It is half a gigabyte and removing the
-// tree does not touch it, so leaving it unmentioned would make "one directory"
-// false by omission.
+// noteConfineImage names the container image. Half a gigabyte, removing the
+// tree does not touch it, and bothy caused it to exist -- so it is named on the
+// way out, like the settings and the desktop entry.
 func noteConfineImage(p platform.Info, rep *UninstallReport) {
 	runtime, err := confine.Runtime(p)
 	if err != nil || !confine.ImageBuilt(runtime, confine.DefaultImage) {
