@@ -904,11 +904,25 @@ install paths is noise wearing a security badge, and it would make `gh` a
 dependency the doctor otherwise never has. Provenance is an install-time
 question and is answered there.
 
-**What this does not close, stated so it is not found later.** `install.sh`
-itself is fetched unsigned over `curl`; no signature on the artifacts can fix
-verifying the verifier, and that is a property of `curl | sh` rather than an
-oversight. The Copr rpm is built from source at the tag by Copr and signed with
-Copr's key, not this one. And the eight tools bothy fetches are other projects'
-releases, pinned by checksum in `bothy.lock` and trust-on-first-use by
-construction — bothy cannot sign what it did not build. Those are three
-different problems, and none of them is this one.
+**All five install paths, since signing one of them is not the question.**
+Three mechanisms, verified rather than assumed:
+
+| path | signed by | checked by |
+|---|---|---|
+| script | this attestation | you, `--verify` |
+| `.deb` | this attestation | you, `gh attestation verify --bundle` |
+| dnf | Copr's per-project key | dnf, `gpgcheck=1` in the repo file |
+| `go install` | the module checksum database | go, against `sum.golang.org` |
+| source | nothing | — |
+
+dnf and Go were already covered, and by better mechanisms than a README claim:
+both check without being asked. The two paths this record adds are the two that
+had a checksum or nothing.
+
+**What it does not close, stated so it is not found later.** `install.sh` is
+itself fetched unsigned over `curl`, and a source build trusts the clone: no
+signature on an artifact can fix verifying the verifier, which is a property of
+`curl | sh` and of `git clone` rather than an oversight. And the eight tools
+bothy fetches are other projects' releases, pinned by checksum in `bothy.lock`
+and trust-on-first-use by construction — bothy cannot sign what it did not
+build. Those are different problems, and neither is this one.

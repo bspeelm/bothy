@@ -71,16 +71,36 @@ same mild sense of anticlimax.
 | **Go** | people who already have Go and are not sorry | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
 
-The script checks a checksum on its own. To check the signature too — that the
-binary came out of this repository's release workflow, not merely off its
-release page — pass `--verify`, which needs the [`gh` CLI](https://cli.github.com):
+Each of those five is signed, by three different mechanisms, and only one of
+them asks anything of you.
+
+**dnf** and **Go** check themselves: the Copr repository ships `gpgcheck=1`
+against its own key, and `go install` checks the module against
+[sum.golang.org](https://sum.golang.org). Nothing to type.
+
+**The script** checks a checksum on its own; `--verify` also checks the
+signature — that the binary came out of this repository's release workflow,
+rather than merely off its release page. It needs the
+[`gh` CLI](https://cli.github.com):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh -s -- --verify
 ```
 
-It refuses to install if the signature does not check out, and refuses to
-pretend if it cannot check at all.
+**The `.deb`** carries the same signature, and downloading it by hand means
+checking it by hand. Take `attestation.jsonl` from the same release page and
+neither command needs a GitHub account:
+
+```sh
+gh attestation verify ./bothy_*.deb --repo bspeelm/bothy --bundle attestation.jsonl
+```
+
+Both refuse rather than degrade: a signature that does not check out stops the
+install, and so does being asked to check one without the means to.
+
+**Source** is the exception, and not by oversight. You are compiling the tree
+you cloned, so what you are trusting is the clone — the same question as
+trusting this page, which no signature further down can answer for you.
 
 Then, from any directory you happen to be in:
 
