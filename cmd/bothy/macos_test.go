@@ -101,6 +101,17 @@ func TestBothyInstallsOnMacOS(t *testing.T) {
 		t.Errorf("a tool is still missing after install:\n%s", out)
 	}
 
+	// #73: a .desktop file is a freedesktop convention and macOS has none.
+	// bothy used to write one here and report success, which is the failure
+	// this job exists to notice.
+	entry, code := m.run("desktop-entry")
+	if code == 0 {
+		t.Errorf("desktop-entry succeeded on macOS, where the file means nothing:\n%s", entry)
+	}
+	if !strings.Contains(entry, "application bundle") {
+		t.Errorf("the refusal does not say what macOS wants instead:\n%s", entry)
+	}
+
 	if out, code := m.run("layout"); code != 0 || !strings.Contains(out, "pane") {
 		t.Errorf("layout exited %d without rendering panes:\n%s", code, out)
 	}
