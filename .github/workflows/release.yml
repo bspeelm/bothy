@@ -52,6 +52,7 @@ jobs:
         with:
           subject-path: |
             dist/bothy_*.tar.gz
+            dist/bothy-*-source.tar.gz
             dist/*.deb
             dist/checksums.txt
       # The bundle is published beside the artifacts so that verifying needs no
