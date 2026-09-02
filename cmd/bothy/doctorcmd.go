@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/doctor"
@@ -67,12 +68,45 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 		pass, warn, fail, skip := rep.Counts()
 		fmt.Printf("\n%d passed, %d warning(s), %d failure(s), %d not applicable\n",
 			pass, warn, fail, skip)
+		printCapabilities(rep)
 	}
 
 	if rep.Failed() {
 		os.Exit(1)
 	}
 	return nil
+}
+
+// printCapabilities answers the question the check list only implies: what
+// does this stack actually give you. ADR-017 names five things, and a
+// capability nothing checks says so rather than being quietly counted as
+// working.
+func printCapabilities(rep doctor.Report) {
+	delivers := rep.Delivers()
+	var yes, no, unchecked []string
+	for _, c := range doctor.Capabilities {
+		switch delivers[c] {
+		case doctor.Pass:
+			yes = append(yes, string(c))
+		case doctor.Fail, doctor.Warn:
+			no = append(no, string(c))
+		default:
+			unchecked = append(unchecked, string(c))
+		}
+	}
+	fmt.Println()
+	for _, line := range []struct {
+		label string
+		items []string
+	}{
+		{"this stack gives you", yes},
+		{"it cannot give you", no},
+		{"nothing verifies", unchecked},
+	} {
+		if len(line.items) > 0 {
+			fmt.Printf("%-21s %s\n", line.label+":", strings.Join(line.items, ", "))
+		}
+	}
 }
 
 func mark(s doctor.Severity) string {

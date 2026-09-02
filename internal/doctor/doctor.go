@@ -30,10 +30,29 @@ const (
 )
 
 // Result is one check's verdict.
+// Capability is one of the five things a stack either gives you or does not
+// (ADR-017). Most checks bear on none of them and leave it empty: whether
+// config.toml has a typo says nothing about what the workspace can do.
+type Capability string
+
+const (
+	Panes     Capability = "panes"
+	Sessions  Capability = "sessions"
+	Images    Capability = "images"
+	Theme     Capability = "theme"
+	Isolation Capability = "isolation"
+)
+
+// Capabilities is the set, in the order a report names them.
+var Capabilities = []Capability{Panes, Sessions, Images, Theme, Isolation}
+
 type Result struct {
 	ID       string   `json:"id"`
 	Severity Severity `json:"severity"`
-	Summary  string   `json:"summary"`
+	// Capability is what this check bears on, empty for the many that bear
+	// on none.
+	Capability Capability `json:"capability,omitempty"`
+	Summary    string     `json:"summary"`
 	// Detail explains what was actually observed.
 	Detail string `json:"detail,omitempty"`
 	// Fix is a single actionable line. Every failing check must have one.
@@ -43,6 +62,33 @@ type Result struct {
 // Report is a full run.
 type Report struct {
 	Results []Result `json:"results"`
+}
+
+// Delivers reports what this stack can and cannot do, taken from the checks
+// bearing on each capability: the worst severity among them wins, and a
+// capability nothing checks comes back Skip.
+//
+// This is the question someone actually has. Twenty-three lines of check
+// output answer it only for a reader who already knows which lines matter.
+func (r Report) Delivers() map[Capability]Severity {
+	out := map[Capability]Severity{}
+	for _, c := range Capabilities {
+		out[c] = Skip
+	}
+	for _, res := range r.Results {
+		if res.Capability == "" {
+			continue
+		}
+		switch {
+		case res.Severity == Fail:
+			out[res.Capability] = Fail
+		case res.Severity == Warn && out[res.Capability] != Fail:
+			out[res.Capability] = Warn
+		case res.Severity == Pass && out[res.Capability] == Skip:
+			out[res.Capability] = Pass
+		}
+	}
+	return out
 }
 
 // Failed reports whether any check failed, which is the process exit code.
@@ -74,8 +120,9 @@ func (r Report) Counts() (pass, warn, fail, skip int) {
 
 // Check is one diagnostic.
 type Check struct {
-	ID  string
-	Run func(Env) Result
+	ID         string
+	Capability Capability
+	Run        func(Env) Result
 }
 
 // Env is everything the checks are allowed to look at.
@@ -133,6 +180,7 @@ func Run(env Env) Report {
 	for _, c := range Checks() {
 		res := c.Run(env)
 		res.ID = c.ID
+		res.Capability = c.Capability
 		rep.Results = append(rep.Results, res)
 	}
 	return rep
@@ -141,21 +189,21 @@ func Run(env Env) Report {
 // Checks is the full list, in the order they are reported.
 func Checks() []Check {
 	return []Check{
-		{ID: "yazi-config-discarded", Run: checkYaziConfigDiscarded},
+		{ID: "yazi-config-discarded", Capability: Isolation, Run: checkYaziConfigDiscarded},
 		{ID: "yazi-version", Run: checkYaziVersion},
 		{ID: "yazi-config-keys", Run: checkYaziConfigKeys},
 		{ID: "yazi-plugins", Run: checkYaziPlugins},
-		{ID: "image-previews", Run: checkImagePreviews},
-		{ID: "profile-renders", Run: checkProfileRenders},
-		{ID: "layout-built", Run: checkLayoutBuilt},
-		{ID: "terminal-capability", Run: checkTerminalCapability},
-		{ID: "passthrough", Run: checkPassthrough},
-		{ID: "isolation", Run: checkIsolation},
-		{ID: "tool-data", Run: checkToolData},
+		{ID: "image-previews", Capability: Images, Run: checkImagePreviews},
+		{ID: "profile-renders", Capability: Panes, Run: checkProfileRenders},
+		{ID: "layout-built", Capability: Panes, Run: checkLayoutBuilt},
+		{ID: "terminal-capability", Capability: Images, Run: checkTerminalCapability},
+		{ID: "passthrough", Capability: Isolation, Run: checkPassthrough},
+		{ID: "isolation", Capability: Isolation, Run: checkIsolation},
+		{ID: "tool-data", Capability: Isolation, Run: checkToolData},
 		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "config-age", Run: checkConfigAge},
 		{ID: "watermark-image", Run: checkWatermarkImage},
-		{ID: "zellij-config", Run: checkZellijConfig},
+		{ID: "zellij-config", Capability: Isolation, Run: checkZellijConfig},
 		{ID: "terminfo", Run: checkTerminfo},
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},
@@ -163,7 +211,7 @@ func Checks() []Check {
 		{ID: "editor", Run: checkEditor},
 		{ID: "tool-provenance", Run: checkToolProvenance},
 		{ID: "tools-reachable", Run: checkToolsReachable},
-		{ID: "theme-palette", Run: checkThemePalette},
+		{ID: "theme-palette", Capability: Theme, Run: checkThemePalette},
 	}
 }
 
