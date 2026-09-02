@@ -23,6 +23,10 @@ import (
 // because how a program is obtained is exactly what differs between them.
 type Provider struct {
 	Header
+	// Detect names environment variables this program exports while running.
+	// bothy refuses to open a workspace inside one, because the layout would
+	// start a second copy in a pane of the first.
+	Detect  []string `toml:"detect"`
 	Fetch   *Fetch   `toml:"fetch"`
 	Advise  *Advise  `toml:"advise"`
 	Files   []File   `toml:"file"`

@@ -9,6 +9,7 @@ name      = "claude-code"
 what      = "the agent that sits in the main pane"
 slot      = "agent"
 platforms = ["linux", "darwin"]
+detect    = ["CLAUDECODE", "CLAUDE_CODE_SSE"]
 
 [advise]
 binary      = "claude"
