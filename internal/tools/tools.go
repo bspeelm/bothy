@@ -1,17 +1,11 @@
 // Package tools decides, for each tool the workspace needs, whether the
 // system's copy will do or bothy has to supply one.
 //
-// The policy is PLAN.md §4: fill gaps, never replace. A tool already on PATH
-// that meets the minimum version is used as it is; only a missing or too-old
-// one is fetched. bothy never touches the system's copy and never asks a
-// package manager for anything, and a tool it does supply goes in its own
-// bin/ — on PATH for bothy's session only, so it never shadows your everyday
-// one. What it supplies it also keeps at the pinned version, which is the one
-// thing it does upgrade and only ever inside that directory.
-//
-// Minimum versions are "the oldest that actually works", not "the newest
-// available". For most of these almost any version does, so on a normally
-// equipped machine bothy downloads nothing.
+// Fill gaps, never replace (PLAN.md §4): a tool on PATH meeting the minimum is
+// used as it is, and one bothy supplies goes in its own bin/, on PATH for the
+// session only so it never shadows your everyday copy. Minimums are "the
+// oldest that works", so on a normally equipped machine bothy downloads
+// nothing.
 package tools
 
 import (
@@ -27,11 +21,12 @@ import (
 	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 // Tool is a declarative definition, loaded from slots/tools/<name>.toml.
 type Tool struct {
-	Name   string `toml:"name"`
+	slots.Header
 	Binary string `toml:"binary"`
 	// Extra names additional binaries in the same archive that must be
 	// installed alongside — yazi ships its package manager `ya` this way.
@@ -187,13 +182,9 @@ func Resolve(t Tool, lookPath func(string) (string, error), version func(string)
 }
 
 // SystemLookPath finds a binary on PATH, ignoring one directory -- which
-// callers set to bothy's own bin.
-//
-// bothy puts that directory on PATH for its own session, so a plain
-// exec.LookPath answers "does the system have this?" differently depending on
-// whether the question was asked from inside the workspace or outside it. What
-// the system has does not change with where you are standing, and neither
-// should the answer.
+// callers set to bothy's own bin. That directory is on PATH inside the
+// session, so a plain exec.LookPath answers "does the system have this?"
+// differently depending on where it was asked from.
 func SystemLookPath(skip string) func(string) (string, error) {
 	skip = filepath.Clean(skip)
 	return func(bin string) (string, error) {
@@ -233,7 +224,12 @@ func ResolveAll(names []string, ownBin string) ([]Decision, error) {
 // Required returns the tools a configuration actually needs. Asking for the
 // whole list would have bothy fetching a git TUI for someone who turned the
 // side pane off.
-func Required(mux, browser string, extras []string) ([]string, error) {
+//
+// providers is every slot's provider, not the two bothy can fetch today: one
+// with no slots/tools file is dropped by the same known[] test that drops a
+// misspelled extra. Naming mux and browser made "which slots are fetchable" an
+// argument list, which the files say for themselves now.
+func Required(providers, extras []string) ([]string, error) {
 	all, err := Load()
 	if err != nil {
 		return nil, err
@@ -255,8 +251,9 @@ func Required(mux, browser string, extras []string) ([]string, error) {
 		}
 		want = append(want, n)
 	}
-	add(mux)
-	add(browser)
+	for _, p := range providers {
+		add(p)
+	}
 	for _, e := range extras {
 		add(e)
 	}

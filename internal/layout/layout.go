@@ -20,12 +20,10 @@ import (
 )
 
 // Profile is one workspace arrangement, read from profiles/<name>.toml or
-// ~/.config/bothy/profiles/<name>.toml.
-//
-// The model is deliberately only two levels deep: a stack of rows, each row
-// either one pane or a set of side-by-side columns. Every layout in PLAN.md
-// fits, and an arbitrarily nested tree would buy expressiveness nobody asked
-// for at the cost of a much harder renderer to keep correct.
+// ~/.config/bothy/profiles/<name>.toml. Deliberately two levels deep -- a
+// stack of rows, each one pane or a set of columns -- because every layout in
+// PLAN.md fits, and a nested tree buys expressiveness nobody asked for at the
+// cost of a renderer that is harder to keep correct.
 type Profile struct {
 	Name        string `toml:"name"`
 	Description string `toml:"description"`
@@ -71,12 +69,9 @@ func LoadProfile(path string) (Profile, error) {
 }
 
 // ParseProfile reads a profile from bytes. name is what an error calls the
-// source -- a path, or something like "profiles/cockpit.toml" for one of the
-// shipped profiles, which do not have a path.
-//
-// Separate from LoadProfile because the shipped profiles are embedded, and
-// reaching them through a file loader meant writing them to a temp file
-// purely to read them back.
+// source -- a path, or "profiles/cockpit.toml" for a shipped profile, which
+// has none. Separate from LoadProfile because the shipped profiles are
+// embedded, and a file loader meant writing them to a temp file to read back.
 func ParseProfile(src []byte, name string) (Profile, error) {
 	var p Profile
 	if err := toml.Unmarshal(src, &p); err != nil {

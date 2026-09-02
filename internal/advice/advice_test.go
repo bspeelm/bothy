@@ -122,3 +122,31 @@ func TestAdvisedProvidersDeclareTheirBinary(t *testing.T) {
 		}
 	}
 }
+
+// An advice file cannot be advice on a platform it has no install line for.
+// "default" is the line that covers everything, which is how the agents get
+// away with one.
+func TestPlatformsAreCoveredByAnInstallLine(t *testing.T) {
+	for _, name := range []string{"claude-code", "gemini-cli", "ghostty", "helix", "nano", "neovim", "vim"} {
+		a, err := Get(name)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		covered := map[string]bool{}
+		for key := range a.Install {
+			switch key {
+			case "default":
+				covered["linux"], covered["darwin"] = true, true
+			case "darwin":
+				covered["darwin"] = true
+			default: // every other key is a Linux distribution
+				covered["linux"] = true
+			}
+		}
+		for _, p := range a.Platforms {
+			if !covered[p] {
+				t.Errorf("%s declares platform %q with no install line for it", name, p)
+			}
+		}
+	}
+}

@@ -1,9 +1,7 @@
-// Package install renders bothy's config tree.
-//
-// Everything it writes lands under <bothy>/config (ADR-009). It never touches
-// ~/.config/yazi, ~/.vimrc, ~/.bashrc.d or your global git config; the tools
-// are launched pointed at bothy's tree instead. See cmd/bothy/dev.go for the
-// environment that does the pointing.
+// Package install renders bothy's config tree. Everything it writes lands
+// under <bothy>/config (ADR-009); it never touches ~/.config/yazi, ~/.vimrc or
+// your global git config, and the tools are launched pointed at bothy's tree
+// instead. See cmd/bothy/dev.go for the environment that does the pointing.
 package install
 
 import (
@@ -275,12 +273,10 @@ func muxBinary(cfg config.Config) string {
 	return cfg.Slots.Mux
 }
 
-// opener is the command that hands a file to the desktop.
-//
-// There is no portable answer. xdg-open is the freedesktop convention and does
-// not exist on macOS, which has `open`. Inside a container there is a third
-// answer: the app databases live on the host, so a local xdg-open would be a
-// working binary with no viewers behind it, and the file has to go out.
+// opener is the command that hands a file to the desktop. There is no portable
+// answer: xdg-open is the freedesktop convention, macOS has `open`, and inside
+// a container the app databases live on the host -- so a local xdg-open would
+// be a working binary with no viewers behind it.
 func opener(p platform.Info) string {
 	switch {
 	case p.InContainer():
@@ -370,16 +366,13 @@ func slug(name string) string {
 	return out
 }
 
-// SessionEnv builds the environment for bothy's process tree.
-//
-// This is where isolation actually takes effect: the configs were written into
-// bothy's directory, and nothing reads them unless the tools are told to.
-// Telling them is a handful of environment variables scoped to one process
-// tree, so the user's shell keeps its own PATH and EDITOR.
+// SessionEnv builds the environment for bothy's process tree, which is where
+// isolation takes effect: the configs are in bothy's directory and nothing
+// reads them unless the tools are told to. A handful of variables scoped to
+// one process tree, so the user's shell keeps its own PATH and EDITOR.
 //
 // The doctor uses this too, so checks run tools with the launcher's config.
-// terminalSize is a seam: the real one asks the terminal, which a test has
-// none of.
+// terminalSize is a seam: a test has no terminal to ask.
 var terminalSize = platform.TerminalSize
 
 func SessionEnv(p platform.Info, cfg config.Config) []string {
@@ -415,47 +408,21 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 		env.set("VIMINIT", "source "+VimRC(p))
 	}
 
-	// Cache only, and deliberately only cache.
-	//
-	// A cache is a tool's own scratch space: throwing it away costs a rebuild
-	// and nothing else, so keeping it inside bothy's tree makes uninstall
-	// complete without taking anything from anyone. It is also what keeps
-	// `ya pkg`'s clone of the plugin repository where uninstall can reach it.
-	//
-	// Data and state are not that. Neovim keeps its plugins in
-	// $XDG_DATA_HOME/nvim, zoxide keeps the directory database it has learned
-	// from you, lazygit keeps its state -- and redirecting those hid all of it
-	// from the tools running in the workspace. "Your editor is yours" cannot
-	// survive bothy pointing your editor at an empty directory.
-	//
-	// So the tools write their data where they always did, and the doctor
-	// reports what landed outside. That is the version of ADR-009 that is
-	// true: bothy writes nothing outside its own tree, and says plainly what
-	// the tools it runs write outside theirs.
+	// Cache only (ADR-022). A cache is scratch space, so keeping it here makes
+	// uninstall complete without taking anything from anyone. Data and state
+	// are not: redirecting those hid nvim's plugins and zoxide's database from
+	// the tools that had learned them.
 	env.set("XDG_CACHE_HOME", p.CacheDir())
 
-	// Bothy's own tree, named rather than derived. The three variables above
-	// move where the tools look; this one keeps bothy itself looking here, so
-	// that a `bothy doctor` typed in the shell pane inspects the workspace it
-	// is running in rather than an empty directory beneath it.
+	// Named rather than derived, so a `bothy doctor` typed in the shell pane
+	// inspects the workspace it is running in.
 	env.set("BOTHY_DIR", p.BothyDir())
 
-	// A pane's command can start before the multiplexer has sized its pty, and
-	// a pty nobody has sized reports 0x0. Yazi asks the terminal how big it is
-	// and exits when the answer is nothing -- so the workspace opens with a
-	// dead file browser and one line of error in it.
-	//
-	// These are the fallback yazi looks for next, and having them makes the
-	// race survivable rather than fatal. The values are this terminal's, not
-	// the pane's, so they are a starting guess: the multiplexer sends SIGWINCH
-	// the moment it sizes the pane and the tool corrects itself. Every tool
-	// worth the name prefers the ioctl and reads these only when it fails,
-	// which is exactly the case being covered.
-	// Unset when there is nothing to ask, for the same reason passthrough
-	// unsets above: the session inherits this environment, so a value from an
-	// outer terminal -- or from an outer bothy session -- would stay in place
-	// and be read as this one's. A wrong size is worse than none, because none
-	// is what makes a tool ask the ioctl.
+	// A pane's command can start before the mux has sized its pty, and yazi
+	// exits when the terminal reports 0x0. These are the fallback it reads
+	// next, corrected by SIGWINCH once the pane is sized. Unset when nothing
+	// was measured: an inherited size would be read as this pane's, and a
+	// wrong size is worse than none, which is what makes a tool ask the ioctl.
 	if cols, rows, ok := terminalSize(); ok {
 		env.set("COLUMNS", strconv.Itoa(cols))
 		env.set("LINES", strconv.Itoa(rows))
@@ -468,13 +435,10 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	return env.slice()
 }
 
-// env is an environment being assembled.
-//
-// It replaces rather than appends, which is not a detail: an environment with
-// two PATH entries is ambiguous — which one a process sees depends on the libc
-// and on whether anything deduplicated it on the way through. Appending a
-// second PATH looked right and left the original one first in the list, so the
-// tools bothy supplied were not actually found.
+// env is an environment being assembled. It replaces rather than appends,
+// which is not a detail: with two PATH entries, which one a process sees
+// depends on the libc and on whether anything deduplicated it on the way
+// through, and the original stays first -- so bothy's tools are not found.
 type env struct {
 	keys   []string
 	values map[string]string

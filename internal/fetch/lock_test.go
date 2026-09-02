@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
@@ -114,7 +115,7 @@ func TestChecksumFileRendersBothShapes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tool := tools.Tool{
-				Name:      "thing",
+				Header:    slots.Header{Name: "thing"},
 				Checksums: tc.checksums,
 				Assets:    map[string]string{"linux_x86_64": "thing-{version}-linux.tar.gz"},
 			}
@@ -148,7 +149,7 @@ func TestUpstreamSumFindsTheRightLine(t *testing.T) {
 	defer func() { ReleaseBase = old }()
 
 	tool := tools.Tool{
-		Name: "rg", Repo: "a/b", Checksums: "checksums.txt",
+		Header: slots.Header{Name: "rg"}, Repo: "a/b", Checksums: "checksums.txt",
 		Assets: map[string]string{"linux_x86_64": "rg-{version}-linux.tar.gz"},
 	}
 	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1.0", "1.0", asset)
@@ -163,7 +164,7 @@ func TestUpstreamSumFindsTheRightLine(t *testing.T) {
 // A tool that publishes nothing must be silent, not an error -- four of the
 // nine publish nothing and that is not a fault.
 func TestUpstreamSumIsSilentWhenNothingIsPublished(t *testing.T) {
-	tool := tools.Tool{Name: "delta", Repo: "a/b",
+	tool := tools.Tool{Header: slots.Header{Name: "delta"}, Repo: "a/b",
 		Assets: map[string]string{"linux_x86_64": "delta.tar.gz"}}
 	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1", "1", "delta.tar.gz")
 	if err != nil || got != "" {
@@ -181,7 +182,7 @@ func TestUpstreamSumErrorsWhenTheAssetIsAbsent(t *testing.T) {
 	ReleaseBase = srv.URL
 	defer func() { ReleaseBase = old }()
 
-	tool := tools.Tool{Name: "t", Repo: "a/b", Checksums: "checksums.txt",
+	tool := tools.Tool{Header: slots.Header{Name: "t"}, Repo: "a/b", Checksums: "checksums.txt",
 		Assets: map[string]string{"linux_x86_64": "t.tar.gz"}}
 	if _, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1", "1", "t.tar.gz"); err == nil {
 		t.Error("a checksum file that does not list the asset was accepted")

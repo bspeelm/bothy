@@ -69,7 +69,7 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 		pass, warn, fail, skip := rep.Counts()
 		fmt.Printf("\n%d passed, %d warning(s), %d failure(s), %d not applicable\n",
 			pass, warn, fail, skip)
-		printCapabilities(rep)
+		printCapabilities(rep, cfg)
 	}
 
 	if rep.Failed() {
@@ -78,18 +78,23 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	return nil
 }
 
-// printCapabilities answers the question the check list only implies: what
-// does this stack actually give you. ADR-017 names five things, and a
-// capability nothing checks says so rather than being quietly counted as
-// working.
-func printCapabilities(rep doctor.Report) {
+// printCapabilities answers what the check list only implies: what this stack
+// actually gives you (ADR-017). A capability nothing checks says so rather
+// than being counted as working, unless nothing supplies it either.
+func printCapabilities(rep doctor.Report, cfg config.Config) {
 	delivers := rep.Delivers()
+	supplied := doctor.Supplied(cfg)
 	var yes, no, unchecked []string
 	for _, c := range doctor.Capabilities {
-		switch delivers[c] {
-		case doctor.Pass:
+		switch {
+		case !supplied[c]:
+			// Asked before the results: the graphics check reads the emulator
+			// bothy runs in, not the one the config names, so it passes on a
+			// stack with nothing to do the work.
+			no = append(no, string(c))
+		case delivers[c] == doctor.Pass:
 			yes = append(yes, string(c))
-		case doctor.Fail, doctor.Warn:
+		case delivers[c] == doctor.Fail, delivers[c] == doctor.Warn:
 			no = append(no, string(c))
 		default:
 			unchecked = append(unchecked, string(c))

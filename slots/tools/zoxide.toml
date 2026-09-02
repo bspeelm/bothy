@@ -1,6 +1,8 @@
 name        = "zoxide"
+what        = "a directory jumper"
 binary      = "zoxide"
 repo        = "ajeetdsouza/zoxide"
+platforms   = ["linux", "darwin"]
 min_version = "0.9.0"
 
 [assets]

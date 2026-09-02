@@ -3,6 +3,9 @@
 
 name = "vim"
 what = "the editor in the editor profile"
+slot = "editor"
+platforms = ["linux", "darwin"]
+provides = ["theme"]
 binary = "vim"
 
 [install]

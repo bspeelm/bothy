@@ -118,14 +118,10 @@ func (l *Lockfile) Save(path string) error {
 }
 
 // upstreamSum reads the sha256 a project published for one asset, or "" when
-// it published none. The file is "<sha256>  <filename>" lines, whether it
-// covers one asset or every asset in the release, so both are read by matching
-// the filename.
-//
-// Not every published checksum is of the asset: zellij publishes the hash of
-// the binary *inside* the archive, which cannot be compared with the archive's
-// own -- hence zellij carrying no checksums field despite publishing a file
-// that looks like one.
+// it published none. The file is "<sha256>  <filename>" lines whether it
+// covers one asset or all of them, so both are read by matching the filename.
+// Not every published checksum is of the asset: zellij hashes the binary
+// *inside* the archive, hence its empty checksums field.
 func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (string, error) {
 	name, err := t.ChecksumFile(p, version)
 	if err != nil || name == "" {
@@ -147,14 +143,11 @@ func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (str
 // gitDescribe matches the "-g<sha>" a `git describe` version carries.
 var gitDescribe = regexp.MustCompile(`-g[0-9a-f]{7,}`)
 
-// IsSourceBuild reports whether a version string came from `git describe`
-// rather than from a release tag -- which is to say whether it is *ahead* of
-// the tag it names rather than behind it.
-//
-// `make install-binary` stamps git describe (Makefile), so the shape is
-// "v0.1.5-3-gabc1234-dirty"; only a bare `go build` yields "dev". Comparing
-// such a version against the latest release by string inequality, which is all
-// Update.Outdated does, would announce an upgrade to someone already past it.
+// IsSourceBuild reports whether a version came from `git describe` rather than
+// a release tag -- whether it is *ahead* of the tag it names. The shape is
+// "v0.1.5-3-gabc1234-dirty"; only a bare `go build` yields "dev". Update
+// .Outdated compares by string inequality, which would otherwise announce an
+// upgrade to someone already past it.
 func IsSourceBuild(v string) bool {
 	return v == "" || v == "dev" ||
 		strings.HasSuffix(v, "-dirty") ||
@@ -238,11 +231,9 @@ var Platforms = []platform.Info{
 }
 
 // Relock refreshes one tool's entry: resolve the latest tag, then download
-// every platform's asset and record its checksum.
-//
-// Downloading real assets is slow and deliberate: checksums copied from a
-// metadata endpoint rather than computed from the bytes bothy will actually
-// run verify nothing.
+// every platform's asset and record its checksum. Downloading real assets is
+// slow and deliberate -- a checksum copied from a metadata endpoint rather
+// than computed from the bytes bothy will run verifies nothing.
 func Relock(t tools.Tool, progress func(string)) (Entry, error) {
 	tag, err := LatestRelease(t.Repo)
 	if err != nil {
@@ -272,11 +263,10 @@ func Relock(t tools.Tool, progress func(string)) (Entry, error) {
 		sum := Sum(body)
 		e.SHA256[p.OS+"_"+p.Arch] = sum
 
-		// Cross-check against what the project itself published, where it
-		// publishes anything. A checksum computed from the bytes GitHub served
-		// is trust-on-first-use: it catches a release tampered with after
-		// locking and pins one tampered with before. This is the only place
-		// that gap can be closed.
+		// Cross-check against what the project published, where it publishes
+		// anything. A checksum computed from the bytes GitHub served is
+		// trust-on-first-use: it catches tampering after locking and pins
+		// tampering before. This is the only place that gap can be closed.
 		switch upstream, err := upstreamSum(t, p, tag, version, asset); {
 		case err != nil:
 			if progress != nil {

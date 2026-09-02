@@ -23,7 +23,7 @@ func checkToolProvenance(env Env) Result {
 	if r, ok := env.elsewhere(); ok {
 		return r
 	}
-	names, err := tools.Required(env.Config.Slots.Mux, env.Config.Slots.Browser, env.Config.Extras)
+	names, err := tools.Required(env.Config.Providers(), env.Config.Extras)
 	if err != nil {
 		return warn("could not read the tool definitions", err.Error(), "")
 	}

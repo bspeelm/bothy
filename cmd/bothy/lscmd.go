@@ -7,12 +7,9 @@ import (
 	"github.com/bspeelm/bothy/internal/install"
 )
 
-// cmdLs lists the multiplexer sessions that are running.
-//
-// `zellij list-sessions` typed directly reports none of them: bothy's sessions
-// live under its own cache directory, which only its environment names. That
-// is the whole reason this command exists rather than being advice to run the
-// multiplexer's own.
+// cmdLs lists the multiplexer sessions that are running. `zellij
+// list-sessions` typed directly reports none of them: bothy's sessions live
+// under its own cache directory, which only its environment names.
 func cmdLs(args []string) error {
 	if len(args) > 0 {
 		return fmt.Errorf("ls takes no arguments")

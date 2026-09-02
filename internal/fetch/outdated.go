@@ -6,11 +6,10 @@ import (
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
-// Update is what one tool's pin looks like against its latest release.
-//
-// Reason is set when the check could not be made. That case is deliberately
-// not folded into "up to date": a job that reports everything current because
-// GitHub was rate-limiting it is worse than one that reports nothing at all.
+// Update is what one tool's pin looks like against its latest release. Reason
+// is set when the check could not be made, deliberately not folded into "up to
+// date": a job reporting everything current because GitHub was rate-limiting
+// it is worse than one reporting nothing.
 type Update struct {
 	Name   string `json:"name"`
 	Repo   string `json:"repo"`

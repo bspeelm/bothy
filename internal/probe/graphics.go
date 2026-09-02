@@ -10,13 +10,11 @@ import (
 	"strings"
 )
 
-// Graphics is the verdict on whether inline image previews will work, with
-// the reason carried alongside so "previews are off" is never unexplained.
-//
-// Zellij before 0.45.1 could not pass the Kitty graphics protocol through,
-// and its mangled reply to Yazi's capability query was parsed as keystrokes.
-// The workaround is gated on a version probe rather than deleted or made
-// permanent — see docs/decisions.md ADR-007.
+// Graphics is the verdict on whether inline image previews will work, with the
+// reason alongside so "previews are off" is never unexplained. Zellij before
+// 0.45.1 could not pass the Kitty protocol through, and its mangled reply to
+// Yazi's capability query was parsed as keystrokes; the workaround is gated on
+// a version probe rather than made permanent (ADR-007).
 type Graphics struct {
 	Supported bool
 	Reason    string
@@ -26,11 +24,9 @@ type Graphics struct {
 // 0.45.0 added the protocol; 0.45.1 fixed image sizing on startup.
 var MinZellijGraphics = Version{0, 45, 1}
 
-// terminalGraphics is what an emulator can draw, and by which protocol.
-//
-// The distinction matters because bothy runs Yazi inside a multiplexer.
-// Zellij passes the *Kitty* protocol through and nothing else, so a terminal
-// that draws images by a protocol of its own can show them when it is asked
+// terminalGraphics is what an emulator can draw, and by which protocol. The
+// distinction matters because Zellij passes the *Kitty* protocol through and
+// nothing else, so a terminal drawing images by a protocol of its own works
 // directly and not through Zellij. Treating "draws images" and "speaks Kitty"
 // as one fact told iTerm2 users their terminal could do neither.
 type terminalGraphics struct {

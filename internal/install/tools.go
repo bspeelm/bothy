@@ -31,16 +31,14 @@ type ToolFailure struct {
 // EnsureTools applies the fill-gaps policy: leave a good system tool alone,
 // fetch a missing or too-old one into bothy's own bin.
 //
-// A failure here is reported, not fatal. Most of these tools are conveniences,
-// and an install that refuses to write any config because a fuzzy finder would
-// not download is worse than one that says so and carries on — the doctor will
-// say it again, with the fix.
-// progress is called before each download, because an install that pulls tens
-// of megabytes in silence is indistinguishable from one that has hung.
+// A failure is reported, not fatal: refusing to write any config because a
+// fuzzy finder would not download is worse than saying so and carrying on, and
+// the doctor says it again with the fix. progress is called before each
+// download, because tens of megabytes in silence looks like a hang.
 func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer string, progress func(string)) (*ToolReport, error) {
 	rep := &ToolReport{Skipped: offline}
 
-	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
+	names, err := tools.Required(cfg.Providers(), cfg.Extras)
 	if err != nil {
 		return nil, err
 	}
@@ -127,11 +125,9 @@ func ours(p platform.Info, b state.Binary) bool {
 }
 
 // Supplied reports whether bothy already has this tool at want, with the
-// binary still there.
-//
-// The manifest is the record, not the filesystem: a binary of the right name
-// says nothing about which version it is, and the lockfile moving is exactly
-// the case this has to notice.
+// binary still there. The manifest is the record, not the filesystem: a binary
+// of the right name says nothing about its version, and a moved lockfile pin
+// is exactly what this has to notice.
 func Supplied(p platform.Info, m *state.Manifest, name, want string) bool {
 	for _, b := range m.Binaries {
 		if b.Name != name {
@@ -157,11 +153,10 @@ func SuppliedVersion(p platform.Info, m *state.Manifest, name string) string {
 	return ""
 }
 
-// PendingFetches are the tools that would actually be downloaded: the ones
-// bothy has to supply and does not already have at the pinned version.
-//
-// Used by the first-run prompt, so that it asks about the megabytes it is
-// about to spend rather than about every tool the system happens to lack.
+// PendingFetches are the tools that would actually be downloaded: those bothy
+// has to supply and does not already have at the pinned version. Used by the
+// first-run prompt, so it asks about the megabytes it is about to spend rather
+// than every tool the system lacks.
 func PendingFetches(p platform.Info, decisions []tools.Decision) []tools.Decision {
 	m, err := state.Load(p.StateDir())
 	if err != nil {
@@ -195,12 +190,9 @@ func fetchesIn(decisions []tools.Decision) []tools.Decision {
 }
 
 // ToolPath resolves a binary the way bothy's session will: its own bin first,
-// then the system PATH.
-//
-// Anything that asks a tool a question — the graphics probe, the doctor — must
-// go through this. Asking the system's zellij whether it supports Kitty
-// graphics, moments after fetching a newer one to bothy's bin precisely
-// because it does not, produces a confident answer about the wrong binary.
+// then the system PATH. Anything that asks a tool a question must go through
+// this -- asking the system's zellij about Kitty graphics moments after
+// fetching a newer one because it lacks them answers about the wrong binary.
 func ToolPath(p platform.Info, name string) string {
 	if name == "" {
 		return ""
