@@ -451,9 +451,17 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// the moment it sizes the pane and the tool corrects itself. Every tool
 	// worth the name prefers the ioctl and reads these only when it fails,
 	// which is exactly the case being covered.
+	// Unset when there is nothing to ask, for the same reason passthrough
+	// unsets above: the session inherits this environment, so a value from an
+	// outer terminal -- or from an outer bothy session -- would stay in place
+	// and be read as this one's. A wrong size is worse than none, because none
+	// is what makes a tool ask the ioctl.
 	if cols, rows, ok := terminalSize(); ok {
 		env.set("COLUMNS", strconv.Itoa(cols))
 		env.set("LINES", strconv.Itoa(rows))
+	} else {
+		env.unset("COLUMNS")
+		env.unset("LINES")
 	}
 
 	env.set("BOTHY_SESSION", "1")

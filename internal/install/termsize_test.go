@@ -57,3 +57,38 @@ func TestTerminalSizeIsHonestWhenThereIsNoTerminal(t *testing.T) {
 		t.Skip("this test runs on a terminal; nothing to assert")
 	}
 }
+
+// The environment bothy starts from carries whatever the shell had, and inside
+// a bothy session that includes the *outer* session's size. Passing it on
+// would hand every tool a number from another terminal, which is worse than
+// handing them nothing: nothing is what makes a tool ask the ioctl.
+func TestAnInheritedSizeIsNotPassedOn(t *testing.T) {
+	t.Setenv("COLUMNS", "999")
+	t.Setenv("LINES", "999")
+
+	restore := terminalSize
+	t.Cleanup(func() { terminalSize = restore })
+	terminalSize = func() (int, int, bool) { return 0, 0, false }
+
+	env := SessionEnv(platform.Info{Home: t.TempDir()}, config.Default())
+	for _, key := range []string{"COLUMNS", "LINES"} {
+		if got, ok := envValue(env, key); ok {
+			t.Errorf("%s = %q, inherited from a terminal that is not this one", key, got)
+		}
+	}
+}
+
+// And a size bothy did measure replaces the inherited one rather than losing
+// to it.
+func TestAMeasuredSizeWinsOverTheInheritedOne(t *testing.T) {
+	t.Setenv("COLUMNS", "999")
+
+	restore := terminalSize
+	t.Cleanup(func() { terminalSize = restore })
+	terminalSize = func() (int, int, bool) { return 176, 44, true }
+
+	env := SessionEnv(platform.Info{Home: t.TempDir()}, config.Default())
+	if got, _ := envValue(env, "COLUMNS"); got != "176" {
+		t.Errorf("COLUMNS = %q, want the measured 176", got)
+	}
+}
