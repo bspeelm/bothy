@@ -220,7 +220,7 @@ Every part can be changed. Most of it needn't be, and most of it won't be.
 | part | default | alternatives |
 |---|---|---|
 | terminal | ghostty | kitty, wezterm — none of which bothy installs |
-| multiplexer | zellij | nothing else, for now, and the "for now" is doing some work |
+| multiplexer | zellij | or turn it off, and run the agent in this terminal |
 | file browser | yazi | or turn it off |
 | editor | vim | nano, helix |
 | agent | claude-code | any command you care to name |
@@ -322,10 +322,11 @@ yours, and it does not need to be thanked.
 ## Contributing
 
 See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding a tool
-bothy fetches is one config file. Adding one it configures is a file, some
-templates, and a single branch. Only the multiplexer needs Go that reads the
-layout and writes something else; if anything else seems to, stop, because
-something has gone wrong, and it is probably ours. Most contributions so
+bothy fetches is one config file. Adding one it configures is a file and some
+templates — it used to need a branch in Go as well, and no longer does. Only
+the multiplexer needs Go, because it reads the layout and writes something
+else; if anything else seems to, stop, because something has gone wrong, and
+it is probably ours. Most contributions so
 far have been to the reasons rather than the code, which is either a good sign
 or the only one.
 
