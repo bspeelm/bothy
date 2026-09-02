@@ -117,6 +117,15 @@ it never installed, and the config check could not see it: the command it uses
 parses the config without executing `init.lua`. The config looked correct,
 passed, and would have failed only at launch.
 
+## Platforms
+
+Differences between machines are injected, not compiled out: pass the thing
+that varies as a parameter, or put it behind a variable a test can replace, the
+way `install.go`'s `terminalSize` does. A `//go:build` file is for code the
+compiler rejects elsewhere -- a raw syscall -- and nothing else, because CI
+runs one platform and never compiles the other side of a tag. ADR-031, and
+`TestPlatformSplitsStayShims` enforces it.
+
 ## Doctor checks
 
 A provider that can fail silently needs a check.
