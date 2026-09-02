@@ -15,12 +15,12 @@ import (
 
 	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 // Advice is one thing bothy advises on but does not install.
 type Advice struct {
-	Name    string            `toml:"name"`
-	What    string            `toml:"what"`
+	slots.Header
 	Binary  string            `toml:"binary"`
 	Install map[string]string `toml:"install"`
 	Avoid   []Avoid           `toml:"avoid"`

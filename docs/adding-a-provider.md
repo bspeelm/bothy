@@ -7,14 +7,39 @@ fit on one screen; if it stops fitting, the same thing has gone wrong.
 
 There are three kinds of thing you might add.
 
+## The header every provider carries
+
+Whichever kind it is, the file opens by saying what it *is*, not just how to
+get it:
+
+```toml
+name      = "helix"
+what      = "the editor in the editor profile"
+slot      = "editor"                 # omit it for an extra, which fills none
+platforms = ["linux", "darwin"]
+provides  = ["theme"]                # doctor capabilities it contributes to
+```
+
+`slot` is the one with teeth: `bothy config set slots.mux helix` is refused,
+because helix says it fills `editor`. A name bothy has no file for is still
+accepted — the agent slot takes any command you care to name — so the check
+catches a contradiction and stays out of the way otherwise.
+
+`platforms` restates the OS prefixes of `[assets]` (or the keys of `[install]`),
+and a test holds them together. `provides` is how bothy tells a capability
+nothing verified from one nothing in your stack was ever going to do.
+
 ## A tool bothy can supply
 
 One file in `slots/tools/`. Nothing else.
 
 ```toml
 name        = "helix"
+what        = "the editor in the editor profile"
 binary      = "hx"
 repo        = "helix-editor/helix"
+slot        = "editor"
+platforms   = ["linux", "darwin"]
 min_version = "25.01.0"
 reason      = "why this minimum exists, shown when bothy replaces someone's copy"
 

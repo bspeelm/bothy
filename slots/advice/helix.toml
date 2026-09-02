@@ -4,6 +4,8 @@
 
 name = "helix"
 what = "the editor in the editor profile"
+slot = "editor"
+platforms = ["linux", "darwin"]
 binary = "hx"
 
 [install]

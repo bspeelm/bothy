@@ -17,6 +17,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 	"github.com/bspeelm/bothy/internal/theme"
 )
 
@@ -265,6 +266,9 @@ func Save(p platform.Info, cfg Config) error {
 // matches Slots.
 var slotNames = []string{"terminal", "mux", "browser", "editor", "agent"}
 
+// SlotNames is the slot list for callers outside this package, copied.
+func SlotNames() []string { return slices.Clone(slotNames) }
+
 // Validate catches the configuration mistakes that would otherwise surface as
 // a broken workspace rather than an error message.
 func (c Config) Validate() error {
@@ -278,6 +282,11 @@ func (c Config) Validate() error {
 		if !slices.Contains(slotNames, name) && !c.namesAProvider(name) {
 			return fmt.Errorf("config: passthrough names %q, which is not a slot (%s)",
 				name, strings.Join(slotNames, ", "))
+		}
+	}
+	for _, slot := range slotNames {
+		if err := check("slots."+slot, c.ProviderFor(slot)); err != nil {
+			return err
 		}
 	}
 	// The constraints Set applies, checked again for a config.toml written by
@@ -327,6 +336,15 @@ func (c Config) PassesThrough(slot string) bool {
 		}
 	}
 	return false
+}
+
+// Providers is what fills every slot, in SlotNames order.
+func (c Config) Providers() []string {
+	out := make([]string, 0, len(slotNames))
+	for _, slot := range slotNames {
+		out = append(out, c.ProviderFor(slot))
+	}
+	return out
 }
 
 // ProviderFor is what fills a slot, or "" when the name is not a slot.
@@ -450,11 +468,32 @@ var allowed = map[string][]string{
 // check applies the constraint on a key, if it has one. An empty value always
 // passes: it means "unset", which every key allows.
 func check(key, value string) error {
+	if slot, ok := strings.CutPrefix(key, "slots."); ok {
+		return checkSlot(slot, value)
+	}
 	set, ok := allowed[key]
 	if !ok || value == "" || slices.Contains(set, value) {
 		return nil
 	}
 	return fmt.Errorf("config: %s wants one of %s, not %q", key, strings.Join(set, ", "), value)
+}
+
+// checkSlot rejects a provider assigned to a slot it does not fill. Only a
+// declared name can be caught -- the agent slot takes any command you name --
+// so an unknown one passes and a declared one has to agree.
+func checkSlot(slot, provider string) error {
+	if provider == "" || provider == "none" {
+		return nil
+	}
+	h, ok := slots.Get(provider)
+	if !ok || h.Slot == slot {
+		return nil
+	}
+	fills := "fills no slot"
+	if h.Slot != "" {
+		fills = "fills the " + h.Slot + " slot"
+	}
+	return fmt.Errorf("config: slots.%s = %q, but %s %s", slot, provider, provider, fills)
 }
 
 // parseBool is stricter than strconv.ParseBool is lenient: a value it does not

@@ -17,6 +17,7 @@ import (
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 // Severity distinguishes "this is broken" from "this is not what you asked for".
@@ -57,6 +58,27 @@ type Result struct {
 	Detail string `json:"detail,omitempty"`
 	// Fix is a single actionable line. Every failing check must have one.
 	Fix string `json:"fix,omitempty"`
+}
+
+// Supplied is the capabilities the configured providers claim between them.
+//
+// A capability is a chain -- images needs a terminal that draws them, a mux
+// that passes them through and a browser that asks -- so a claim is a
+// contribution, not a guarantee. Only the negative direction is sound, and the
+// one worth having: what nothing contributes to cannot happen.
+func Supplied(c config.Config) map[Capability]bool {
+	// Isolation is bothy's own doing, not a provider's.
+	out := map[Capability]bool{Isolation: true}
+	for _, provider := range c.Providers() {
+		h, ok := slots.Get(provider)
+		if !ok {
+			continue
+		}
+		for _, name := range h.Provides {
+			out[Capability(name)] = true
+		}
+	}
+	return out
 }
 
 // Report is a full run.

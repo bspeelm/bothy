@@ -1,6 +1,12 @@
 package config
 
-import "testing"
+import (
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/bspeelm/bothy/internal/slots"
+)
 
 // #69. passthrough is a documented feature that did not work in either
 // spelling: Validate demanded slot names, every caller asked by provider name,
@@ -57,5 +63,77 @@ func TestProviderForCoversEverySlot(t *testing.T) {
 	}
 	if got := c.ProviderFor("not-a-slot"); got != "" {
 		t.Errorf("ProviderFor(\"not-a-slot\") = %q, want empty", got)
+	}
+}
+
+// The slot check is only as good as its vocabulary: a provider declaring a
+// slot this package has never heard of would be silently unenforceable.
+func TestEveryDeclaredSlotIsASlot(t *testing.T) {
+	all, err := slots.All()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range all {
+		if h.Slot == "" {
+			continue
+		}
+		if !slices.Contains(slotNames, h.Slot) {
+			t.Errorf("%s declares slot %q, which is not one of %v", h.Name, h.Slot, slotNames)
+		}
+	}
+}
+
+// bothy config set slots.mux yazi used to be accepted in silence, along with
+// every other assignment of a provider to a slot it cannot fill -- three
+// commands and a workspace that cannot open. Nothing in the data said which
+// slot yazi filled, so there was nothing to be wrong against.
+func TestASlotRejectsAProviderThatFillsAnother(t *testing.T) {
+	for _, tc := range []struct{ key, value, want string }{
+		{"slots.mux", "yazi", "fills the browser slot"},
+		{"slots.browser", "zellij", "fills the mux slot"},
+		{"slots.agent", "ghostty", "fills the terminal slot"},
+		{"slots.mux", "fzf", "fills no slot"},
+	} {
+		c := Default()
+		err := c.Set(tc.key, tc.value)
+		if err == nil {
+			t.Errorf("Set(%q, %q) was accepted", tc.key, tc.value)
+			continue
+		}
+		if !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("Set(%q, %q) = %v, want it to say %q", tc.key, tc.value, err, tc.want)
+		}
+	}
+}
+
+// The rule catches a contradiction and otherwise stays out of the way. The
+// README promises the agent slot takes any command you care to name, and the
+// terminal slot names emulators bothy ships no file for.
+func TestASlotStillTakesANameBothyHasNoFileFor(t *testing.T) {
+	for _, tc := range [][2]string{
+		{"slots.agent", "my-own-thing"},
+		{"slots.terminal", "kitty"},
+		{"slots.terminal", "wezterm"},
+		{"slots.browser", "none"},
+		{"slots.editor", "helix"},
+		{"slots.mux", ""},
+	} {
+		c := Default()
+		if err := c.Set(tc[0], tc[1]); err != nil {
+			t.Errorf("Set(%q, %q) = %v, want it accepted", tc[0], tc[1], err)
+		}
+	}
+}
+
+// Validate has to reach the same verdict as Set, for a config.toml written by
+// hand rather than typed at bothy config set.
+func TestValidateRejectsAMismatchedSlot(t *testing.T) {
+	c := Default()
+	c.Slots.Mux = "yazi"
+	if err := c.Validate(); err == nil {
+		t.Error("Validate accepted mux = yazi")
+	}
+	if err := Default().Validate(); err != nil {
+		t.Errorf("Validate rejected the default config: %v", err)
 	}
 }

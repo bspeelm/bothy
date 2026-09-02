@@ -6,8 +6,12 @@
 # keystrokes — the phantom "Find next" documented in docs/origin-cheatsheet.md.
 # Fedora's COPR still ships 0.42.2, which is why this is not academic.
 name        = "zellij"
+what        = "the multiplexer"
 binary      = "zellij"
 repo        = "zellij-org/zellij"
+slot        = "mux"
+platforms   = ["linux", "darwin"]
+provides    = ["panes", "sessions", "theme"]
 min_version = "0.45.1"
 reason      = "image previews need the Kitty graphics protocol, added in 0.45"
 

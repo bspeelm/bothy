@@ -1,6 +1,8 @@
 name        = "ripgrep"
+what        = "a faster grep"
 binary      = "rg"
 repo        = "BurntSushi/ripgrep"
+platforms   = ["linux", "darwin"]
 min_version = "13.0.0"
 
 # ripgrep publishes a .sha256 beside each asset, of the asset itself.

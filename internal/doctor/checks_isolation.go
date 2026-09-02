@@ -120,7 +120,7 @@ func checkPassthrough(env Env) Result {
 		"mux":     "bothy's theme does not apply; your own keybindings do",
 	}
 	var lost, byProvider []string
-	for _, slot := range []string{"terminal", "mux", "browser", "editor", "agent"} {
+	for _, slot := range config.SlotNames() {
 		if !env.Config.PassesThrough(slot) {
 			continue
 		}

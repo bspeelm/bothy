@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bspeelm/bothy/internal/slots"
 	"github.com/bspeelm/bothy/internal/state"
 	"github.com/bspeelm/bothy/internal/tools"
 )
@@ -79,8 +80,8 @@ func TestSuppliedIgnoresTheSystemsCopy(t *testing.T) {
 func TestPendingFetchesLeavesOutWhatIsAlreadyThere(t *testing.T) {
 	p := sandboxPlatform(t)
 	decisions := []tools.Decision{
-		{Tool: tools.Tool{Name: "jq", Binary: "jq"}, Action: tools.UseSystem},
-		{Tool: tools.Tool{Name: "zellij", Binary: "zellij"}, Action: tools.Fetch},
+		{Tool: tools.Tool{Header: slots.Header{Name: "jq"}, Binary: "jq"}, Action: tools.UseSystem},
+		{Tool: tools.Tool{Header: slots.Header{Name: "zellij"}, Binary: "zellij"}, Action: tools.Fetch},
 	}
 	// No manifest and no state: everything that would be fetched still is.
 	if got := PendingFetches(p, decisions); len(got) != 1 || got[0].Tool.Name != "zellij" {

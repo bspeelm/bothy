@@ -27,11 +27,12 @@ import (
 	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 // Tool is a declarative definition, loaded from slots/tools/<name>.toml.
 type Tool struct {
-	Name   string `toml:"name"`
+	slots.Header
 	Binary string `toml:"binary"`
 	// Extra names additional binaries in the same archive that must be
 	// installed alongside — yazi ships its package manager `ya` this way.
@@ -233,7 +234,12 @@ func ResolveAll(names []string, ownBin string) ([]Decision, error) {
 // Required returns the tools a configuration actually needs. Asking for the
 // whole list would have bothy fetching a git TUI for someone who turned the
 // side pane off.
-func Required(mux, browser string, extras []string) ([]string, error) {
+//
+// providers is every slot's provider, not the two bothy can fetch today: one
+// with no slots/tools file is dropped by the same known[] test that drops a
+// misspelled extra. Naming mux and browser made "which slots are fetchable" an
+// argument list, which the files say for themselves now.
+func Required(providers, extras []string) ([]string, error) {
 	all, err := Load()
 	if err != nil {
 		return nil, err
@@ -255,8 +261,9 @@ func Required(mux, browser string, extras []string) ([]string, error) {
 		}
 		want = append(want, n)
 	}
-	add(mux)
-	add(browser)
+	for _, p := range providers {
+		add(p)
+	}
 	for _, e := range extras {
 		add(e)
 	}

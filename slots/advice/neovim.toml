@@ -5,6 +5,8 @@
 
 name = "neovim"
 what = "the editor in the editor profile"
+slot = "editor"
+platforms = ["linux", "darwin"]
 binary = "nvim"
 
 [install]

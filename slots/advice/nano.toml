@@ -3,6 +3,8 @@
 
 name = "nano"
 what = "the editor in the editor profile"
+slot = "editor"
+platforms = ["linux", "darwin"]
 binary = "nano"
 
 [install]

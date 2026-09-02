@@ -785,3 +785,51 @@ helper, deliberately left duplicated because unifying it across a package
 boundary is worse Go, and no function longer than eighty lines including its
 comments. There is no fat. That finding is what makes this a threshold move
 rather than an excuse for one.
+
+## ADR-028 — A provider says what it is, and only a declared name can be wrong
+
+A provider file said how to get a program and nothing about what the program
+was. `slots/tools/yazi.toml` gave a repository, a minimum version and a table of
+release assets; nothing in it said yazi was the file browser. Slot membership
+lived in Go instead, so the data and the code could not check each other, and
+this was accepted in silence:
+
+```
+$ bothy config set slots.mux yazi
+$ bothy config set slots.browser zellij
+$ bothy config set slots.agent ghostty
+```
+
+Three commands and a workspace that cannot open. `config.allowed` closes the
+value set of `workspace.pane_frames` and `workspace.launch` and of nothing else,
+because for a slot **there was nothing to be closed against**.
+
+**Every provider now carries a header** — `slot`, `what`, `platforms`,
+`provides` — in both dialects, joined by `internal/slots`.
+
+**Only a name bothy has a file for can be wrong.** The rule is not "the value
+must be a known provider"; it is "a known provider must agree". `slots.agent`
+takes any command you care to name and `slots.terminal` names emulators bothy
+ships no file for, and both keep working. This is the difference between a check
+that catches a contradiction and a whitelist that decides for you.
+
+**Every field has a reader, and two of those readers are tests.** A field
+nothing reads is a field nobody notices is wrong, which is why `redirect` was
+left out of this format when it was proposed. `slot` is read by the check above
+and by `tools.Required`, which stops naming mux and browser positionally.
+`provides` is read by `bothy doctor`: a capability nothing in the stack
+contributes to is reported as unavailable rather than as unverified — asked
+*before* the check results, because the graphics check reads the emulator bothy
+is running in rather than the one the config names, and so passes on a stack
+that has nothing to do the work. `what` is read by `bothy tools`. `platforms`
+has no behavioural reader yet and is held to `[assets]` by a test; that test is
+what makes the restatement safe to carry until the planner (#74) reads it.
+
+**What this does not do.** `install.plan()` still learns each provider from an
+`if`. Turning those four branches into a loop needs per-provider file lists, and
+the four providers it writes configs for split two-and-two across the dialects:
+zellij and yazi are tools, vim and ghostty are advice, because bothy installs no
+editor (ADR-014) and Ghostty publishes no binaries. There is no dialect that can
+hold file lists for all four until the layout move, so that is #115 and it is
+0.5.0. Declaring the slot and then having `plan()` ask the declaration instead of
+the config restates the branch without removing it, and buys nothing.
