@@ -202,7 +202,7 @@ multiplexer actually owns — in place of ADR-003's estimate that tmux "would
 roughly double the layout renderer", which this shows to be low.
 
 The gate: `grep -i zellij` across `cmd/` and `internal/` returns hits only
-inside the backend package and `slots/tools/zellij.toml`.
+inside the backend package and `slots/zellij.toml`.
 
 ---
 

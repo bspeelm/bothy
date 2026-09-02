@@ -8,37 +8,21 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 
-	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
-// Plugin is a Yazi plugin bothy's generated config depends on.
-type Plugin struct {
-	Name string `toml:"name"`
-	Use  string `toml:"use"`
-	// Rev is the commit to install. Pinned in the repository rather than
-	// resolved on the machine, so that two installs a week apart get the same
-	// plugin.
-	Rev   string   `toml:"rev"`
-	Gives string   `toml:"gives"`
-	Needs []string `toml:"needs"`
-}
-
-type pluginFile struct {
-	Plugins []Plugin `toml:"plugin"`
-}
+// Plugin is a package a provider's generated config depends on, pinned to a
+// revision in the provider's own file rather than resolved on the machine.
+type Plugin = slots.Plugin
 
 // YaziPlugins are the plugins bothy's yazi config references.
 func YaziPlugins() ([]Plugin, error) {
-	src, err := bothy.Slots.ReadFile("slots/plugins/yazi.toml")
-	if err != nil {
-		return nil, fmt.Errorf("install: %w", err)
+	pr, ok := slots.Get("yazi")
+	if !ok {
+		return nil, fmt.Errorf("install: no yazi provider")
 	}
-	var f pluginFile
-	if err := toml.Unmarshal(src, &f); err != nil {
-		return nil, fmt.Errorf("install: slots/plugins/yazi.toml: %w", err)
-	}
-	return f.Plugins, nil
+	return pr.Plugins, nil
 }
 
 // PluginInstalled reports whether a plugin is present in bothy's yazi tree.
@@ -118,7 +102,7 @@ func writePackageFile(p platform.Info, plugins []Plugin) error {
 }
 
 // EnsureYaziPlugins installs the plugins bothy's config references, at the
-// revisions pinned in slots/plugins/yazi.toml.
+// revisions pinned in the provider's own file.
 //
 // `ya pkg install` rather than `ya pkg add`: add resolves the revision at the
 // moment it runs, which is how two installs a week apart got different

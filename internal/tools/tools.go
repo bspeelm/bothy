@@ -16,29 +16,17 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pelletier/go-toml/v2"
-
-	bothy "github.com/bspeelm/bothy"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
 	"github.com/bspeelm/bothy/internal/slots"
 )
 
-// Tool is a declarative definition, loaded from slots/tools/<name>.toml.
+// Tool is a provider bothy can fetch: its header, flattened with its [fetch]
+// block. Projected from slots.Provider rather than parsed here, so the file
+// format has one reader.
 type Tool struct {
 	slots.Header
-	Binary string `toml:"binary"`
-	// Extra names additional binaries in the same archive that must be
-	// installed alongside — yazi ships its package manager `ya` this way.
-	Extra      []string          `toml:"extra"`
-	Repo       string            `toml:"repo"`
-	MinVersion string            `toml:"min_version"`
-	Reason     string            `toml:"reason"`
-	Assets     map[string]string `toml:"assets"`
-	// Checksums names the file the project publishes its own sha256 in, with
-	// {asset} and {version} interpolated. Empty when it publishes none, which
-	// is most of them. See Tool.ChecksumFile.
-	Checksums string `toml:"checksums"`
+	slots.Fetch
 }
 
 // Binaries is every binary this tool installs.
@@ -46,7 +34,7 @@ func (t Tool) Binaries() []string { return append([]string{t.Binary}, t.Extra...
 
 // Asset returns the release asset name for a platform, with {version}
 // substituted. version is the tag with any leading "v" or "<name>-" removed,
-// which is how every asset name in slots/tools spells it.
+// which is how every asset name in slots/ spells it.
 func (t Tool) Asset(p platform.Info, version string) (string, error) {
 	key := p.OS + "_" + p.Arch
 	pattern, ok := t.Assets[key]
@@ -79,32 +67,23 @@ func (t Tool) Min() (probe.Version, error) {
 	return probe.ParseVersion(t.MinVersion)
 }
 
-// Load reads the embedded tool definitions, sorted by name so install and
-// doctor output are stable between runs.
+// Load reads every provider bothy can fetch, sorted by name so install and
+// doctor output is stable between runs.
 func Load() ([]Tool, error) {
-	entries, err := bothy.Slots.ReadDir("slots/tools")
+	all, err := slots.All()
 	if err != nil {
-		return nil, fmt.Errorf("tools: %w", err)
+		return nil, err
 	}
 	var out []Tool
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".toml" {
+	for _, pr := range all {
+		if pr.Fetch == nil {
 			continue
 		}
-		src, err := bothy.Slots.ReadFile("slots/tools/" + e.Name())
-		if err != nil {
-			return nil, fmt.Errorf("tools: %w", err)
+		if pr.Fetch.Binary == "" || pr.Fetch.Repo == "" {
+			return nil, fmt.Errorf("tools: %s is missing binary or repo", pr.Name)
 		}
-		var t Tool
-		if err := toml.Unmarshal(src, &t); err != nil {
-			return nil, fmt.Errorf("tools: %s: %w", e.Name(), err)
-		}
-		if t.Name == "" || t.Binary == "" || t.Repo == "" {
-			return nil, fmt.Errorf("tools: %s is missing name, binary or repo", e.Name())
-		}
-		out = append(out, t)
+		out = append(out, Tool{Header: pr.Header, Fetch: *pr.Fetch})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
 }
 
@@ -226,7 +205,7 @@ func ResolveAll(names []string, ownBin string) ([]Decision, error) {
 // side pane off.
 //
 // providers is every slot's provider, not the two bothy can fetch today: one
-// with no slots/tools file is dropped by the same known[] test that drops a
+// with no [fetch] block is dropped by the same known[] test that drops a
 // misspelled extra. Naming mux and browser made "which slots are fetchable" an
 // argument list, which the files say for themselves now.
 func Required(providers, extras []string) ([]string, error) {

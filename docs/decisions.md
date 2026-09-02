@@ -967,3 +967,58 @@ PLAN.md §13 rules out. The exception is narrower than the dependency it avoids.
 `bootstrap/install.sh` cannot serve native Windows, and a PowerShell twin is a
 second shell file where ADR-001 permits one. That is an ADR question rather than
 a build-tag question, and it is the real reason native Windows is post-1.0.
+
+## ADR-032 — One provider file, and a config provider stops needing Go
+
+`slots/` held three unrelated TOML dialects parsed by three structs in three
+packages: `slots/tools/` for what bothy fetches, `slots/advice/` for what it
+only recommends, `slots/plugins/` for what a generated config depends on. A
+provider that was both — yazi, which bothy fetches *and* generates config for
+*and* installs plugins for — was three files that never mentioned each other.
+
+Worse, generating config was not data at all. It was an arm in
+`install.plan()`, which `docs/adding-a-provider.md` documented with a Go
+snippet directly under the sentence "if adding one needs new Go code, stop".
+
+**One file per provider, flat, at `slots/<name>.toml`.** A common header, then
+at most one way of being obtained — `[fetch]` or `[advise]` — then `[[file]]`
+for config to generate and `[[plugin]]` for what that config depends on.
+
+**Flat rather than `slots/<slot>/<name>.toml`.** Six of fifteen providers fill
+no slot, so per-slot directories need an `extras` directory that is not a slot,
+plus a test holding each directory name equal to the `slot` field inside its
+files. The field is authoritative either way; the directory would only be a
+second copy of it that can disagree.
+
+**`[fetch]` beside `[advise]`, not merged.** How a program is obtained is
+exactly what differs between them, and one flattened block would hide that. A
+provider may have both; none does yet, and vim could.
+
+**`dest` is data, not a convention.** `<ConfigRoot>/<provider>/<file>` fits
+seven of the ten generated files and breaks for three — zellij's theme, vim's
+colourscheme, and ghostty's config, which is `ghostty.conf` rather than
+`ghostty/config`. A convention with three exceptions is not a convention, so
+the destination is spelled out with `{theme}` interpolated.
+
+**`when` is a closed vocabulary.** Three files are conditional. An expression
+language would want a parser, and PLAN.md §13 allows one dependency, already
+spent on TOML. `install.conditions` is a map from name to predicate, and a test
+asserts every `when` in `slots/` is a key in it. An unrecognised condition
+writes the file rather than skipping it: a typo that shows is easier to notice
+than one that silently drops a config.
+
+**What stayed in Go, deliberately.** The `xdg-open` shim fills no slot and
+writes to `bin/` rather than the config root — bending it into a provider would
+make the format worse to fit one thing that is not one. And
+`checks_yazi.go` is yazi-specific knowledge, not configuration.
+
+**The projection.** `internal/slots` is the only thing that parses the format;
+`tools.Tool` and `advice.Advice` remain as field copies of it. Fifteen files
+downstream are untouched, and "one parser" is true without a refactor reaching
+the whole tree.
+
+**Verified by producing the same bytes.** Three configurations — default,
+`provide_config = true`, and images off — each write a tree byte-identical to
+the one the four hardcoded branches wrote, manifest timestamp aside. The format
+is a different way of saying the same thing, which is the only claim worth
+making about a refactor. Net −10 lines of code.

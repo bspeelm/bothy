@@ -114,11 +114,7 @@ func TestChecksumFileRendersBothShapes(t *testing.T) {
 		{"publishes none", "", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tool := tools.Tool{
-				Header:    slots.Header{Name: "thing"},
-				Checksums: tc.checksums,
-				Assets:    map[string]string{"linux_x86_64": "thing-{version}-linux.tar.gz"},
-			}
+			tool := tools.Tool{Header: slots.Header{Name: "thing"}, Fetch: slots.Fetch{Checksums: tc.checksums, Assets: map[string]string{"linux_x86_64": "thing-{version}-linux.tar.gz"}}}
 			got, err := tool.ChecksumFile(p, "1.2.3")
 			if err != nil {
 				t.Fatal(err)
@@ -148,10 +144,7 @@ func TestUpstreamSumFindsTheRightLine(t *testing.T) {
 	ReleaseBase = srv.URL
 	defer func() { ReleaseBase = old }()
 
-	tool := tools.Tool{
-		Header: slots.Header{Name: "rg"}, Repo: "a/b", Checksums: "checksums.txt",
-		Assets: map[string]string{"linux_x86_64": "rg-{version}-linux.tar.gz"},
-	}
+	tool := tools.Tool{Header: slots.Header{Name: "rg"}, Fetch: slots.Fetch{Repo: "a/b", Checksums: "checksums.txt", Assets: map[string]string{"linux_x86_64": "rg-{version}-linux.tar.gz"}}}
 	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1.0", "1.0", asset)
 	if err != nil {
 		t.Fatal(err)
@@ -164,8 +157,7 @@ func TestUpstreamSumFindsTheRightLine(t *testing.T) {
 // A tool that publishes nothing must be silent, not an error -- four of the
 // nine publish nothing and that is not a fault.
 func TestUpstreamSumIsSilentWhenNothingIsPublished(t *testing.T) {
-	tool := tools.Tool{Header: slots.Header{Name: "delta"}, Repo: "a/b",
-		Assets: map[string]string{"linux_x86_64": "delta.tar.gz"}}
+	tool := tools.Tool{Header: slots.Header{Name: "delta"}, Fetch: slots.Fetch{Repo: "a/b", Assets: map[string]string{"linux_x86_64": "delta.tar.gz"}}}
 	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1", "1", "delta.tar.gz")
 	if err != nil || got != "" {
 		t.Errorf("upstreamSum() = %q, %v; want silence", got, err)
@@ -182,8 +174,7 @@ func TestUpstreamSumErrorsWhenTheAssetIsAbsent(t *testing.T) {
 	ReleaseBase = srv.URL
 	defer func() { ReleaseBase = old }()
 
-	tool := tools.Tool{Header: slots.Header{Name: "t"}, Repo: "a/b", Checksums: "checksums.txt",
-		Assets: map[string]string{"linux_x86_64": "t.tar.gz"}}
+	tool := tools.Tool{Header: slots.Header{Name: "t"}, Fetch: slots.Fetch{Repo: "a/b", Checksums: "checksums.txt", Assets: map[string]string{"linux_x86_64": "t.tar.gz"}}}
 	if _, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"}, "v1", "1", "t.tar.gz"); err == nil {
 		t.Error("a checksum file that does not list the asset was accepted")
 	}

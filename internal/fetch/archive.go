@@ -64,7 +64,7 @@ func Extract(body []byte, assetName string, want []string) (map[string][]byte, e
 	case strings.HasSuffix(assetName, ".tar.xz"), strings.HasSuffix(assetName, ".txz"):
 		// The standard library has no xz decompressor and PLAN.md §13 caps
 		// dependencies at go-toml. No tool bothy currently supplies ships as
-		// tar.xz; helix does, which is why it is not in slots/tools yet.
+		// tar.xz; helix does, which is why bothy does not fetch it yet.
 		return nil, fmt.Errorf("%s is tar.xz, which bothy cannot unpack without a new dependency", assetName)
 	default:
 		// A bare binary, like jq's -- but only when the name does not look

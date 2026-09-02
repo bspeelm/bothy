@@ -18,6 +18,7 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
 	"github.com/bspeelm/bothy/internal/render"
+	"github.com/bspeelm/bothy/internal/slots"
 	"github.com/bspeelm/bothy/internal/theme"
 )
 
@@ -163,66 +164,34 @@ func GhosttyConf(p platform.Info) string {
 func plan(p platform.Info, cfg config.Config, data Data) []file {
 	var out []file
 
-	// A slot passed through uses the user's own config directory, so writing
-	// bothy's version of it would leave files nothing ever reads.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
-		z := ZellijDir(p)
-		out = append(out,
-			file{Dest: filepath.Join(z, "config.kdl"), Tool: "zellij",
-				Template: "templates/mux/zellij/config.kdl.tmpl"},
-			file{Dest: filepath.Join(z, "themes", data.ThemeName+".kdl"), Tool: "zellij",
-				Template: "templates/mux/zellij/theme.kdl.tmpl"},
-		)
-	}
-
-	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
-		y := YaziDir(p)
-		out = append(out,
-			file{Dest: filepath.Join(y, "yazi.toml"), Tool: "yazi",
-				Template: "templates/browser/yazi/yazi.toml.tmpl"},
-			file{Dest: filepath.Join(y, "keymap.toml"), Tool: "yazi",
-				Template: "templates/browser/yazi/keymap.toml.tmpl"},
-			file{Dest: filepath.Join(y, "init.lua"), Tool: "yazi",
-				Template: "templates/browser/yazi/init.lua.tmpl"},
-			file{Dest: filepath.Join(y, "theme.toml"), Tool: "yazi",
-				Template: "templates/browser/yazi/theme.toml.tmpl"},
-		)
-		// The placeholder previewer only stands in for images, so it is only
-		// written when images are actually turned off.
-		if !data.ImagePreviews {
+	for _, slot := range config.SlotNames() {
+		// A slot passed through uses the user's own config directory, so
+		// writing bothy's version of it would leave files nothing reads.
+		if cfg.PassesThrough(slot) {
+			continue
+		}
+		pr, ok := slots.Get(cfg.ProviderFor(slot))
+		if !ok {
+			continue
+		}
+		for _, f := range pr.Files {
+			if !conditionMet(f.When, cfg, data) {
+				continue
+			}
+			dest := strings.ReplaceAll(f.Dest, "{theme}", data.ThemeName)
 			out = append(out, file{
-				Dest: filepath.Join(y, "plugins", "enter-hint.yazi", "main.lua"), Tool: "yazi",
-				Template: "templates/browser/yazi/enter-hint.lua.tmpl",
+				Dest:     filepath.Join(p.ConfigRoot(), filepath.FromSlash(dest)),
+				Tool:     pr.Name,
+				Template: f.Template,
 			})
 		}
 	}
 
-	// The editor is yours. bothy sets $EDITOR for its own session and stops
-	// there — unless you have no config and want one, which is the same
-	// gap-filling rule the binaries follow.
-	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("editor") {
-		out = append(out,
-			file{Dest: VimRC(p), Tool: "vim",
-				Template: "templates/editor/vim/vimrc.tmpl"},
-			file{Dest: filepath.Join(VimDir(p), "colors", data.ThemeName+".vim"), Tool: "vim",
-				Template: "templates/theme/vim-colorscheme.vim.tmpl"},
-		)
-	}
-
-	// Ghostty's config carries the palette inline rather than naming a theme:
-	// theme *lookup* paths are not relocatable, so a `theme = x` reference
-	// would send it hunting in ~/.config/ghostty/themes and defeat the point.
-	if cfg.Slots.Terminal == "ghostty" && !cfg.PassesThrough("terminal") {
-		out = append(out, file{
-			Dest: GhosttyConf(p), Tool: "ghostty",
-			Template: "templates/terminal/ghostty/config.tmpl",
-		})
-	}
-
-	// Inside Toolbx/Distrobox the opener forwards to the host via flatpak-spawn.
-	// Keyed on SharedHome, not InContainer: a plain podman or docker container
-	// has no host session, and a shim there would satisfy the opener check
-	// without working. The shim keeps its own guard because PATH is fickle.
+	// Not a provider: the shim fills no slot, and it goes in bin/ rather than
+	// the config root. Inside Toolbx/Distrobox the opener forwards to the host
+	// via flatpak-spawn. Keyed on SharedHome, not InContainer: a plain podman
+	// container has no host session, and a shim there would satisfy the opener
+	// check without working.
 	if p.SharedHome {
 		out = append(out, file{
 			Dest: filepath.Join(p.BinDir(), "xdg-open"), Tool: "shell",
@@ -232,6 +201,29 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	}
 
 	return out
+}
+
+// conditions are the whole vocabulary a provider file's `when` may name.
+// A closed set rather than an expression language: parsing one would want a
+// dependency, and PLAN.md §13 allows exactly the one already spent on TOML.
+// A test asserts every `when` in slots/ is a key here.
+var conditions = map[string]func(config.Config, Data) bool{
+	"no-images": func(_ config.Config, d Data) bool { return !d.ImagePreviews },
+	"provide-editor-config": func(c config.Config, _ Data) bool {
+		return c.Editor.ProvideConfig
+	},
+}
+
+func conditionMet(when string, cfg config.Config, data Data) bool {
+	if when == "" {
+		return true
+	}
+	if fn, ok := conditions[when]; ok {
+		return fn(cfg, data)
+	}
+	// An unknown condition writes the file rather than silently skipping it:
+	// a typo that hides a config is harder to notice than one that shows it.
+	return true
 }
 
 // buildData assembles the template data, running the graphics probe.

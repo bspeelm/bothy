@@ -2,15 +2,14 @@
 
 Almost everything bothy knows is data. A provider is a TOML file and some
 templates; if adding one needs new Go code, stop — that means the slot model is
-wrong, and the slot model is the bug to fix (PLAN.md §13). This document should
-fit on one screen; if it stops fitting, the same thing has gone wrong.
+wrong, and the slot model is the bug to fix (PLAN.md §13).
 
-There are three kinds of thing you might add.
+That used to be aspirational for a provider bothy generates config for: it also
+needed an arm in `install.plan()`. It no longer does (ADR-032), so tier two of
+ADR-019 now holds only the multiplexer.
 
-## The header every provider carries
-
-Whichever kind it is, the file opens by saying what it *is*, not just how to
-get it:
+A provider is **one file at `slots/<name>.toml`**. It says what it is, at most
+one way of being obtained, and any config bothy should generate for it.
 
 ```toml
 name      = "helix"
@@ -25,33 +24,22 @@ because helix says it fills `editor`. A name bothy has no file for is still
 accepted — the agent slot takes any command you care to name — so the check
 catches a contradiction and stays out of the way otherwise.
 
-`platforms` restates the OS prefixes of `[assets]` (or the keys of `[install]`),
-and a test holds them together. `provides` is how bothy tells a capability
-nothing verified from one nothing in your stack was ever going to do.
-
-## A tool bothy can supply
-
-One file in `slots/tools/`. Nothing else.
+## `[fetch]` — bothy downloads it
 
 ```toml
-name        = "helix"
-what        = "the editor in the editor profile"
+[fetch]
 binary      = "hx"
 repo        = "helix-editor/helix"
-slot        = "editor"
-platforms   = ["linux", "darwin"]
 min_version = "25.01.0"
 reason      = "why this minimum exists, shown when bothy replaces someone's copy"
-
-[assets]
-linux_x86_64   = "helix-{version}-x86_64-linux.tar.xz"
-linux_aarch64  = "helix-{version}-aarch64-linux.tar.xz"
-darwin_x86_64  = "helix-{version}-x86_64-macos.tar.xz"
-darwin_aarch64 = "helix-{version}-aarch64-macos.tar.xz"
+[fetch.assets]
+linux_x86_64  = "helix-{version}-x86_64-linux.tar.xz"
+darwin_arm64  = "helix-{version}-aarch64-macos.tar.xz"
 ```
 
-Then `bothy lock` downloads each asset and records its checksum, and the entry
-is committed alongside the definition.
+Then `bothy lock` downloads each asset and records its checksum, committed
+alongside the definition. `platforms` restates the OS prefixes of
+`[fetch.assets]`, and a test holds them together.
 
 Two rules that matter more than they look:
 
@@ -72,39 +60,76 @@ Bare binaries, `.tar.gz` and `.zip` work; `.tar.xz` does not, because the
 standard library cannot unpack it and PLAN.md caps dependencies at `go-toml`.
 That is the only reason helix is not already here.
 
-## A configuration provider
+## `[advise]` — bothy tells you how
 
-Templates in `templates/<slot>/<provider>/`, and one entry in
-`install.plan()`:
+For what bothy will not install: it needs root, publishes no binaries, or is
+personal (ADR-014).
 
-```go
-if cfg.Slots.Editor == "helix" {
-    out = append(out, file{
-        Dest:     filepath.Join(p.ConfigRoot(), "helix", "config.toml"),
-        Tool:     "helix", // names the overrides/<tool>/ directory
-        Template: "templates/editor/helix/config.toml.tmpl",
-    })
-}
+```toml
+[advise]
+binary = "hx"
+[advise.install]
+fedora-ostree = "sudo rpm-ostree install helix && systemctl reboot"
+fedora        = "sudo dnf install -y helix"
+darwin        = "brew install helix"
+[[advise.avoid]]
+repo    = "some/repo"
+why     = "what it breaks"
+distros = ["fedora"]
 ```
 
-That is the one place core code learns a provider exists. The generated-by
-header, the override merge and uninstall all follow for free.
+The keys are tried most-specific first — `<distro>-ostree`, distro, distro
+family, OS, `default` — so an image-based host gets the command that needs a
+reboot and everyone else does not.
 
-Destinations must be under `p.ConfigRoot()`; the writer refuses anything else,
-which is ADR-009 enforced rather than intended. If the tool needs telling where
-its config lives, add the environment variable to `install.SessionEnv` — that
-is what makes isolation take effect at launch. The doctor uses the same
-environment, so a check always inspects the file the tool will really read.
+## `[[file]]` — bothy generates its config
+
+```toml
+[[file]]
+template = "templates/editor/helix/config.toml.tmpl"
+dest     = "helix/config.toml"
+
+[[file]]
+template = "templates/theme/helix.toml.tmpl"
+dest     = "helix/themes/{theme}.toml"
+when     = "provide-editor-config"
+```
+
+`dest` is relative to the config root, with `{theme}` interpolated. It is
+spelled out rather than derived because three of bothy's ten generated files
+break any convention that fits the other seven. The writer refuses a
+destination outside the config root, which is ADR-009 enforced rather than
+intended.
+
+`when` names a condition from a **closed vocabulary** in `install.conditions` —
+`no-images`, `provide-editor-config`. An expression language would want a
+parser and PLAN.md §13 allows one dependency, already spent on TOML. A test
+asserts every `when` in `slots/` is a key in that map; add the key and the
+condition together, or not at all.
+
+If the tool needs telling where its config lives, add the environment variable
+to `install.SessionEnv` — that is what makes isolation take effect at launch.
+The doctor uses the same environment, so a check always inspects the file the
+tool will really read.
 
 Templates see `install.Data`: the palette as `.Theme`, plus `.Container`,
 `.ImagePreviews`, `.Plugins` and a few others. Keep conditionals to a handful;
 a template needing more than about five `{{if}}`s wants to be two providers.
 
-## A plugin the config depends on
+## `[[plugin]]` — what the generated config depends on
 
 If a generated config *references* something, bothy must install it and the
-config must be written to match what is present. Add it to
-`slots/plugins/yazi.toml` and gate the reference:
+config must be written to match what is present.
+
+```toml
+[[plugin]]
+name = "git"
+use  = "yazi-rs/plugins:git"
+rev  = "c591a36e7263e95497715d525e9c46c2f0a880ac"
+```
+
+`rev` is the pin, and it is the point: resolving on the machine gave two people
+installing a week apart different plugins. Gate the reference in the template:
 
 ```
 {{- if index .Plugins "git" }}

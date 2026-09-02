@@ -4,11 +4,13 @@
 # that mapping used to be a switch in Go and a map in the doctor, which is two
 # places to forget.
 
-name = "gemini-cli"
-what = "the agent that sits in the main pane"
-slot = "agent"
+name      = "gemini-cli"
+what      = "the agent that sits in the main pane"
+slot      = "agent"
 platforms = ["linux", "darwin"]
-binary = "gemini"
 
-[install]
-default = "npm install -g @google/gemini-cli"
+[advise]
+binary      = "gemini"
+
+[advise.install]
+default        = "npm install -g @google/gemini-cli"

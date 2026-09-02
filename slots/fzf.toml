@@ -1,15 +1,16 @@
 # fzf spells the architecture amd64/arm64 rather than x86_64/aarch64.
-name        = "fzf"
-what        = "the fuzzy finder"
+
+name      = "fzf"
+what      = "the fuzzy finder"
+platforms = ["linux", "darwin"]
+
+[fetch]
 binary      = "fzf"
 repo        = "junegunn/fzf"
-platforms   = ["linux", "darwin"]
 min_version = "0.40.0"
-
-# fzf publishes one checksums file per release, named for the version.
 checksums   = "fzf_{version}_checksums.txt"
 
-[assets]
+[fetch.assets]
 linux_x86_64   = "fzf-{version}-linux_amd64.tar.gz"
 linux_aarch64  = "fzf-{version}-linux_arm64.tar.gz"
 darwin_x86_64  = "fzf-{version}-darwin_amd64.tar.gz"

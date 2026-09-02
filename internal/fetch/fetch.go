@@ -86,7 +86,7 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 	}
 	var installed []string
 	// Iterate the tool's own declared binaries, not the map's keys: the names
-	// here come from slots/tools rather than from the archive, so the path
+	// here come from slots/ rather than from the archive, so the path
 	// being written is not derived from downloaded data at all.
 	for _, name := range t.Binaries() {
 		content := found[name]
@@ -122,7 +122,7 @@ func Download(url string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, fmt.Errorf("fetch: %s\n"+
-				"      404 — the asset name in slots/tools is probably wrong for this "+
+				"      404 — the asset name in slots/ is probably wrong for this "+
 				"version or platform", url)
 		}
 		return nil, fmt.Errorf("fetch: %s: HTTP %d", url, resp.StatusCode)

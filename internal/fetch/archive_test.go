@@ -122,7 +122,7 @@ func TestExtractTarXzSaysWhyItCannot(t *testing.T) {
 
 func TestVersionFromTag(t *testing.T) {
 	// Each project decorates its tags differently, and the asset names in
-	// slots/tools all interpolate the undecorated number.
+	// slots/ all interpolate the undecorated number.
 	for tag, want := range map[string]string{
 		"v0.45.1":  "0.45.1", // zellij, yazi, fd, fzf, zoxide, lazygit
 		"0.19.2":   "0.19.2", // delta
