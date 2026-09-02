@@ -34,13 +34,13 @@ func TestParseVersionRejectsGarbage(t *testing.T) {
 }
 
 func TestVersionLess(t *testing.T) {
-	if !(Version{0, 42, 2}).Less(MinZellijGraphics) {
+	if !(Version{0, 42, 2}).Less(Version{0, 45, 1}) {
 		t.Error("0.42.2 should sort before 0.45.1")
 	}
-	if (Version{0, 45, 1}).Less(MinZellijGraphics) {
+	if (Version{0, 45, 1}).Less(Version{0, 45, 1}) {
 		t.Error("0.45.1 is not less than itself")
 	}
-	if (Version{0, 46, 0}).Less(MinZellijGraphics) {
+	if (Version{0, 46, 0}).Less(Version{0, 45, 1}) {
 		t.Error("0.46.0 should not sort before 0.45.1")
 	}
 	// The trap this guards: a naive string compare puts "0.5" after "0.45".
@@ -51,7 +51,7 @@ func TestVersionLess(t *testing.T) {
 
 // A terminal that cannot draw images makes the multiplexer version irrelevant.
 func TestGraphicsNeedsACapableTerminal(t *testing.T) {
-	g := CheckGraphics("zellij", "gnome-terminal")
+	g := CheckGraphics("gnome-terminal", MuxGraphics{Carries: true})
 	if g.Supported {
 		t.Error("gnome-terminal cannot do Kitty graphics")
 	}
@@ -61,18 +61,9 @@ func TestGraphicsNeedsACapableTerminal(t *testing.T) {
 }
 
 func TestGraphicsWithoutMultiplexer(t *testing.T) {
-	g := CheckGraphics("", "ghostty")
+	g := CheckGraphics("ghostty", MuxGraphics{None: true})
 	if !g.Supported {
 		t.Errorf("bare ghostty should support previews: %s", g.Reason)
-	}
-}
-
-// A multiplexer bothy cannot interrogate is assumed incapable. Guessing "it is
-// probably fine" is what produces the phantom-keypress bug.
-func TestGraphicsUnknownMuxIsAssumedIncapable(t *testing.T) {
-	g := CheckGraphics("definitely-not-a-real-binary", "ghostty")
-	if g.Supported {
-		t.Error("an uninterrogable multiplexer must not be assumed capable")
 	}
 }
 
@@ -83,16 +74,16 @@ func TestGraphicsUnknownMuxIsAssumedIncapable(t *testing.T) {
 // The distinction is not pedantry: zellij carries Kitty graphics and no other,
 // so the answer for iTerm2 depends on whether a multiplexer is in the way.
 func TestITerm2DrawsImagesButNotThroughZellij(t *testing.T) {
-	direct := CheckGraphics("", "iterm.app")
+	direct := CheckGraphics("iterm.app", MuxGraphics{None: true})
 	if !direct.Supported {
 		t.Errorf("iTerm2 with nothing in the way = unsupported: %s", direct.Reason)
 	}
 
-	through := CheckGraphics("zellij", "iterm.app")
+	through := CheckGraphics("iterm.app", MuxGraphics{Carries: true, Reason: "zellij carries it"})
 	if through.Supported {
 		t.Error("iTerm2 through zellij reported as working; zellij passes Kitty graphics only")
 	}
-	if !strings.Contains(through.Reason, "zellij does not carry") {
+	if !strings.Contains(through.Reason, "the multiplexer does not carry") {
 		t.Errorf("the reason does not explain the mismatch: %s", through.Reason)
 	}
 }
@@ -100,7 +91,7 @@ func TestITerm2DrawsImagesButNotThroughZellij(t *testing.T) {
 // A terminal nobody has written down is unknown, which is not the same as
 // known to be incapable -- and the reason should not claim otherwise.
 func TestAnUnknownTerminalIsNotClaimedIncapable(t *testing.T) {
-	g := CheckGraphics("zellij", "apple_terminal")
+	g := CheckGraphics("apple_terminal", MuxGraphics{Carries: true})
 	if g.Supported {
 		t.Error("an unlisted terminal was reported as drawing images")
 	}

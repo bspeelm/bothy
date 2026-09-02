@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
-	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 )
@@ -99,45 +97,30 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	if err != nil {
 		return err
 	}
-	kdl, err := layout.Render(prof, install.Commands(cfg))
-	if err != nil {
-		return err
-	}
-
 	if _, err := os.Stat(p.ConfigRoot()); err != nil {
 		return fmt.Errorf("no workspace configured yet\n"+
 			"      bothy keeps everything in one directory, derived from $HOME:\n"+
 			"        %s\n"+
 			"      that directory does not exist. 'bothy install' creates it.", p.ConfigRoot())
 	}
-
-	// Zellij reads layouts from disk, so the rendered profile goes into bothy's
-	// own layout directory. Regenerated every launch: editing it does nothing.
-	layoutDir := filepath.Join(install.ZellijDir(p), "layouts")
-	if err := os.MkdirAll(layoutDir, 0o755); err != nil {
-		return err
-	}
-	layoutFile := filepath.Join(layoutDir, profileName+".kdl")
-	if err := os.WriteFile(layoutFile, []byte(kdl), 0o644); err != nil {
-		return err
-	}
-
-	_, bin, err := muxPath(p, cfg)
+	backend, bin, err := muxPath(p, cfg)
 	if err != nil {
 		return err
 	}
-
-	if err := os.Chdir(dir); err != nil {
-		return err
-	}
 	env := install.SessionEnv(p, cfg)
-	session := sessionName(dir)
-	live := liveSessions(bin, env)
+	return backend.Open(mux.Request{
+		Platform: p, Bin: bin, Session: backend.SessionName(dir), Dir: dir,
+		Profile: prof, Commands: install.Commands(cfg), Env: env,
+		Live: backend.Live(bin, env),
+	})
+}
 
-	if !slices.Contains(live, session) {
-		discardDeadSession(bin, env, session)
+func muxNames() []string {
+	var out []string
+	for _, b := range mux.All() {
+		out = append(out, b.Name())
 	}
-	return runWithEnv(env, bin, launchArgs(session, layoutFile, live)...)
+	return out
 }
 
 // launchModeFor resolves workspace.launch against the flags: the setting is
@@ -153,87 +136,24 @@ func launchModeFor(cfg config.Config, window, inPlace bool) string {
 	return cfg.Workspace.Launch
 }
 
-// sessionName is the multiplexer session for a project directory. One session
-// per project is what lets `bothy attach` choose between them, so the name has
-// to be derived from the directory rather than generated, and has to survive
-// being a session name: zellij uses it as a directory under its cache.
-func sessionName(dir string) string {
-	var b strings.Builder
-	for _, r := range filepath.Base(filepath.Clean(dir)) {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
-			b.WriteRune(r)
-		default:
-			// Everything else collapses to one dash, so "my project" and
-			// "my/project" cannot become the same name by different routes.
-			if !strings.HasSuffix(b.String(), "-") {
-				b.WriteRune('-')
-			}
-		}
-	}
-	name := strings.Trim(b.String(), "-")
-	if name == "" {
-		return "bothy"
-	}
-	return "bothy-" + name
-}
-
-// launchArgs invokes the multiplexer for a session that may already be
-// running. Attaching to a live session must not carry --layout: zellij applies
-// one to an existing session by adding a tab, so a second `bothy` in the same
-// project would grow the workspace rather than return to it.
-func launchArgs(session, layoutFile string, live []string) []string {
-	for _, s := range live {
-		if s == session {
-			return []string{"attach", session}
-		}
-	}
-	return []string{"--layout", layoutFile, "attach", "--create", session}
-}
-
-// discardDeadSession removes a session of ours that has stopped.
-//
-// Attaching to an EXITED zellij session resurrects it: the saved layout comes
-// back with every command suspended behind "Waiting to run", ignoring a
-// changed profile. EXITED sessions are invisible to `list-sessions --short`,
-// so the live check cannot see it coming. Errors are ignored -- the common
-// case is no such session, and either way the next command creates one.
-func discardDeadSession(bin string, env []string, session string) {
-	cmd := exec.Command(bin, "delete-session", session)
-	cmd.Env = env
-	_ = cmd.Run()
-}
-
-// liveSessions asks the multiplexer which sessions are running, through
-// bothy's own environment -- with the ambient one it reads a different cache
-// directory and reports none. No sessions and no multiplexer are one answer
-// here, because creating is the right move for both.
-func liveSessions(bin string, env []string) []string {
-	cmd := exec.Command(bin, "list-sessions", "--short", "--no-formatting")
-	cmd.Env = env
-	out, err := cmd.Output()
-	if err != nil {
-		return nil
-	}
-	var live []string
-	for _, line := range strings.Split(string(out), "\n") {
-		if s := strings.TrimSpace(line); s != "" {
-			live = append(live, s)
-		}
-	}
-	return live
-}
-
 // muxPath resolves the multiplexer this session will run. The slot, the
 // fallback and the not-installed message were three copies apiece; the
 // backend seam (#64) will take what remains behind here.
-func muxPath(p platform.Info, cfg config.Config) (name, bin string, err error) {
-	name = cfg.ProviderOrDefault("mux")
+func muxPath(p platform.Info, cfg config.Config) (b mux.Backend, bin string, err error) {
+	name := cfg.ProviderOrDefault("mux")
+	b, ok := mux.For(name)
+	if !ok {
+		return nil, "", fmt.Errorf("no multiplexer backend for %q\n      bothy knows: %s",
+			name, strings.Join(muxNames(), ", "))
+	}
+	if _, isNone := b.(mux.None); isNone {
+		return b, "", nil
+	}
 	bin, err = lookPathIn(p, name)
 	if err != nil {
-		return name, "", fmt.Errorf("%s is not installed — run 'bothy install'", name)
+		return nil, "", fmt.Errorf("%s is not installed — run 'bothy install'", name)
 	}
-	return name, bin, nil
+	return b, bin, nil
 }
 
 // bothy's own bin first: a zellij bothy supplied is not on the ambient PATH.
@@ -272,14 +192,18 @@ func cmdAttach(args []string) error {
 		return err
 	}
 	dir, _ := os.Getwd()
-	plan, err := planAttach(p, cfg, sessionName(dir), args)
+	backend, _, err := muxPath(p, cfg)
+	if err != nil {
+		return err
+	}
+	plan, err := planAttach(p, cfg, backend.SessionName(dir), args)
 	if err != nil {
 		return err
 	}
 	if plan.Container != "" {
 		return containerHop(plan.Container, plan.Command)
 	}
-	return runWithEnv(plan.Env, plan.Bin, plan.Args...)
+	return runInteractiveEnv(plan.Env, plan.Bin, plan.Args...)
 }
 
 // attachPlan is what `bothy attach` will do: hop into the container the
@@ -357,20 +281,14 @@ func nestedAgent() (string, bool) {
 // runInteractive replaces this process's stdio with the child's, so the
 // multiplexer owns the terminal rather than talking through a pipe.
 func runInteractive(name string, args ...string) error {
-	return runWithEnv(nil, name, args...)
+	return runInteractiveEnv(nil, name, args...)
 }
 
-// runWithEnv is runInteractive with an explicit environment. A nil env
-// inherits this process's, which is what the container hop wants.
-func runWithEnv(env []string, name string, args ...string) error {
+func runInteractiveEnv(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
-
-	// A non-zero exit from the multiplexer is its own status, not a bothy error.
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
 		os.Exit(exitErr.ExitCode())

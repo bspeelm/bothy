@@ -15,6 +15,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 )
@@ -155,6 +156,10 @@ type Env struct {
 	RunsIn string
 	// MuxBin is the multiplexer binary bothy will actually launch, resolved through its own bin first.
 	MuxBin string
+	// Mux is the backend filling the mux slot, or nil when the configured name
+	// has no implementation. Checks that ask a multiplexer anything go through
+	// it rather than naming one.
+	Mux mux.Backend
 	// SessionName is what bothy would call this project's session. Passed in
 	// because the naming belongs to the launcher, not to the doctor.
 	SessionName string
@@ -225,7 +230,7 @@ func Checks() []Check {
 		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "config-age", Run: checkConfigAge},
 		{ID: "watermark-image", Run: checkWatermarkImage},
-		{ID: "zellij-config", Capability: Isolation, Run: checkZellijConfig},
+		{ID: "mux-config", Capability: Isolation, Run: checkMuxConfig},
 		{ID: "terminfo", Run: checkTerminfo},
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},

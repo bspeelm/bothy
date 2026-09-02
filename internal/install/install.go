@@ -15,6 +15,7 @@ import (
 	"github.com/bspeelm/bothy/internal/advice"
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
 	"github.com/bspeelm/bothy/internal/render"
@@ -151,10 +152,9 @@ func renderFile(w *render.Writer, f file, data Data) ([]byte, error) {
 // Destinations inside bothy's config root. The launcher points each tool at
 // these, so they are named once and used from both places.
 
-func ZellijDir(p platform.Info) string { return filepath.Join(p.ConfigRoot(), "zellij") }
-func YaziDir(p platform.Info) string   { return filepath.Join(p.ConfigRoot(), "yazi") }
-func VimDir(p platform.Info) string    { return filepath.Join(p.ConfigRoot(), "vim") }
-func VimRC(p platform.Info) string     { return filepath.Join(VimDir(p), "vimrc") }
+func YaziDir(p platform.Info) string { return filepath.Join(p.ConfigRoot(), "yazi") }
+func VimDir(p platform.Info) string  { return filepath.Join(p.ConfigRoot(), "vim") }
+func VimRC(p platform.Info) string   { return filepath.Join(VimDir(p), "vimrc") }
 func GhosttyConf(p platform.Info) string {
 	return filepath.Join(p.ConfigRoot(), "ghostty.conf")
 }
@@ -226,10 +226,24 @@ func conditionMet(when string, cfg config.Config, data Data) bool {
 	return true
 }
 
+// muxGraphics asks the configured backend whether image previews survive it.
+func muxGraphics(p platform.Info, cfg config.Config) probe.MuxGraphics {
+	bin := muxBinary(cfg)
+	if bin == "" {
+		return probe.MuxGraphics{None: true}
+	}
+	b, ok := mux.For(cfg.ProviderOrDefault("mux"))
+	if !ok {
+		return probe.MuxGraphics{Reason: "no backend for the configured multiplexer"}
+	}
+	carries, reason := b.Graphics(ToolPath(p, bin))
+	return probe.MuxGraphics{Carries: carries, Reason: reason}
+}
+
 // buildData assembles the template data, running the graphics probe.
 func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 	name := slug(pal.Name)
-	g := probe.CheckGraphics(ToolPath(p, muxBinary(cfg)), p.Terminal)
+	g := probe.CheckGraphics(p.Terminal, muxGraphics(p, cfg))
 
 	d := Data{
 		Theme:            pal,
@@ -286,7 +300,7 @@ func OpenerBinary(p platform.Info) string {
 	return strings.Fields(opener(p))[0]
 }
 
-// openerDesc is what Yazi shows beside the opener, which is worth saying when
+// openerDesc is what Yazi shows beside the opener, which matters when
 // the file is leaving this machine's namespace.
 func openerDesc(p platform.Info) string {
 	if p.InContainer() {
@@ -376,10 +390,17 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// Passthrough must *unset*, not merely decline to set: the session inherits
 	// the current environment, so an already-exported value would stay in place
 	// and the tool would use bothy's config anyway.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
-		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
-	} else {
-		env.unset("ZELLIJ_CONFIG_DIR")
+	// Every backend's variables are unset before the chosen one's are set, so
+	// switching multiplexers cannot leave the previous one's config pointed at.
+	for _, b := range mux.All() {
+		for k := range b.SessionEnv(p) {
+			env.unset(k)
+		}
+	}
+	if b, ok := mux.For(cfg.ProviderOrDefault("mux")); ok && !cfg.PassesThrough("mux") {
+		for k, v := range b.SessionEnv(p) {
+			env.set(k, v)
+		}
 	}
 	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
@@ -388,7 +409,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	}
 
 	// Fedora's nano-default-editor exports EDITOR=nano from /etc/profile.d,
-	// and that is what yazi, lazygit and git shell out to. Setting it here
+	// and yazi, lazygit and git shell out to it. Setting it here
 	// covers bothy's panes without touching the user's shell config.
 	editor := EditorBinary(cfg.Slots.Editor)
 	env.set("EDITOR", editor)
@@ -414,7 +435,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// exits when the terminal reports 0x0. These are the fallback it reads
 	// next, corrected by SIGWINCH once the pane is sized. Unset when nothing
 	// was measured: an inherited size would be read as this pane's, and a
-	// wrong size is worse than none, which is what makes a tool ask the ioctl.
+	// wrong size is worse than none: none makes a tool ask the ioctl.
 	if cols, rows, ok := terminalSize(); ok {
 		env.set("COLUMNS", strconv.Itoa(cols))
 		env.set("LINES", strconv.Itoa(rows))
@@ -428,7 +449,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 }
 
 // env is an environment being assembled. It replaces rather than appends,
-// which is not a detail: with two PATH entries, which one a process sees
+// not a detail: with two PATH entries, which one a process sees
 // depends on the libc and on whether anything deduplicated it on the way
 // through, and the original stays first -- so bothy's tools are not found.
 type env struct {

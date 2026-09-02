@@ -1022,3 +1022,52 @@ the whole tree.
 the one the four hardcoded branches wrote, manifest timestamp aside. The format
 is a different way of saying the same thing, which is the only claim worth
 making about a refactor. Net −10 lines of code.
+
+## ADR-033 — The multiplexer is a backend, and the interface was measured
+
+ADR-019 made the multiplexer tier three: a renderer, not a template. It stayed
+one renderer wearing a general name. `internal/layout` emitted KDL, and six
+more decisions about zellij sat outside it — three defaults, the session
+lifecycle, the graphics gate and two doctor checks.
+
+`internal/mux` holds a `Backend` interface with two implementations: `Zellij`,
+and `None` for the `slots.mux = "none"` bothy already accepted.
+
+**The shape came from a throwaway tmux backend, not from zellij.** A seam with
+one implementation is designed against one example. Five guesses were made
+about where the boundary would fall and tmux corrected four:
+
+- **`Render` returning a string is wrong.** Zellij is handed a layout file at
+  launch; tmux splits a session that already exists. `Open` renders and
+  launches together, and `Preview` — for `bothy layout` and one doctor check —
+  is the separate thing that only shows.
+- **Layout verification is a query, not a file read.** `layoutcheck.go` globbed
+  `$XDG_CACHE_HOME/zellij/*/session_info/<session>/session-layout.kdl`, a
+  private path with a version directory in it. tmux answers with `list-panes`,
+  and zellij with `action dump-layout`, which is documented. The KDL parser
+  stays; the glob does not.
+- **`discardDeadSession` is not an interface method.** It exists because zellij
+  resurrects EXITED sessions. tmux has no dead state, so this lives inside
+  zellij's `Open`.
+- **Session naming differs in kind, not charset.** tmux *accepts* "." and ":"
+  and then cannot address the session, because they are its own target
+  separators. A shared sanitiser would produce sessions bothy cannot attach to.
+
+The fifth guess held: `TabBar` and `StatusBar` are zellij plugin panes sitting
+in the generic profile type, and are still there.
+
+**The spike does not ship.** ADR-012 says supported means CI-tested, and a
+half-tmux in the tree is a promise bothy has not made. What survives is the
+interface it corrected and this record.
+
+**What it cost: +178 code lines**, against an estimate of +50 to +100 made
+before the survey. The estimate was wrong by about double, which is the answer
+ADR-003 had been guessing at since 0.1 when it said tmux would "roughly double
+the layout renderer". The comment ratio held at 22% (ADR-029) without raising
+it, once flourish was cut rather than budget.
+
+**Two zellij references remain outside the package, deliberately.**
+`config.Default()` names `zellij` as the shipped multiplexer, which is what a
+default is. And `bothy keys` prints a table of zellij's own bindings, because
+bothy sets none of its own; a tenth interface method to carry help text would
+fit the interface to one command rather than to the boundary.

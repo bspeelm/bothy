@@ -20,10 +20,6 @@ type Graphics struct {
 	Reason    string
 }
 
-// MinZellijGraphics is the first Zellij release that renders images correctly.
-// 0.45.0 added the protocol; 0.45.1 fixed image sizing on startup.
-var MinZellijGraphics = Version{0, 45, 1}
-
 // terminalGraphics is what an emulator can draw, and by which protocol. The
 // distinction matters because Zellij passes the *Kitty* protocol through and
 // nothing else, so a terminal drawing images by a protocol of its own works
@@ -54,7 +50,7 @@ var graphicsTerminals = map[string]terminalGraphics{
 //
 // muxBin is the multiplexer binary to interrogate (usually "zellij"); terminal
 // is the detected emulator. An empty muxBin means no multiplexer is involved.
-func CheckGraphics(muxBin, terminal string) Graphics {
+func CheckGraphics(terminal string, mux MuxGraphics) Graphics {
 	g, known := graphicsTerminals[terminal]
 	if !known {
 		what := terminal
@@ -67,45 +63,41 @@ func CheckGraphics(muxBin, terminal string) Graphics {
 		}
 	}
 
-	// A protocol of the terminal's own works when Yazi is asked directly, and
-	// stops at the multiplexer: zellij carries Kitty graphics and nothing else.
+	// A protocol of the terminal's own works when Yazi is asked directly and
+	// stops at the multiplexer, which carries Kitty graphics and no other.
 	if g.own != "" {
-		if muxBin == "" {
+		if mux.None {
 			return Graphics{Supported: true,
 				Reason: terminal + " draws images with " + g.own + ", and nothing is in the way"}
 		}
 		return Graphics{
-			Reason: fmt.Sprintf("%s draws images with %s, which zellij does not carry — "+
-				"it passes the Kitty graphics protocol through and no other", terminal, g.own),
+			Reason: fmt.Sprintf("%s draws images with %s, which the multiplexer does not "+
+				"carry — it passes the Kitty graphics protocol through and no other",
+				terminal, g.own),
 		}
 	}
 
-	if muxBin == "" {
-		return Graphics{Supported: true, Reason: terminal + " supports the Kitty graphics protocol, no multiplexer in the way"}
+	if mux.None {
+		return Graphics{Supported: true,
+			Reason: terminal + " supports the Kitty graphics protocol, no multiplexer in the way"}
 	}
-
-	v, err := ZellijVersion(muxBin)
-	if err != nil {
-		return Graphics{
-			Reason: fmt.Sprintf("could not determine the %s version (%v), so assuming it cannot pass "+
-				"the Kitty graphics protocol through", muxBin, err),
-		}
+	if !mux.Carries {
+		return Graphics{Reason: mux.Reason}
 	}
-	if v.Less(MinZellijGraphics) {
-		return Graphics{
-			Reason: fmt.Sprintf("zellij %s cannot pass the Kitty graphics protocol through; "+
-				"%s or newer can", v, MinZellijGraphics),
-		}
-	}
-	return Graphics{
-		Supported: true,
-		Reason: fmt.Sprintf("zellij %s implements the Kitty graphics protocol and %s speaks it",
-			v, terminal),
-	}
+	return Graphics{Supported: true, Reason: mux.Reason + " and " + terminal + " speaks it"}
 }
 
-// ZellijVersion runs `zellij --version` and parses the result.
-func ZellijVersion(bin string) (Version, error) {
+// MuxGraphics is the multiplexer's answer about the Kitty protocol, asked by
+// the caller so this package need not know which multiplexer it is.
+type MuxGraphics struct {
+	// None is true when no multiplexer is in the way.
+	None    bool
+	Carries bool
+	Reason  string
+}
+
+// ToolVersion runs `<bin> --version` and parses the result.
+func ToolVersion(bin string) (Version, error) {
 	out, err := exec.Command(bin, "--version").Output()
 	if err != nil {
 		return Version{}, err

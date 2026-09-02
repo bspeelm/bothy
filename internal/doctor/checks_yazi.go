@@ -40,7 +40,7 @@ func checkYaziConfigDiscarded(env Env) Result {
 			"run 'bothy install' to install it")
 	}
 	// `ya cache clear` parses the config and exits without needing a terminal,
-	// which is what makes this a config check rather than a cache one. `ya env`
+	// so this is a config check rather than a cache one. `ya env`
 	// names the question better and cannot be used: it demands a tty, and the
 	// doctor has none in CI. ya ships inside yazi's own archive, so its absence
 	// is a partial install rather than a missing feature.
@@ -161,11 +161,12 @@ func checkImagePreviews(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
-	mux := env.MuxBin
-	if env.Config.Slots.Mux == "none" {
-		mux = ""
+	mg := probe.MuxGraphics{None: true}
+	if env.Mux != nil && env.MuxBin != "" {
+		carries, reason := env.Mux.Graphics(env.MuxBin)
+		mg = probe.MuxGraphics{Carries: carries, Reason: reason}
 	}
-	g := probe.CheckGraphics(mux, env.Platform.Terminal)
+	g := probe.CheckGraphics(env.Platform.Terminal, mg)
 
 	yaziToml := filepath.Join(env.Platform.ConfigRoot(), "yazi", "yazi.toml")
 	b, err := os.ReadFile(yaziToml)

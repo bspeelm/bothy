@@ -18,20 +18,20 @@ func cmdLs(args []string) error {
 	if err != nil {
 		return err
 	}
-	_, bin, err := muxPath(p, cfg)
+	backend, bin, err := muxPath(p, cfg)
 	if err != nil {
 		return err
 	}
 
-	live := liveSessions(bin, install.SessionEnv(p, cfg))
+	live := backend.Live(bin, install.SessionEnv(p, cfg))
 	if len(live) == 0 {
 		fmt.Println("no sessions running")
 		return nil
 	}
 
 	dir, _ := os.Getwd()
-	here := sessionName(dir)
-	current := os.Getenv("ZELLIJ_SESSION_NAME")
+	here := backend.SessionName(dir)
+	current := backend.CurrentSession()
 	for _, s := range live {
 		switch {
 		case s == current:

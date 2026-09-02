@@ -45,7 +45,7 @@ func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, erro
 func removeTree(p platform.Info, rep *UninstallReport, dryRun bool) error {
 	dir := p.BothyDir()
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return nil // nothing to do, and nothing worth saying about it
+		return nil // nothing to do
 	} else if err != nil {
 		return fmt.Errorf("uninstall: %s: %w", dir, err)
 	}
