@@ -53,7 +53,7 @@ features.
 | **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it. |
 | **curl** or **wget** | Only for the install script below, and only one of them. |
 | **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else you get an approximation made of characters, which is roughly what terminals have been offering since 1978. |
-| **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run, like a chair kept for someone. |
+| **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
 | **Go** and **make** | Only if you build from source, which nobody has to. |
 
 bothy brings everything else. If any of the above is missing, `bothy doctor`
@@ -61,15 +61,14 @@ says so, says what to type, and leaves it at that.
 
 ### Getting bothy
 
-Five ways in. They all arrive at the same program, the same version, and the
-same mild sense of anticlimax.
+Five ways in. They all arrive at the same program and the same version.
 
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
-| **Go** | people who already have Go and are not sorry | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+| **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
 
 ### Checking what you got
@@ -226,7 +225,7 @@ Every part can be changed. Most of it needn't be, and most of it won't be.
 | file browser | yazi | or turn it off |
 | editor | vim | nano, helix |
 | agent | claude-code | any command you care to name |
-| theme | dracula | any palette you can be bothered to write down |
+| theme | dracula | any palette you write down |
 
 ```sh
 bothy config set slots.editor helix
@@ -247,7 +246,7 @@ bothy config set profile minimal
 ```
 
 Profiles are short TOML files. Write your own and put it in
-`~/.config/bothy/profiles/`. Nobody will know, unless you tell them.
+`~/.config/bothy/profiles/`.
 
 ## Walling off the agent
 
