@@ -20,11 +20,9 @@ import (
 const MaxFile = 128 << 20 // 128 MiB
 
 // safeEntry refuses an archive entry that tries to escape where it is put.
-//
 // Nothing is written to a path the archive chose -- the bytes go into a map
-// keyed by the name that was *asked* for, and the caller decides where it
-// lands -- so a traversing entry is already harmless. It is refused anyway: an
-// asset containing such a path is not a release bothy should be unpacking.
+// keyed by the name asked for -- so a traversing entry is already harmless. It
+// is refused anyway: such an asset is not a release bothy should unpack.
 func safeEntry(name string) error {
 	clean := path.Clean(filepath.ToSlash(name))
 	if path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") {
@@ -48,13 +46,10 @@ func archiveExt(name string) string {
 	return ""
 }
 
-// Extract pulls the wanted binaries out of a downloaded asset.
-//
-// Release archives disagree about layout: some put the binary at the root,
-// some inside a versioned directory, and jq ships a bare binary with no
-// archive at all. Rather than encode each layout as data — one more thing per
-// tool to get wrong — this matches on basename anywhere in the archive, which
-// is true of every asset bothy fetches.
+// Extract pulls the wanted binaries out of a downloaded asset. Release
+// archives disagree about layout -- root, a versioned directory, or jq's bare
+// binary -- so this matches on basename anywhere in the archive rather than
+// encoding each layout as one more thing per tool to get wrong.
 func Extract(body []byte, assetName string, want []string) (map[string][]byte, error) {
 	wanted := map[string]bool{}
 	for _, w := range want {

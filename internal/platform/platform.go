@@ -1,9 +1,7 @@
 // Package platform detects everything about the machine that changes what
-// bothy installs or writes.
-//
-// Detection is done once and passed around as an Info value rather than
-// re-probed, so a doctor report and the install that produced it always agree
-// about what machine they were looking at.
+// bothy installs or writes. Detection happens once and is passed around as an
+// Info value, so a doctor report and the install that produced it agree about
+// what machine they were looking at.
 package platform
 
 import (
@@ -62,19 +60,12 @@ type Info struct {
 // strandedSessionRoot recovers the tree for a shell inside a workspace that an
 // older bothy started.
 //
-// Those sessions set XDG_DATA_HOME into the tree and did not name the tree
-// itself, so every bothy command typed in them resolved one level deeper --
-// reporting an empty directory as the workspace and the tools it had installed
-// as the system's. Upgrading does not fix a session that is already running,
-// and nothing about the wrong answers looked wrong.
-//
-// The recovery is exact rather than a guess: those versions set XDG_DATA_HOME
-// to the tree plus "share", so the tree is its parent. BOTHY_SESSION is what
-// makes it safe to read a variable the user may also set for their own
-// reasons -- only bothy sets that one.
-//
-// It can go once no session started by a bothy older than v0.3.1 is plausibly
-// still running, which is a longer time than it sounds.
+// Those sessions set XDG_DATA_HOME into the tree without naming the tree, so
+// every command typed in them resolved one level deeper, and upgrading does
+// not fix a session already running. The recovery is exact rather than a
+// guess -- the tree is that directory's parent -- and BOTHY_SESSION is what
+// makes reading it safe, since only bothy sets it. Removable once no
+// pre-v0.3.1 session is plausibly still running.
 func strandedSessionRoot() string {
 	if os.Getenv("BOTHY_SESSION") == "" {
 		return ""
@@ -90,12 +81,10 @@ func strandedSessionRoot() string {
 	return tree
 }
 
-// BothyDir is the root of everything bothy owns.
-//
-// Root wins when set, because DataDir is derived from XDG_DATA_HOME and
-// SessionEnv points that variable *into* this tree. Deriving bothy's own
-// location from a variable bothy rewrites means every command typed in the
-// workspace's shell pane looks one level deeper than the tree it came from.
+// BothyDir is the root of everything bothy owns. Root wins when set, because
+// DataDir derives from XDG_DATA_HOME and SessionEnv points that variable
+// *into* this tree -- so deriving bothy's own location from it would have every
+// command typed in the shell pane look one level deeper.
 func (i Info) BothyDir() string {
 	if i.Root != "" {
 		return i.Root

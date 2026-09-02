@@ -110,10 +110,9 @@ func keyChord(on any) string {
 	return ""
 }
 
-// showKeysOnce prints the bindings after a first-run setup and waits, because
-// the multiplexer is about to take the screen and anything printed without a
-// pause is gone before it can be read. Skipped when nothing is there to read
-// it, which is also how the download prompt behaves.
+// showKeysOnce prints the bindings after a first-run setup and waits: the
+// multiplexer is about to take the screen, so anything printed without a pause
+// is gone before it can be read. Skipped when nothing is there to read it.
 func showKeysOnce(p platform.Info) {
 	if !isTerminal(os.Stdin) {
 		return

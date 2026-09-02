@@ -1,17 +1,11 @@
 // Package tools decides, for each tool the workspace needs, whether the
 // system's copy will do or bothy has to supply one.
 //
-// The policy is PLAN.md §4: fill gaps, never replace. A tool already on PATH
-// that meets the minimum version is used as it is; only a missing or too-old
-// one is fetched. bothy never touches the system's copy and never asks a
-// package manager for anything, and a tool it does supply goes in its own
-// bin/ — on PATH for bothy's session only, so it never shadows your everyday
-// one. What it supplies it also keeps at the pinned version, which is the one
-// thing it does upgrade and only ever inside that directory.
-//
-// Minimum versions are "the oldest that actually works", not "the newest
-// available". For most of these almost any version does, so on a normally
-// equipped machine bothy downloads nothing.
+// Fill gaps, never replace (PLAN.md §4): a tool on PATH meeting the minimum is
+// used as it is, and one bothy supplies goes in its own bin/, on PATH for the
+// session only so it never shadows your everyday copy. Minimums are "the
+// oldest that works", so on a normally equipped machine bothy downloads
+// nothing.
 package tools
 
 import (
@@ -188,13 +182,9 @@ func Resolve(t Tool, lookPath func(string) (string, error), version func(string)
 }
 
 // SystemLookPath finds a binary on PATH, ignoring one directory -- which
-// callers set to bothy's own bin.
-//
-// bothy puts that directory on PATH for its own session, so a plain
-// exec.LookPath answers "does the system have this?" differently depending on
-// whether the question was asked from inside the workspace or outside it. What
-// the system has does not change with where you are standing, and neither
-// should the answer.
+// callers set to bothy's own bin. That directory is on PATH inside the
+// session, so a plain exec.LookPath answers "does the system have this?"
+// differently depending on where it was asked from.
 func SystemLookPath(skip string) func(string) (string, error) {
 	skip = filepath.Clean(skip)
 	return func(bin string) (string, error) {

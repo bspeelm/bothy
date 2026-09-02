@@ -10,15 +10,13 @@ import (
 )
 
 // checkThemeReached verifies the palette arrived in the files the tools read.
+// theme-palette resolves a *custom* palette and skips for the built-in one, so
+// it says nothing about whether the colours arrived (ADR-007: test the effect,
+// not the artefact).
 //
-// theme-palette resolves a *custom* palette file and skips for the built-in
-// one, which is nearly everyone, so it says nothing about whether the colours
-// arrived. ADR-007: test the effect, not the artefact.
-//
-// The foreground colour is the probe because every one of these files carries
-// it. The background deliberately does not travel: zellij's `bg` is the UI
-// chrome rather than the terminal background, so it takes a different value on
-// purpose, and looking for it would fail on a correct install.
+// The foreground is the probe because every one of these files carries it. The
+// background deliberately does not travel: zellij's `bg` is UI chrome, so
+// looking for it would fail on a correct install.
 func checkThemeReached(env Env) Result {
 	pal, err := env.Config.Palette(env.Platform)
 	if err != nil {
@@ -66,16 +64,12 @@ func checkThemeReached(env Env) Result {
 	return pass(fmt.Sprintf("the palette reached %d generated config(s)", checked))
 }
 
-// checkSessionIsNamed verifies that this workspace can be found again.
-//
-// A session bothy names after its project is one `bothy attach` can pick out
-// of several. An anonymous one -- started by hand, or by a bothy from before
-// sessions had names -- cannot be chosen between, and nothing said so: attach
-// simply took whichever the multiplexer offered (#109).
-//
-// This is what stands behind the sessions capability. It is a property of the
-// session rather than of the machine, so outside one there is nothing to
-// report.
+// checkSessionIsNamed verifies that this workspace can be found again. A
+// session named after its project is one `bothy attach` can pick out of
+// several; an anonymous one cannot be chosen between, and attach simply took
+// whichever the multiplexer offered (#109). This stands behind the sessions
+// capability, and is a property of the session, so outside one there is
+// nothing to report.
 func checkSessionIsNamed(env Env) Result {
 	running := os.Getenv("ZELLIJ_SESSION_NAME")
 	if running == "" {

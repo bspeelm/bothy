@@ -165,16 +165,10 @@ func checkProfileRenders(env Env) Result {
 
 // checkToolData reports what the tools bothy runs keep outside bothy's tree.
 //
-// Only XDG_CACHE_HOME is pointed inside it. A cache is a tool's own scratch
-// space: losing it costs a rebuild, so keeping it in the tree makes uninstall
-// complete without taking anything from anyone. Data and state are not that.
-// Neovim's plugins, zoxide's learned directories and lazygit's state are the
-// user's, and redirecting them hid all of it from the tools running in the
-// workspace.
-//
-// So they stay where the tool would have put them, and this says which. It is
-// the form of ADR-009 that is true: bothy writes nothing outside its own tree,
-// and names what the programs it starts write outside theirs.
+// Only XDG_CACHE_HOME points inside it (ADR-022). Data and state stay where
+// the tool would have put them -- nvim's plugins and zoxide's directories are
+// the user's -- so this names them instead of hiding them. That is the form of
+// ADR-009 that is true.
 func checkToolData(env Env) Result {
 	state := os.Getenv("XDG_STATE_HOME")
 	if state == "" {

@@ -18,11 +18,9 @@ type UninstallReport struct {
 	Orphaned []Running
 }
 
-// Uninstall removes bothy's tree, which under ADR-009 is all of it: bothy
-// writes only inside one directory, so removing that directory is exact by
-// construction rather than by bookkeeping.
-//
-// Two things are left deliberately: ~/.config/bothy, which is the user's own
+// Uninstall removes bothy's tree, which under ADR-009 is all of it: removing
+// one directory is exact by construction rather than by bookkeeping. Two
+// things are left deliberately -- ~/.config/bothy, which is the user's own
 // settings, and the binary, which is running this code.
 func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, error) {
 	rep := &UninstallReport{}
@@ -61,11 +59,9 @@ func removeTree(p platform.Info, rep *UninstallReport, dryRun bool) error {
 }
 
 // removeBinary removes bothy itself. A running process can unlink its own
-// executable on Linux — the inode survives until it exits.
-//
-// Only the running binary, and only at the path bothy's own bootstrap uses.
-// A copy in /usr/local/bin, or one a package manager owns, is not bothy's to
-// delete — and os.Executable is the only thing that answers "is this me".
+// executable on Linux -- the inode survives until it exits. Only the running
+// binary, and only at the path the bootstrap uses: a copy a package manager
+// owns is not bothy's to delete, and os.Executable answers "is this me".
 func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool) {
 	self := runningBinary()
 	if self == "" || p.LocalBin == "" || !sameDir(filepath.Dir(self), p.LocalBin) {
@@ -95,11 +91,9 @@ func removeBinary(p platform.Info, rep *UninstallReport, dryRun, keepBinary bool
 var osExecutable = os.Executable
 
 // sameDir compares two directories through whatever symlinks stand in the way.
-//
-// runningBinary resolves them and LocalBin does not, so on macOS -- where a
-// home under /var is reached through a symlink to /private/var -- the two name
-// one directory in two ways and never match. The binary then survives an
-// uninstall that reported success.
+// runningBinary resolves them and LocalBin does not, so on macOS -- home under
+// /var reached through /private/var -- the two name one directory in two ways
+// and never match, and the binary survives an uninstall reporting success.
 func sameDir(a, b string) bool {
 	if resolved, err := filepath.EvalSymlinks(a); err == nil {
 		a = resolved
