@@ -117,3 +117,24 @@ func TestAutoLeavesTheDecisionToTheTerminal(t *testing.T) {
 		}
 	}
 }
+
+// zellij has three states for a session and `list-sessions --short` reports
+// two: a session whose last client has gone is EXITED, absent from that list,
+// and resurrected by the next attach -- which brings back the saved layout
+// with every command suspended behind "Waiting to run".
+//
+// So launchArgs is asked to create, and creating is right; what has to happen
+// first is that the dead one stops being in the way. This asserts the shape
+// the launch path depends on: not-live means create, and the caller clears the
+// ground before it does.
+func TestASessionMissingFromTheLiveListIsCreated(t *testing.T) {
+	args := launchArgs("bothy-work", "/tmp/cockpit.kdl", []string{"bothy-other"})
+	if len(args) == 0 || args[0] != "--layout" {
+		t.Fatalf("launchArgs = %v, want a create carrying the freshly rendered layout", args)
+	}
+	// The layout is the point: a resurrection would use zellij's saved copy
+	// and quietly ignore a changed profile.
+	if args[1] != "/tmp/cockpit.kdl" {
+		t.Errorf("the layout passed is %q, want the one just rendered", args[1])
+	}
+}

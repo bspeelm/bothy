@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -134,7 +135,12 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	}
 	env := install.SessionEnv(p, cfg)
 	session := sessionName(dir)
-	return runWithEnv(env, bin, launchArgs(session, layoutFile, liveSessions(bin, env))...)
+	live := liveSessions(bin, env)
+
+	if !slices.Contains(live, session) {
+		discardDeadSession(bin, env, session)
+	}
+	return runWithEnv(env, bin, launchArgs(session, layoutFile, live)...)
 }
 
 // launchModeFor resolves workspace.launch against the flags. The setting is
@@ -188,6 +194,29 @@ func launchArgs(session, layoutFile string, live []string) []string {
 		}
 	}
 	return []string{"--layout", layoutFile, "attach", "--create", session}
+}
+
+// discardDeadSession removes a session of ours that has stopped.
+//
+// zellij keeps a session after its last client goes: it becomes EXITED, and
+// attaching to it *resurrects* it -- the saved layout comes back with every
+// command suspended behind "Waiting to run". That is a reasonable thing for
+// zellij to offer and the wrong thing for bothy to get, twice over. bothy
+// regenerates its layout on every launch, so a resurrection silently ignores
+// a changed profile; and a workspace whose three panes are all waiting for a
+// keypress is not the one that was asked for.
+//
+// An exited session is invisible to `list-sessions --short`, which is why the
+// live check cannot see this coming: zellij has three states there and only
+// two of them are listed.
+//
+// Errors are ignored on purpose. The common case is no such session, which
+// this cannot distinguish from a failure and does not need to: either way the
+// next command creates one.
+func discardDeadSession(bin string, env []string, session string) {
+	cmd := exec.Command(bin, "delete-session", session)
+	cmd.Env = env
+	_ = cmd.Run()
 }
 
 // liveSessions asks the multiplexer which sessions are running, through bothy's
