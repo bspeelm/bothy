@@ -833,3 +833,31 @@ editor (ADR-014) and Ghostty publishes no binaries. There is no dialect that can
 hold file lists for all four until the layout move, so that is #115 and it is
 0.5.0. Declaring the slot and then having `plan()` ask the declaration instead of
 the config restates the branch without removing it, and buys nothing.
+
+## ADR-029 — The comment ratio tightens to 22%, once
+
+ADR-021 set the ratio at 25% when comments stood at 22%, matching the headroom
+the total cap had when it was set. That headroom was then spent, and spent
+badly: the comments that filled it were not reasoning, they were retelling.
+A seventeen-line paragraph above a single `env.set`. A sixteen-line one above
+an `if`. Package docs recounting policy the ADRs already hold, in full, again.
+
+Cutting them took no code with it — 204 lines out, 25% to 22%, every operative
+constraint kept along with the ADR or issue carrying its argument. That is the
+finding that justifies the move: the budget was not tight, the prose was loose,
+and a cap nothing has pressed against is not enforcing a norm.
+
+**Why 22 and not 20.** 22 is where the codebase sits after an honest pass, so
+it is a measurement rather than a target. 20 would demand a second pass that
+starts cutting reasoning rather than narration, which is the failure the ratio
+exists to prevent in the other direction.
+
+**What it costs.** About forty lines of headroom at today's size, growing with
+code as a ratio does. That is deliberate: ADR-021's point was that prose should
+stay proportionate to what it explains, and a cap the author never meets does
+not ask the question. The next comment that does not fit is a prompt to check
+whether it is reasoning or a story, which is exactly CLAUDE.md's own test.
+
+**This is the tightening, not a habit of them.** ADR-010's rule cuts both ways:
+a threshold moved whenever it is inconvenient is not a threshold. It moved up
+once for code, argued in ADR-026, and down once for prose, argued here.
