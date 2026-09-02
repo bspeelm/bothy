@@ -1,0 +1,47 @@
+name: Something is broken
+description: bothy did the wrong thing, or refused to do the right one
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `bothy doctor --json` answers most of what would otherwise be a round
+        trip. Please paste it — it is the fastest way to a fix, and it never
+        contains anything but paths and versions.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What you typed, and what happened
+      description: The command, and what it did instead of what you expected.
+      placeholder: |
+        $ bothy
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: bothy doctor --json
+      description: Run it in the same directory. If bothy will not start at all, say so here instead.
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: bothy version
+      placeholder: "bothy 0.6.0"
+    validations:
+      required: true
+
+  - type: input
+    id: machine
+    attributes:
+      label: Distribution and terminal
+      description: And whether bothy is running inside a toolbox or container.
+      placeholder: "Fedora Silverblue 44, Ghostty, inside a toolbox"
+    validations:
+      required: true
