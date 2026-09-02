@@ -44,6 +44,9 @@ folder it wrote goes, and it names the few things it cannot remove for you.
 This is less a feature than an absence of features, and it was harder than the
 features.
 
+The same thing in order, with the reasons for the order, is
+[`docs/what-happens.md`](docs/what-happens.md).
+
 ## Install
 
 ### What you need first
