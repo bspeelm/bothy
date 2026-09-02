@@ -155,23 +155,21 @@ still needs Go.
 
 Each step ends green.
 
-1. **Fix `passthrough`.** A live bug in a documented feature, independent of
-   the format. Slot names win — they are what `Validate` already demands and
-   what the doctor's newest check already uses — and `PassesThrough` resolves
-   the configured provider for a slot. `passthrough = ["yazi"]` becomes a
-   retired spelling (ADR-027's machinery, which this is the first real use of),
-   and the README changes.
+1. ~~**Fix `passthrough`.**~~ **Shipped, #123.** Slot names won; `PassesThrough`
+   resolves the configured provider for a slot and accepts either spelling.
 
-2. **`slot` in the tool files, and `plan()` reads it.** The four `if` branches
-   become a loop over providers for the configured slots. Highest structural
-   value, no new file format yet.
+2. ~~**`slot` in the tool files, and `plan()` reads it.**~~ **The second half
+   was wrong and has moved to #115 (0.5.0).** See "What step 2 got wrong".
 
-3. **The common header.** `platforms`, `provides`, `redirect`, `what` — added
-   to the files that exist, consumed by the capability report and by nothing
-   else yet.
+3. **The common header.** ~~`platforms`, `provides`, `redirect`, `what`~~ —
+   **shipped as `slot`, `what`, `platforms`, `provides` in #125**, in both
+   dialects, joined by `internal/slots`. `redirect` was dropped: nothing reads
+   it until the planner, which is open question 2 answered. Each of the four
+   that landed has a reader, two of them tests. ADR-028.
 
 4. **`[fetch]` and `[advise]` under one parser**, `slots/<slot>/` layout, the
-   old paths retired. One migration, one deletion.
+   old paths retired. One migration, one deletion. **Now also carries `plan()`'s
+   loop**, per below.
 
 5. **Plugins fold into yazi's file.** Third dialect gone.
 
@@ -180,6 +178,33 @@ Each step ends green.
 
 **Steps 1–3 are 0.4.0. Steps 4–6 are 0.5.0**, where the mux seam already is.
 
+### What step 2 got wrong
+
+"`plan()` reads it — the four `if` branches become a loop" does not survive
+contact, and it was called the highest structural value on the list, so this is
+worth being specific about.
+
+`plan()` writes configs for four providers, and they split two-and-two across
+the dialects, which are disjoint on disk:
+
+| provider | slot | `slots/tools/` | `slots/advice/` |
+|---|---|---|---|
+| zellij | mux | yes | — |
+| yazi | browser | yes | — |
+| vim | editor | — | yes |
+| ghostty | terminal | — | yes |
+
+The two bothy *can* supply are tools; the two it *refuses* to supply — no editor
+per ADR-014, and Ghostty publishes no binaries — are advice. A loop needs
+per-provider `[[file]]` lists, and no dialect can hold them for all four until
+step 4 puts both under one parser. So the loop is not a consumer of the
+declaration that could ship early: it is a consumer of the *layout*, and it goes
+with it.
+
+Declaring the slot and then having `plan()` ask `slots.Get("zellij").Slot ==
+"mux"` instead of `cfg.Slots.Mux == "zellij"` restates the branch without
+removing it, which is why it was not done as a half-measure.
+
 ## Open questions
 
 1. **Does `extras` become slots?** `fzf`, `ripgrep`, `fd`, `jq`, `zoxide`,
@@ -187,9 +212,11 @@ Each step ends green.
    things that are not slot providers is a wart. The alternative — an `extras`
    pseudo-slot — is a different wart.
 
-2. **Is `redirect` real yet?** Nothing consumes it until the planner. Adding a
-   field with no reader invites it to be wrong for a milestone. It could wait
-   for 0.6.0 without holding anything up.
+2. ~~**Is `redirect` real yet?**~~ **No, and it was dropped from step 3.**
+   Nothing consumes it until the planner, and a field with no reader invites
+   being wrong for a milestone. The other three shipped because each earned a
+   reader; `platforms` earned only a consistency test, and #125 says so rather
+   than implying otherwise.
 
 3. ~~How much migration is owed?~~ **None.** `slots/` is `//go:embed`-ed, so
    no one can add a provider without forking and rebuilding: it is source code
