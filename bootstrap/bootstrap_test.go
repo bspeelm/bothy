@@ -394,3 +394,32 @@ func TestBootstrapRefusesToPretendItVerified(t *testing.T) {
 		t.Errorf("an unsigned release was not an error:\n%s", out)
 	}
 }
+
+// The README tells people to pipe the script into `sh -s -- --verify`, which
+// is a different argument path from `sh install.sh --verify` that every other
+// test here uses. A flag the documented invocation cannot deliver is a flag
+// nobody can use.
+func TestBootstrapTakesVerifyThroughAPipe(t *testing.T) {
+	archive := releaseArchive(t, "#!/bin/sh\necho ok\n")
+	srv, _ := releaseServerWith(archive, checksumsFor(archive, archiveName(t)), "{}\n")
+	defer srv.Close()
+
+	src, err := os.ReadFile("install.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	cmd := exec.Command("sh", "-s", "--", "--verify")
+	cmd.Stdin = bytes.NewReader(src)
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"BOTHY_BASE_URL="+srv.URL,
+		"PATH="+stubGh(t, true)+":"+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("piped install failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "provenance verified") {
+		t.Errorf("--verify did not reach the script through the pipe:\n%s", out)
+	}
+}
