@@ -71,36 +71,31 @@ same mild sense of anticlimax.
 | **Go** | people who already have Go and are not sorry | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
 
-Each of those five is signed, by three different mechanisms, and only one of
-them asks anything of you.
+### Checking what you got
 
-**dnf** and **Go** check themselves: the Copr repository ships `gpgcheck=1`
-against its own key, and `go install` checks the module against
-[sum.golang.org](https://sum.golang.org). Nothing to type.
+Every release artifact is signed by the workflow that built it, in a public
+log — so a swapped download is detectable whether or not anyone checks.
 
-**The script** checks a checksum on its own; `--verify` also checks the
-signature — that the binary came out of this repository's release workflow,
-rather than merely off its release page. It needs the
-[`gh` CLI](https://cli.github.com):
+| installed with | checked by |
+|---|---|
+| dnf | dnf, against Copr's key — automatic |
+| `go install` | Go, against [sum.golang.org](https://sum.golang.org) — automatic |
+| script | a checksum, automatic; the signature on request |
+| `.deb` | the signature on request |
+| source | you compiled it yourself |
+
+The checksum catches a corrupted download. The signature also says the bytes
+came out of this repository's workflow; checking it needs the
+[`gh` CLI](https://cli.github.com), so it is opt-in. Without it you are
+trusting HTTPS and GitHub, as you do to clone the repository.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh -s -- --verify
-```
-
-**The `.deb`** carries the same signature, and downloading it by hand means
-checking it by hand. Take `attestation.jsonl` from the same release page and
-neither command needs a GitHub account:
-
-```sh
 gh attestation verify ./bothy_*.deb --repo bspeelm/bothy --bundle attestation.jsonl
 ```
 
-Both refuse rather than degrade: a signature that does not check out stops the
-install, and so does being asked to check one without the means to.
-
-**Source** is the exception, and not by oversight. You are compiling the tree
-you cloned, so what you are trusting is the clone — the same question as
-trusting this page, which no signature further down can answer for you.
+Take `attestation.jsonl` from the release page. Neither command needs a GitHub
+account, and neither passes quietly when it cannot check.
 
 Then, from any directory you happen to be in:
 
@@ -131,14 +126,9 @@ README rather than from `du`.
 | zellij | yazi | lazygit | ripgrep |
 | fzf | fd | jq | zoxide |
 
-Each download is checked against a recorded checksum before bothy keeps it.
-A checksum is not a signature; it proves the file is the one bothy expected,
-not that anyone trustworthy expected it.
-
-That gap is closed for bothy itself: every release artifact is signed in the
-workflow that built it, and `install.sh --verify` checks the signature rather
-than only the checksum. It is **not** closed for the eight tools above. Those
-are other projects' releases, and bothy cannot sign what it did not build.
+Each is pinned to a version and a checksum in `bothy.lock`, and checked before
+bothy keeps it. These are other projects' releases, so a checksum is as far as
+it goes — bothy does not sign what it did not build.
 
 If you already have good enough copies, bothy downloads nothing and tells you
 which of yours it is using. What it did fetch, it keeps: when a later bothy
