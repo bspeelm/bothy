@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/bspeelm/bothy/internal/platform"
 	"strings"
 	"text/template"
 
@@ -28,6 +30,15 @@ func cmdDesktop(args []string) error {
 		return err
 	}
 	dest := desktopEntryPath(p.DataDir)
+
+	// Removing is allowed anywhere: an older bothy wrote these without asking
+	// what platform it was on, and a file it left behind should be removable
+	// by the thing that left it.
+	if !*remove {
+		if err := desktopEntriesBelongHere(p); err != nil {
+			return err
+		}
+	}
 
 	if *remove {
 		if err := os.Remove(dest); err != nil {
@@ -68,6 +79,28 @@ func cmdDesktop(args []string) error {
 }
 
 // desktopEntryPath is where the XDG desktop-entry spec says to look.
+// desktopEntriesBelongHere reports whether a .desktop file means anything on
+// this machine.
+//
+// They are a freedesktop convention. macOS wants an application bundle and
+// Windows a shortcut, and bothy writing an inert file in a directory nothing
+// reads is worse than declining: it reports success and produces nothing.
+//
+// A list of the two platforms known to have no XDG rather than a list of the
+// one known to have it, so a BSD keeps working.
+func desktopEntriesBelongHere(p platform.Info) error {
+	switch p.OS {
+	case "darwin":
+		return fmt.Errorf("desktop entries are a freedesktop convention and macOS has none\n" +
+			"      the nearest equivalent is an application bundle, which bothy does not make\n" +
+			"      point your launcher at ~/.local/bin/bothy instead")
+	case "windows":
+		return fmt.Errorf("desktop entries are a freedesktop convention and Windows has none\n" +
+			"      make a shortcut to bothy instead")
+	}
+	return nil
+}
+
 func desktopEntryPath(dataDir string) string {
 	return filepath.Join(dataDir, "applications", "bothy.desktop")
 }
