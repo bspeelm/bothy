@@ -113,18 +113,36 @@ func checkPassthrough(env Env) Result {
 	if len(env.Config.Passthrough) == 0 {
 		return skip("no slots are passed through")
 	}
-	var lost []string
-	for _, slot := range env.Config.Passthrough {
-		switch slot {
-		case "yazi":
-			lost = append(lost, "yazi: bothy's image-preview handling and container-aware opener do not apply")
-		case "zellij":
-			lost = append(lost, "zellij: bothy's theme does not apply; your own keybindings do")
+
+	// Keyed on the slot, so it answers whichever spelling config.toml uses.
+	whatIsLost := map[string]string{
+		"browser": "bothy's image-preview handling and container-aware opener do not apply",
+		"mux":     "bothy's theme does not apply; your own keybindings do",
+	}
+	var lost, byProvider []string
+	for _, slot := range config.SlotNames() {
+		if !env.Config.PassesThrough(slot) {
+			continue
+		}
+		if what := whatIsLost[slot]; what != "" {
+			lost = append(lost, slot+": "+what)
 		}
 	}
+	// A provider name works and does not survive changing that slot.
+	for _, name := range env.Config.Passthrough {
+		if env.Config.ProviderFor(name) == "" {
+			byProvider = append(byProvider, name)
+		}
+	}
+
+	fix := "remove it from passthrough in ~/.config/bothy/config.toml to use bothy's"
+	if len(byProvider) > 0 {
+		fix = "name the slot rather than what is in it — " +
+			strings.Join(byProvider, ", ") + " still works, but stops meaning anything " +
+			"if you change that slot"
+	}
 	return warn("using your own config for: "+strings.Join(env.Config.Passthrough, ", "),
-		strings.Join(lost, "; "),
-		"remove it from passthrough in ~/.config/bothy/config.toml to use bothy's")
+		strings.Join(lost, "; "), fix)
 }
 
 // checkProfileRenders catches a broken custom profile before launch.
@@ -147,16 +165,10 @@ func checkProfileRenders(env Env) Result {
 
 // checkToolData reports what the tools bothy runs keep outside bothy's tree.
 //
-// Only XDG_CACHE_HOME is pointed inside it. A cache is a tool's own scratch
-// space: losing it costs a rebuild, so keeping it in the tree makes uninstall
-// complete without taking anything from anyone. Data and state are not that.
-// Neovim's plugins, zoxide's learned directories and lazygit's state are the
-// user's, and redirecting them hid all of it from the tools running in the
-// workspace.
-//
-// So they stay where the tool would have put them, and this says which. It is
-// the form of ADR-009 that is true: bothy writes nothing outside its own tree,
-// and names what the programs it starts write outside theirs.
+// Only XDG_CACHE_HOME points inside it (ADR-022). Data and state stay where
+// the tool would have put them -- nvim's plugins and zoxide's directories are
+// the user's -- so this names them instead of hiding them. That is the form of
+// ADR-009 that is true.
 func checkToolData(env Env) Result {
 	state := os.Getenv("XDG_STATE_HOME")
 	if state == "" {

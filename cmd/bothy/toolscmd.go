@@ -17,7 +17,7 @@ func cmdTools(args []string) error {
 	if err != nil {
 		return err
 	}
-	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
+	names, err := tools.Required(cfg.Providers(), cfg.Extras)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func cmdTools(args []string) error {
 
 	for _, d := range decisions {
 		if d.Action == tools.UseSystem {
-			fmt.Printf("✓ %-9s %s\n", d.Tool.Name, d.Reason)
+			fmt.Printf("✓ %-9s %-20s %s\n", d.Tool.Name, d.Tool.What, d.Reason)
 			continue
 		}
 		have := ""
@@ -41,7 +41,7 @@ func cmdTools(args []string) error {
 			have = install.SuppliedVersion(p, m, d.Tool.Name)
 		}
 		if have == "" {
-			fmt.Printf("↓ %-9s %s\n", d.Tool.Name, d.Reason)
+			fmt.Printf("↓ %-9s %-20s %s\n", d.Tool.Name, d.Tool.What, d.Reason)
 			continue
 		}
 		pinned := ""
@@ -51,10 +51,10 @@ func cmdTools(args []string) error {
 			}
 		}
 		if pinned != "" && pinned != have {
-			fmt.Printf("↑ %-9s %-9s supplied by bothy, pinned at %s\n", d.Tool.Name, have, pinned)
+			fmt.Printf("↑ %-9s %-20s %-9s supplied by bothy, pinned at %s\n", d.Tool.Name, d.Tool.What, have, pinned)
 			continue
 		}
-		fmt.Printf("✓ %-9s %-9s supplied by bothy\n", d.Tool.Name, have)
+		fmt.Printf("✓ %-9s %-20s %-9s supplied by bothy\n", d.Tool.Name, d.Tool.What, have)
 	}
 	return nil
 }

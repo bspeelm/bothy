@@ -2,6 +2,7 @@ package tools
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -119,7 +120,7 @@ func TestResolveFetchesWhenVersionIsUnreadable(t *testing.T) {
 
 // bothy should not fetch a git TUI for someone who turned the side pane off.
 func TestRequiredFollowsTheConfiguration(t *testing.T) {
-	got, err := Required("zellij", "yazi", []string{"lazygit"})
+	got, err := Required([]string{"zellij", "yazi"}, []string{"lazygit"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func TestRequiredFollowsTheConfiguration(t *testing.T) {
 		t.Errorf("Required() = %v", got)
 	}
 
-	got, err = Required("zellij", "none", nil)
+	got, err = Required([]string{"zellij", "none"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,5 +145,35 @@ func TestYaziDeclaresItsSecondBinary(t *testing.T) {
 	bins := yazi.Binaries()
 	if len(bins) != 2 || bins[0] != "yazi" || bins[1] != "ya" {
 		t.Errorf("Binaries() = %v; the archive ships ya alongside yazi", bins)
+	}
+}
+
+// platforms restates what [assets] already says, so the two have to be held
+// together or the restatement drifts. A tool with a darwin asset and no darwin
+// in platforms would have the planner refusing to offer something bothy can
+// fetch today.
+func TestPlatformsMatchTheAssetKeys(t *testing.T) {
+	all, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range all {
+		var fromAssets []string
+		for key := range tool.Assets {
+			os, _, ok := strings.Cut(key, "_")
+			if !ok {
+				t.Errorf("%s has asset key %q, which names no platform", tool.Name, key)
+				continue
+			}
+			if !slices.Contains(fromAssets, os) {
+				fromAssets = append(fromAssets, os)
+			}
+		}
+		declared := slices.Clone(tool.Platforms)
+		slices.Sort(declared)
+		slices.Sort(fromAssets)
+		if !slices.Equal(declared, fromAssets) {
+			t.Errorf("%s declares platforms %v, but [assets] covers %v", tool.Name, declared, fromAssets)
+		}
 	}
 }

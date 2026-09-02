@@ -13,10 +13,9 @@ import (
 	bothy "github.com/bspeelm/bothy"
 )
 
-// The desktop entry is the one file bothy writes outside its own tree: it has
-// to live in the desktop's search path to work at all. Hence a separate
-// command rather than part of `bothy install`, one that says what it is about
-// to do and can be undone.
+// The desktop entry is the one file bothy writes outside its own tree, because
+// it has to live in the desktop's search path to work at all. Hence a separate
+// command that says what it is about to do and can be undone.
 func cmdDesktop(args []string) error {
 	fs := flag.NewFlagSet("desktop-entry", flag.ExitOnError)
 	doInstall := fs.Bool("install", false, "write the entry (outside bothy's tree)")
@@ -80,14 +79,10 @@ func cmdDesktop(args []string) error {
 
 // desktopEntryPath is where the XDG desktop-entry spec says to look.
 // desktopEntriesBelongHere reports whether a .desktop file means anything on
-// this machine.
-//
-// They are a freedesktop convention. macOS wants an application bundle and
-// Windows a shortcut, and bothy writing an inert file in a directory nothing
-// reads is worse than declining: it reports success and produces nothing.
-//
-// A list of the two platforms known to have no XDG rather than a list of the
-// one known to have it, so a BSD keeps working.
+// this machine. macOS wants a bundle and Windows a shortcut, and writing an
+// inert file reports success while producing nothing. Listed as the two
+// platforms known to lack XDG rather than the one known to have it, so a BSD
+// keeps working.
 func desktopEntriesBelongHere(p platform.Info) error {
 	switch p.OS {
 	case "darwin":

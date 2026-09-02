@@ -6,6 +6,8 @@
 
 name = "gemini-cli"
 what = "the agent that sits in the main pane"
+slot = "agent"
+platforms = ["linux", "darwin"]
 binary = "gemini"
 
 [install]

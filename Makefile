@@ -9,11 +9,11 @@ LDFLAGS  := -s -w -X main.Version=$(VERSION)
 #
 # Two source limits: code is capped outright, and comments are capped as a
 # share of it, so prose has to stay proportionate to what it explains rather
-# than compete with it for room. See ADR-010, ADR-015, ADR-021 and ADR-026 --
-# the last for why the code cap is 6,000 rather than the 5,000 it began at.
+# than compete with it for room. See ADR-010, ADR-015 and ADR-021, with ADR-026
+# for why the code cap is 6,000 and ADR-029 for why the ratio is 22.
 MAX_BINARY_BYTES  := 10485760
 MAX_CODE_LINES    := 6000
-MAX_COMMENT_RATIO := 25
+MAX_COMMENT_RATIO := 22
 
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 

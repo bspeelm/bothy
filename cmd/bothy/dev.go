@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -134,13 +135,17 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 	}
 	env := install.SessionEnv(p, cfg)
 	session := sessionName(dir)
-	return runWithEnv(env, bin, launchArgs(session, layoutFile, liveSessions(bin, env))...)
+	live := liveSessions(bin, env)
+
+	if !slices.Contains(live, session) {
+		discardDeadSession(bin, env, session)
+	}
+	return runWithEnv(env, bin, launchArgs(session, layoutFile, live)...)
 }
 
-// launchModeFor resolves workspace.launch against the flags. The setting is
-// the standing answer and a flag overrides it for one run, which is the point
-// of the setting: preferring to stay put should not mean typing --in-place
-// every time.
+// launchModeFor resolves workspace.launch against the flags: the setting is
+// the standing answer, a flag overrides it for one run. Preferring to stay put
+// should not mean typing --in-place every time.
 func launchModeFor(cfg config.Config, window, inPlace bool) string {
 	switch {
 	case window:
@@ -176,11 +181,10 @@ func sessionName(dir string) string {
 	return "bothy-" + name
 }
 
-// launchArgs invokes the multiplexer for a session that may already be running.
-//
-// Attaching to a live session must not carry --layout: zellij applies a layout
-// to a session that exists by adding it as a new tab, so a second `bothy` in
-// the same project would grow the workspace rather than return to it.
+// launchArgs invokes the multiplexer for a session that may already be
+// running. Attaching to a live session must not carry --layout: zellij applies
+// one to an existing session by adding a tab, so a second `bothy` in the same
+// project would grow the workspace rather than return to it.
 func launchArgs(session, layoutFile string, live []string) []string {
 	for _, s := range live {
 		if s == session {
@@ -190,10 +194,23 @@ func launchArgs(session, layoutFile string, live []string) []string {
 	return []string{"--layout", layoutFile, "attach", "--create", session}
 }
 
-// liveSessions asks the multiplexer which sessions are running, through bothy's
-// own environment -- with the ambient one it reads a different cache directory
-// and reports none. No sessions and no multiplexer are the same answer here,
-// because creating is the right move for both.
+// discardDeadSession removes a session of ours that has stopped.
+//
+// Attaching to an EXITED zellij session resurrects it: the saved layout comes
+// back with every command suspended behind "Waiting to run", ignoring a
+// changed profile. EXITED sessions are invisible to `list-sessions --short`,
+// so the live check cannot see it coming. Errors are ignored -- the common
+// case is no such session, and either way the next command creates one.
+func discardDeadSession(bin string, env []string, session string) {
+	cmd := exec.Command(bin, "delete-session", session)
+	cmd.Env = env
+	_ = cmd.Run()
+}
+
+// liveSessions asks the multiplexer which sessions are running, through
+// bothy's own environment -- with the ambient one it reads a different cache
+// directory and reports none. No sessions and no multiplexer are one answer
+// here, because creating is the right move for both.
 func liveSessions(bin string, env []string) []string {
 	cmd := exec.Command(bin, "list-sessions", "--short", "--no-formatting")
 	cmd.Env = env

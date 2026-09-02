@@ -4,9 +4,13 @@
 # "requires at least Yazi 26.x", and bothy's config uses the 26.x key names
 # ([mgr], and `url` in fetchers and filetype rules).
 name        = "yazi"
+what        = "the file browser"
 binary      = "yazi"
 extra       = ["ya"]
 repo        = "sxyazi/yazi"
+slot        = "browser"
+platforms   = ["linux", "darwin"]
+provides    = ["images", "theme"]
 min_version = "26.0.0"
 reason      = "the plugin ecosystem and bothy's config both require 26.x keys"
 

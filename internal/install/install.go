@@ -1,15 +1,14 @@
-// Package install renders bothy's config tree.
-//
-// Everything it writes lands under <bothy>/config (ADR-009). It never touches
-// ~/.config/yazi, ~/.vimrc, ~/.bashrc.d or your global git config; the tools
-// are launched pointed at bothy's tree instead. See cmd/bothy/dev.go for the
-// environment that does the pointing.
+// Package install renders bothy's config tree. Everything it writes lands
+// under <bothy>/config (ADR-009); it never touches ~/.config/yazi, ~/.vimrc or
+// your global git config, and the tools are launched pointed at bothy's tree
+// instead. See cmd/bothy/dev.go for the environment that does the pointing.
 package install
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	bothy "github.com/bspeelm/bothy"
@@ -86,7 +85,7 @@ func Run(p platform.Info, cfg config.Config, opts Options) (*Result, error) {
 
 	// Plugins first: the generated config is written to match what is actually
 	// installed, so it has to know before the templates render.
-	if !opts.DryRun && cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+	if !opts.DryRun && cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		pr, err := EnsureYaziPlugins(p, opts.Offline)
 		if err != nil {
 			return nil, err
@@ -166,7 +165,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 
 	// A slot passed through uses the user's own config directory, so writing
 	// bothy's version of it would leave files nothing ever reads.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
+	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
 		z := ZellijDir(p)
 		out = append(out,
 			file{Dest: filepath.Join(z, "config.kdl"), Tool: "zellij",
@@ -176,7 +175,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 		)
 	}
 
-	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		y := YaziDir(p)
 		out = append(out,
 			file{Dest: filepath.Join(y, "yazi.toml"), Tool: "yazi",
@@ -201,7 +200,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// The editor is yours. bothy sets $EDITOR for its own session and stops
 	// there — unless you have no config and want one, which is the same
 	// gap-filling rule the binaries follow.
-	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("editor") {
 		out = append(out,
 			file{Dest: VimRC(p), Tool: "vim",
 				Template: "templates/editor/vim/vimrc.tmpl"},
@@ -213,7 +212,7 @@ func plan(p platform.Info, cfg config.Config, data Data) []file {
 	// Ghostty's config carries the palette inline rather than naming a theme:
 	// theme *lookup* paths are not relocatable, so a `theme = x` reference
 	// would send it hunting in ~/.config/ghostty/themes and defeat the point.
-	if cfg.Slots.Terminal == "ghostty" && !cfg.PassesThrough("ghostty") {
+	if cfg.Slots.Terminal == "ghostty" && !cfg.PassesThrough("terminal") {
 		out = append(out, file{
 			Dest: GhosttyConf(p), Tool: "ghostty",
 			Template: "templates/terminal/ghostty/config.tmpl",
@@ -274,12 +273,10 @@ func muxBinary(cfg config.Config) string {
 	return cfg.Slots.Mux
 }
 
-// opener is the command that hands a file to the desktop.
-//
-// There is no portable answer. xdg-open is the freedesktop convention and does
-// not exist on macOS, which has `open`. Inside a container there is a third
-// answer: the app databases live on the host, so a local xdg-open would be a
-// working binary with no viewers behind it, and the file has to go out.
+// opener is the command that hands a file to the desktop. There is no portable
+// answer: xdg-open is the freedesktop convention, macOS has `open`, and inside
+// a container the app databases live on the host -- so a local xdg-open would
+// be a working binary with no viewers behind it.
 func opener(p platform.Info) string {
 	switch {
 	case p.InContainer():
@@ -369,14 +366,15 @@ func slug(name string) string {
 	return out
 }
 
-// SessionEnv builds the environment for bothy's process tree.
-//
-// This is where isolation actually takes effect: the configs were written into
-// bothy's directory, and nothing reads them unless the tools are told to.
-// Telling them is a handful of environment variables scoped to one process
-// tree, so the user's shell keeps its own PATH and EDITOR.
+// SessionEnv builds the environment for bothy's process tree, which is where
+// isolation takes effect: the configs are in bothy's directory and nothing
+// reads them unless the tools are told to. A handful of variables scoped to
+// one process tree, so the user's shell keeps its own PATH and EDITOR.
 //
 // The doctor uses this too, so checks run tools with the launcher's config.
+// terminalSize is a seam: a test has no terminal to ask.
+var terminalSize = platform.TerminalSize
+
 func SessionEnv(p platform.Info, cfg config.Config) []string {
 	env := newEnv(os.Environ())
 
@@ -386,12 +384,12 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	// Passthrough must *unset*, not merely decline to set: the session inherits
 	// the current environment, so an already-exported value would stay in place
 	// and the tool would use bothy's config anyway.
-	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("zellij") {
+	if cfg.Slots.Mux == "zellij" && !cfg.PassesThrough("mux") {
 		env.set("ZELLIJ_CONFIG_DIR", ZellijDir(p))
 	} else {
 		env.unset("ZELLIJ_CONFIG_DIR")
 	}
-	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("yazi") {
+	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
 	} else {
 		env.unset("YAZI_CONFIG_HOME")
@@ -406,46 +404,41 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 
 	// VIMINIT takes precedence over ~/.vimrc, so it is only set when bothy is
 	// providing a vim config. Otherwise vim is yours and loads yours.
-	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("vim") {
+	if cfg.Slots.Editor == "vim" && cfg.Editor.ProvideConfig && !cfg.PassesThrough("editor") {
 		env.set("VIMINIT", "source "+VimRC(p))
 	}
 
-	// Cache only, and deliberately only cache.
-	//
-	// A cache is a tool's own scratch space: throwing it away costs a rebuild
-	// and nothing else, so keeping it inside bothy's tree makes uninstall
-	// complete without taking anything from anyone. It is also what keeps
-	// `ya pkg`'s clone of the plugin repository where uninstall can reach it.
-	//
-	// Data and state are not that. Neovim keeps its plugins in
-	// $XDG_DATA_HOME/nvim, zoxide keeps the directory database it has learned
-	// from you, lazygit keeps its state -- and redirecting those hid all of it
-	// from the tools running in the workspace. "Your editor is yours" cannot
-	// survive bothy pointing your editor at an empty directory.
-	//
-	// So the tools write their data where they always did, and the doctor
-	// reports what landed outside. That is the version of ADR-009 that is
-	// true: bothy writes nothing outside its own tree, and says plainly what
-	// the tools it runs write outside theirs.
+	// Cache only (ADR-022). A cache is scratch space, so keeping it here makes
+	// uninstall complete without taking anything from anyone. Data and state
+	// are not: redirecting those hid nvim's plugins and zoxide's database from
+	// the tools that had learned them.
 	env.set("XDG_CACHE_HOME", p.CacheDir())
 
-	// Bothy's own tree, named rather than derived. The three variables above
-	// move where the tools look; this one keeps bothy itself looking here, so
-	// that a `bothy doctor` typed in the shell pane inspects the workspace it
-	// is running in rather than an empty directory beneath it.
+	// Named rather than derived, so a `bothy doctor` typed in the shell pane
+	// inspects the workspace it is running in.
 	env.set("BOTHY_DIR", p.BothyDir())
+
+	// A pane's command can start before the mux has sized its pty, and yazi
+	// exits when the terminal reports 0x0. These are the fallback it reads
+	// next, corrected by SIGWINCH once the pane is sized. Unset when nothing
+	// was measured: an inherited size would be read as this pane's, and a
+	// wrong size is worse than none, which is what makes a tool ask the ioctl.
+	if cols, rows, ok := terminalSize(); ok {
+		env.set("COLUMNS", strconv.Itoa(cols))
+		env.set("LINES", strconv.Itoa(rows))
+	} else {
+		env.unset("COLUMNS")
+		env.unset("LINES")
+	}
 
 	env.set("BOTHY_SESSION", "1")
 	return env.slice()
 }
 
-// env is an environment being assembled.
-//
-// It replaces rather than appends, which is not a detail: an environment with
-// two PATH entries is ambiguous — which one a process sees depends on the libc
-// and on whether anything deduplicated it on the way through. Appending a
-// second PATH looked right and left the original one first in the list, so the
-// tools bothy supplied were not actually found.
+// env is an environment being assembled. It replaces rather than appends,
+// which is not a detail: with two PATH entries, which one a process sees
+// depends on the libc and on whether anything deduplicated it on the way
+// through, and the original stays first -- so bothy's tools are not found.
 type env struct {
 	keys   []string
 	values map[string]string

@@ -94,7 +94,7 @@ func ensureInstalled(p platform.Info, cfg config.Config) error {
 
 // confirmDownloads asks before downloading, when stdin is a terminal.
 func confirmDownloads(p platform.Info, cfg config.Config) (bool, error) {
-	names, err := tools.Required(cfg.Slots.Mux, cfg.Slots.Browser, cfg.Extras)
+	names, err := tools.Required(cfg.Providers(), cfg.Extras)
 	if err != nil {
 		return false, err
 	}

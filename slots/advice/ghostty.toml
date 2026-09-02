@@ -3,6 +3,9 @@
 
 name = "ghostty"
 what = "a terminal that can draw inline images"
+slot = "terminal"
+platforms = ["linux", "darwin"]
+provides = ["images", "theme"]
 
 [install]
 fedora-ostree = "sudo curl -fsSL -o /etc/yum.repos.d/_copr_scottames-ghostty.repo https://copr.fedorainfracloud.org/coprs/scottames/ghostty/repo/fedora-$(rpm -E %fedora)/scottames-ghostty-fedora-$(rpm -E %fedora).repo && sudo rpm-ostree install ghostty && systemctl reboot"
