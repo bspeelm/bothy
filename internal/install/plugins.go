@@ -100,11 +100,10 @@ func installedRevs(p platform.Info) map[string]string {
 	return out
 }
 
-// writePackageFile writes the pins for `ya pkg install` to act on.
-//
-// No generated-by header, unlike every other file bothy writes: `ya pkg`
-// rewrites this one to record each plugin's content hash, serialising from its
-// own model, and a comment would not survive the first install.
+// writePackageFile writes the pins for `ya pkg install` to act on. No
+// generated-by header, unlike every other file bothy writes: `ya pkg` rewrites
+// this one from its own model, so a comment would not survive the first
+// install.
 func writePackageFile(p platform.Info, plugins []Plugin) error {
 	var f packageFile
 	for _, pl := range plugins {
@@ -121,16 +120,10 @@ func writePackageFile(p platform.Info, plugins []Plugin) error {
 // EnsureYaziPlugins installs the plugins bothy's config references, at the
 // revisions pinned in slots/plugins/yazi.toml.
 //
-// It writes package.toml and runs `ya pkg install` rather than `ya pkg add`,
-// because add resolves the revision on the machine at the moment it runs --
-// which is how two installs a week apart ended up with different plugins.
-// install checks out what package.toml names.
-//
-// Runs before the templates are rendered, because the generated config is
-// written to match what is actually installed. Referencing a plugin that is
-// not there produces a config which looks correct and passes
-// `yazi --clear-cache` -- that does not execute init.lua -- then fails at
-// launch.
+// `ya pkg install` rather than `ya pkg add`: add resolves the revision at the
+// moment it runs, which is how two installs a week apart got different
+// plugins. Runs before the templates render, because a config referencing a
+// plugin that is not there looks correct and fails at launch.
 func EnsureYaziPlugins(p platform.Info, offline bool) (*PluginReport, error) {
 	rep := &PluginReport{}
 	plugins, err := YaziPlugins()

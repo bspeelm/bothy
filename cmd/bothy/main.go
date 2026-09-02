@@ -13,11 +13,9 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
-// Version is stamped by the release build's -ldflags.
-//
-// It must stay a plain string literal: `-X` silently does nothing to a
-// variable initialised by a function call, so folding the fallback below into
-// this declaration disables the stamping it was meant to complement.
+// Version is stamped by the release build's -ldflags, and must stay a plain
+// string literal: `-X` silently does nothing to a variable initialised by a
+// function call.
 var Version = "dev"
 
 // version reports the build's version. A `go install` binary gets no ldflags,

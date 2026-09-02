@@ -1,9 +1,8 @@
-// Package advice holds install instructions for the things bothy will not
-// install itself: Ghostty, which ships no release binaries and needs root
-// (and a reboot on image-based hosts), the agent, whose install methods and
-// credentials are not bothy's business, and editors, which are personal.
-// bothy names the right command for the machine and warns about repositories
-// known to cause problems.
+// Package advice holds install instructions for what bothy will not install
+// itself: Ghostty, which ships no binaries and needs root; the agent, whose
+// credentials are not bothy's business; and editors, which are personal. It
+// names the right command for the machine and warns about repositories known
+// to cause problems.
 package advice
 
 import (
@@ -39,12 +38,8 @@ type Avoid struct {
 // Get loads advice by name.
 // Binary is the command a provider is run as, which is not always its name:
 // helix runs as hx, claude-code as claude. Declared in the provider's own file
-// so that adding one needs no Go -- the mapping was three copies in two
-// packages, and a provider whose name and command differ could not be added
-// without editing all of them.
-//
-// A provider with no advice file is run as its own name, which is true of most
-// of them.
+// so that adding one needs no Go. A provider with no advice file is run as its
+// own name, which is true of most of them.
 func Binary(name string) string {
 	if a, err := Get(name); err == nil && a.Binary != "" {
 		return a.Binary
@@ -64,11 +59,10 @@ func Get(name string) (Advice, error) {
 	return a, nil
 }
 
-// Command returns the install command for a machine.
-//
-// An image-based host is looked up first: on those the command differs, needs a
-// reboot, and getting it wrong is expensive — exactly the case a generic
-// "install ghostty" leaves someone to work out alone.
+// Command returns the install command for a machine. An image-based host is
+// looked up first: there the command differs, needs a reboot, and getting it
+// wrong is expensive -- exactly what a generic "install ghostty" leaves
+// someone to work out alone.
 func (a Advice) Command(p platform.Info) string {
 	// DistroLike after DistroID: a derivative gets its own entry if one
 	// exists, and its parent's otherwise.

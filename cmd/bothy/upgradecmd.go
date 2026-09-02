@@ -13,9 +13,8 @@ import (
 )
 
 // `bothy upgrade` -- how to upgrade this copy, and nothing else. It does not
-// touch bothy's own binary: PLAN.md §11 rules out auto-updaters, replacing the
-// running binary from inside it leaves a half-written one on a bad network,
-// and only one of the five install channels could work that way anyway.
+// touch bothy's own binary: PLAN.md §11 rules out auto-updaters, and replacing
+// a running binary from inside it leaves a half-written one on a bad network.
 
 // Repo is bothy's own slug, for asking about its releases.
 const Repo = "bspeelm/bothy"

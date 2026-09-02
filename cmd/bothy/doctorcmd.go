@@ -78,11 +78,9 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	return nil
 }
 
-// printCapabilities answers the question the check list only implies: what
-// does this stack actually give you. ADR-017 names five things, and a
-// capability nothing checks says so rather than being quietly counted as
-// working -- unless nothing in the stack claims to contribute to it, which
-// bothy can say outright.
+// printCapabilities answers what the check list only implies: what this stack
+// actually gives you (ADR-017). A capability nothing checks says so rather
+// than being counted as working, unless nothing supplies it either.
 func printCapabilities(rep doctor.Report, cfg config.Config) {
 	delivers := rep.Delivers()
 	supplied := doctor.Supplied(cfg)

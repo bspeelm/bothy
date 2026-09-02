@@ -22,14 +22,12 @@ type launchMode struct {
 }
 
 // decideLaunch works out whether to run here or open a terminal that can do
-// the job. Inline image previews need a terminal that speaks the Kitty
-// graphics protocol; inside GNOME Terminal, Yazi degrades silently to block
-// art, so bothy opens a terminal that works instead.
+// the job: image previews need the Kitty graphics protocol, and inside GNOME
+// Terminal Yazi degrades to block art silently.
 //
-// mode is workspace.launch, or the flag that overrode it for this run:
-// "here" and "window" settle the question, "auto" and "" ask it.
-//
-// Every reason to stay put is checked before any reason to spawn.
+// mode is workspace.launch or the flag overriding it: "here" and "window"
+// settle the question, "auto" and "" ask it. Every reason to stay put is
+// checked before any reason to spawn.
 func decideLaunch(p platform.Info, mode string) launchMode {
 	switch mode {
 	case "here":
@@ -43,11 +41,9 @@ func decideLaunch(p platform.Info, mode string) launchMode {
 		return launchMode{Reason: "already inside the terminal bothy opened"}
 	}
 
-	// No graphical session to open a window into: SSH, a bare TTY, CI.
-	//
-	// $DISPLAY and $WAYLAND_DISPLAY are X and Wayland, so they say nothing
-	// about a Mac. Aqua sets neither, and keying on them meant bothy would
-	// never open a window on macOS however capable the machine was.
+	// No graphical session to open a window into: SSH, a bare TTY, CI. Not
+	// keyed on $DISPLAY/$WAYLAND_DISPLAY, which are X and Wayland: Aqua sets
+	// neither, so bothy would never open a window on macOS.
 	if !hasDisplay(p) {
 		return launchMode{Reason: "no graphical display; running here"}
 	}
@@ -82,11 +78,9 @@ func isTerminal(f *os.File) bool {
 	return true
 }
 
-// hasDisplay reports whether there is a session to open a window into.
-//
-// On darwin, an SSH login has no window server either, and $SSH_CONNECTION is
-// how that shows: the alternative is asking launchd, which is a great deal of
-// machinery to answer a question one environment variable already settles.
+// hasDisplay reports whether there is a session to open a window into. On
+// darwin an SSH login has no window server either, and $SSH_CONNECTION says so
+// without the machinery of asking launchd.
 func hasDisplay(p platform.Info) bool {
 	if p.OS == "darwin" {
 		return os.Getenv("SSH_CONNECTION") == "" && os.Getenv("SSH_TTY") == ""
@@ -100,10 +94,9 @@ func ghosttyCommand(p platform.Info) ([]string, error) {
 	if path, err := exec.LookPath("ghostty"); err == nil {
 		return []string{path}, nil
 	}
-	// macOS installs applications as bundles, and Ghostty's own installer puts
-	// nothing on PATH. The binary inside the bundle is a normal executable and
-	// takes the same arguments, so this is a path to find rather than a
-	// different way to launch.
+	// macOS installs applications as bundles and Ghostty's installer puts
+	// nothing on PATH. The binary inside takes the same arguments, so this is
+	// a path to find rather than a different way to launch.
 	if p.OS == "darwin" {
 		for _, dir := range []string{"/Applications", filepath.Join(p.Home, "Applications")} {
 			bin := filepath.Join(dir, "Ghostty.app", "Contents", "MacOS", "ghostty")
@@ -136,14 +129,10 @@ var hostBothyLookup = func() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-// hostBothy is the path the host should run.
-//
-// Asking the host beats assuming: a dnf or deb install puts its copy in
-// /usr/bin, which is nowhere under home, and both are supported install paths.
-//
-// The fallback covers a host PATH that omits ~/.local/bin in a non-login
-// shell, which is common enough that reporting "not found" would usually be
-// wrong. It is checkable from in here because home is shared.
+// hostBothy is the path the host should run. Asking beats assuming: a dnf or
+// deb install puts its copy in /usr/bin, nowhere under home. The fallback
+// covers a host PATH omitting ~/.local/bin in a non-login shell, checkable
+// from in here because home is shared.
 func hostBothy(p platform.Info) (string, error) {
 	if path, err := hostBothyLookup(); err == nil && path != "" {
 		return path, nil
@@ -168,9 +157,8 @@ func spawnTerminal(p platform.Info, dir, profileName string) error {
 		return fmt.Errorf("cannot find the bothy binary to run: %w", err)
 	}
 	// Inside a container the host's ghostty runs the host's copy of bothy,
-	// which then hops back in. The container's own os.Executable() is not that
-	// copy: home is shared, so the path may name a different file on the other
-	// side, or none.
+	// which hops back in. The container's os.Executable() is not that copy:
+	// home is shared, so the path may name a different file, or none.
 	if len(term) > 1 && term[1] == "--host" {
 		host, err := hostBothy(p)
 		if err != nil {

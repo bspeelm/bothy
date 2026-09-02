@@ -29,29 +29,26 @@ type Config struct {
 	Editor    Editor    `toml:"editor"`
 	Workspace Workspace `toml:"workspace"`
 	Extras    []string  `toml:"extras"`
-	// Passthrough names slots that should use your own config directory
-	// instead of bothy's. It is one environment variable per slot at launch,
-	// not a second code path. See PLAN.md §5.
+	// Passthrough names slots that use your own config directory instead of
+	// bothy's: one environment variable per slot at launch, not a second code
+	// path. See PLAN.md §5.
 	Passthrough []string `toml:"passthrough"`
 
-	// Unreadable holds keys bothy recognises but could not read, because the
-	// value is the wrong type -- usually a key whose type changed between
-	// versions. Reported differently from Unknown, because "did you mean
-	// background_image?" about background_image helps nobody.
+	// Unreadable holds recognised keys whose value is the wrong type, usually
+	// after a type change between versions. Kept apart from Unknown, because
+	// "did you mean background_image?" about background_image helps nobody.
 	Unreadable []string `toml:"-"`
 
-	// Unknown holds keys in config.toml that bothy does not recognise. It is
-	// populated by Load and never written back -- a config carried between
-	// machines in git must not grow a record of its own typos.
+	// Unknown holds unrecognised keys. Populated by Load and never written
+	// back: a config carried between machines must not grow its own typos.
 	Unknown []string `toml:"-"`
 }
 
 // Editor holds the one editor setting bothy has an opinion about.
 type Editor struct {
 	// ProvideConfig generates a vimrc and colorscheme inside bothy's tree and
-	// launches vim against them. Off by default: your editor config is yours,
-	// and a workspace tool replacing it is overreach. Worth turning on for a
-	// fresh machine with no vim config at all.
+	// launches vim against them. Off by default -- your editor config is
+	// yours -- and worth turning on for a machine with no vim config at all.
 	ProvideConfig bool `toml:"provide_config"`
 }
 
@@ -65,12 +62,10 @@ type Slots struct {
 	Agent    string `toml:"agent"`
 }
 
-// Theme selects the palette.
-//
-// Provider names a built-in palette; only open Dracula is built in, because it
-// is the only palette whose values this project may carry. Palette points at a
-// file of your own and wins when set — that is the way in for any other
-// palette, licensed or not, and it keeps that palette on your machine.
+// Theme selects the palette. Provider names a built-in, of which open Dracula
+// is the only one this project may carry the values for; Palette points at a
+// file of your own and wins when set, which is the way in for any other
+// palette and keeps it on your machine.
 type Theme struct {
 	Provider string `toml:"provider"`
 	Palette  string `toml:"palette"`
@@ -94,22 +89,15 @@ type Workspace struct {
 	// "here" never does, "window" always does. --in-place and --window
 	// override it for a single run.
 	Launch string `toml:"launch"`
-	// BackgroundImage sits behind the terminal, given as a path to a file of
-	// your own. Empty means none.
-	//
-	// A path rather than a switch because bothy ships no art: the trick wants
-	// an image composited where one pane will be, which depends on your
-	// screen, and a picture bothy chose would be wrong on most of them. See
-	// docs/watermark.md.
-	//
-	// Renaming this again means an entry in Retired, or a config carrying the
-	// old name meets a type error rather than a warning.
+	// BackgroundImage sits behind the terminal: a path to a file of your own,
+	// empty for none. A path rather than a switch because the image has to be
+	// composited where a pane will be, which depends on your screen, so bothy
+	// ships no art. See docs/watermark.md. Renaming it needs an entry in
+	// Retired, or an old config meets a type error rather than a warning.
 	BackgroundImage string `toml:"background_image"`
-	// PaneFrames is "full", "titles" or "none".
-	//
-	// Set explicitly rather than left to Zellij, whose default changed to
-	// "titles" in 0.45 — the workspace should look the same across zellij
-	// versions rather than following an upstream default.
+	// PaneFrames is "full", "titles" or "none". Set explicitly rather than
+	// left to Zellij, whose default changed in 0.45: the workspace should look
+	// the same across zellij versions.
 	PaneFrames string `toml:"pane_frames"`
 }
 
@@ -140,16 +128,11 @@ func Default() Config {
 // withoutUnreadableKeys removes keys the decoder cannot assign, returning the
 // remaining TOML and the names it dropped.
 //
-// A value bothy cannot read is a warning rather than a refusal, for the reasons
-// in ADR-027. Two things about doing it:
-//
-// The decoder stops at the first such key, so it is removed and the decode
-// retried; otherwise every key after it would quietly keep its default. And
-// the key is found by position, because go-toml reports a row for a type error
-// and leaves Key() empty.
-//
-// Bounded: the loop is driven by an error, and a decoder reporting a line this
-// cannot remove would spin.
+// A value bothy cannot read is a warning, not a refusal (ADR-027). The decoder
+// stops at the first such key, so it is dropped and the decode retried, or
+// every key after it would keep its default. Found by position, because
+// go-toml reports a row for a type error and leaves Key() empty. Bounded,
+// because a decoder reporting a line this cannot remove would spin.
 func withoutUnreadableKeys(src []byte) ([]byte, []string) {
 	var dropped []string
 	for range 16 {
@@ -217,12 +200,10 @@ func Load(p platform.Info) (Config, error) {
 		return cfg, fmt.Errorf("config: %w", err)
 	}
 
-	// Unmarshal over the defaults so an absent key keeps its default rather
-	// than becoming the zero value.
-	//
-	// Strict, but only to *collect* what it does not recognise: an unrecognised
-	// key is a warning, never a refusal (ADR-027). The decoder populates the
-	// struct fully either way.
+	// Unmarshal over the defaults so an absent key keeps its default. Strict
+	// only to *collect* what it does not recognise: an unrecognised key is a
+	// warning, never a refusal (ADR-027), and the struct is populated either
+	// way.
 	src, unreadable := withoutUnreadableKeys(src)
 	cfg.Unreadable = unreadable
 
@@ -323,11 +304,9 @@ func (c Config) Palette(p platform.Info) (theme.Palette, error) {
 }
 
 // PassesThrough reports whether a slot uses the user's own config directory.
-//
-// The argument is a slot -- "browser", not "yazi". config.toml accepts either
-// spelling: naming the provider passes through whichever slot it fills, and
-// stops meaning anything once something else fills it. Naming the slot is what
-// survives that, which is why it is the one the doctor asks for.
+// The argument is a slot -- "browser", not "yazi" -- though config.toml
+// accepts either spelling. Naming the provider stops meaning anything once
+// something else fills the slot, which is why the doctor asks for the slot.
 func (c Config) PassesThrough(slot string) bool {
 	provider := c.ProviderFor(slot)
 	for _, s := range c.Passthrough {
@@ -347,11 +326,9 @@ func (c Config) Providers() []string {
 	return out
 }
 
-// ProviderFor is what fills a slot, or "" when the name is not a slot.
-//
-// Read off the toml tags on Slots rather than a switch, so a slot added there
-// is answerable here without a second list to keep in step -- the same reason
-// Keys() and Set() walk the struct.
+// ProviderFor is what fills a slot, or "" when the name is not a slot. Read
+// off the toml tags rather than a switch, so a slot added to Slots is
+// answerable here without a second list -- as with Keys() and Set().
 func (c Config) ProviderFor(slot string) string {
 	v := reflect.ValueOf(c.Slots)
 	t := v.Type()
@@ -369,13 +346,10 @@ func (c Config) PalettePath(p platform.Info) string {
 }
 
 // ContainerFor returns the container to enter, preferring an explicit setting,
-// then the current one, then wherever the install happened.
-//
-// That last fallback is the one that matters. Home is shared between host and
-// container but PATH is not: an install run inside a toolbox resolves its tools
-// to /usr/bin paths that do not exist on the host, so launching from the host
-// finds nothing and a pane dies with "command not found". installedIn is
-// recorded at install time precisely so the launch can go back.
+// then the current one, then wherever the install happened. That last fallback
+// is the one that matters: home is shared between host and container but PATH
+// is not, so an install run inside a toolbox resolves tools to paths the host
+// does not have, and a pane dies with "command not found".
 func (c Config) ContainerFor(p platform.Info, installedIn string) string {
 	if c.Workspace.Container != "" {
 		return c.Workspace.Container
@@ -386,16 +360,12 @@ func (c Config) ContainerFor(p platform.Info, installedIn string) string {
 	return installedIn
 }
 
-// Set applies a dotted key assignment, as used by `bothy config set`.
+// Set applies a dotted key assignment, as used by `bothy config set`. The walk
+// mirrors Keys(), so a new field is listable and settable at once.
 //
-// The walk mirrors Keys(): both derive from the struct, so a new field is
-// listable and settable at once, and neither can offer a key the other
-// refuses.
-//
-// Only the assigned value is checked. Cross-field rules are left to Validate
-// at install time, because enforcing them per-assignment makes some orderings
-// impossible to type: a pair of keys valid only together cannot both be set
-// first.
+// Only the assigned value is checked. Cross-field rules are left to Validate:
+// enforcing them per-assignment makes some orderings impossible to type, since
+// a pair of keys valid only together cannot both be set first.
 func (c *Config) Set(key, value string) error {
 	field, err := fieldFor(reflect.ValueOf(c).Elem(), key)
 	if err != nil {
@@ -421,9 +391,8 @@ func (c *Config) Set(key, value string) error {
 	return nil
 }
 
-// fieldFor resolves a dotted key to the struct field it names, walking the
-// toml tags rather than the Go names so that the key someone types and the key
-// the file uses are the same string.
+// fieldFor resolves a dotted key to the field it names, walking the toml tags
+// rather than the Go names so the key you type is the key the file uses.
 func fieldFor(v reflect.Value, key string) (reflect.Value, error) {
 	for _, part := range strings.Split(key, ".") {
 		if v.Kind() != reflect.Struct {
@@ -444,15 +413,11 @@ func fieldFor(v reflect.Value, key string) (reflect.Value, error) {
 	return v, nil
 }
 
-// Retired names keys bothy used to accept and what replaced them, with an
-// empty value where nothing did.
-//
-// A key is unrecognised for one of three reasons: a typo, a newer bothy that
-// wrote it, or a retirement. Only the third can be answered with certainty,
-// because bothy is the thing that retired it.
-//
-// Any `bothy config set` rewrites config.toml from the struct, so a retired
-// key disappears the next time anything is set.
+// Retired names keys bothy used to accept and what replaced them, empty where
+// nothing did. A key is unrecognised because of a typo, a newer bothy, or a
+// retirement, and only the third can be answered with certainty. Any `bothy
+// config set` rewrites the file from the struct, so a retired key disappears
+// the next time anything is set.
 var Retired = map[string]string{
 	"workspace.watermark": "workspace.background_image",
 }

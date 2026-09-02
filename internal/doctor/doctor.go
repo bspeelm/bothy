@@ -1,14 +1,13 @@
 // Package doctor detects the ways this workspace is known to break.
 //
-// The failures here are silent ones: Yazi discards an entire config and
-// carries on, vim ignores a colorscheme without a word, Ghostty ignores a
-// misnamed config file. A check that restates an error the tool already
-// prints loudly is not worth adding. When a setup bug is fixed, the fix
-// ships with a check that detects it (PLAN.md §0).
+// The failures here are silent ones: Yazi discards a whole config and carries
+// on, vim ignores a colorscheme without a word. A check restating an error the
+// tool already prints loudly is not worth adding, and a fixed setup bug ships
+// with a check that detects it (PLAN.md §0).
 //
-// Every check that invokes a tool must resolve it and run it the way bothy's
-// session will (lookPath, Env.ToolEnv). A check that reports on a different
-// binary or config than the launcher uses is worse than no check.
+// Every check invoking a tool must resolve and run it the way the session will
+// (lookPath, Env.ToolEnv): one reporting on a different binary than the
+// launcher uses is worse than no check.
 package doctor
 
 import (
@@ -86,12 +85,10 @@ type Report struct {
 	Results []Result `json:"results"`
 }
 
-// Delivers reports what this stack can and cannot do, taken from the checks
-// bearing on each capability: the worst severity among them wins, and a
-// capability nothing checks comes back Skip.
-//
-// This is the question someone actually has. Twenty-three lines of check
-// output answer it only for a reader who already knows which lines matter.
+// Delivers reports what this stack can and cannot do, from the checks bearing
+// on each capability: the worst severity wins, and a capability nothing checks
+// comes back Skip. Twenty-three lines of check output answer the question only
+// for a reader who already knows which lines matter.
 func (r Report) Delivers() map[Capability]Severity {
 	out := map[Capability]Severity{}
 	for _, c := range Capabilities {
