@@ -34,14 +34,23 @@ func checkYaziConfigDiscarded(env Env) Result {
 	if env.Config.PassesThrough("browser") {
 		return skip("yazi is passed through to your own config")
 	}
-	bin, err := env.lookPath("yazi")
-	if err != nil {
+	if _, err := env.lookPath("yazi"); err != nil {
 		return fail("yazi is not installed",
 			"the browser pane would open an empty pane",
 			"run 'bothy install' to install it")
 	}
-	// --clear-cache does the config parse and exits, without needing a terminal.
-	out, _ := env.tool(bin, "--clear-cache").CombinedOutput()
+	// `ya cache clear` parses the config and exits without needing a terminal,
+	// which is what makes this a config check rather than a cache one. `ya env`
+	// names the question better and cannot be used: it demands a tty, and the
+	// doctor has none in CI. ya ships inside yazi's own archive, so its absence
+	// is a partial install rather than a missing feature.
+	bin, err := env.lookPath("ya")
+	if err != nil {
+		return warn("yazi is installed but ya is not, so its config is unchecked",
+			"ya ships alongside yazi and reads the same config",
+			"run 'bothy install' to supply it")
+	}
+	out, _ := env.tool(bin, "cache", "clear").CombinedOutput()
 	if yaziComplaint.Match(out) {
 		return fail("yazi is ignoring its entire config",
 			strings.TrimSpace(string(out)),
@@ -120,8 +129,8 @@ func checkYaziConfigKeys(env Env) Result {
 
 // checkYaziPlugins reports plugins bothy's config wants and does not have.
 // A warning, not a failure: the generated config matches what is installed.
-// It needs its own check because `yazi --clear-cache`, which the config check
-// uses, does not execute init.lua, so a missing plugin surfaces only at launch.
+// It needs its own check because `ya cache clear`, which the config check uses,
+// does not execute init.lua, so a missing plugin surfaces only at launch.
 func checkYaziPlugins(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" || env.Config.PassesThrough("browser") {
 		return skip("bothy is not managing yazi's config")
