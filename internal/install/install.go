@@ -386,7 +386,7 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	env := newEnv(os.Environ())
 
 	// bothy's own bin first, for this session only.
-	env.set("PATH", p.BinDir()+string(os.PathListSeparator)+os.Getenv("PATH"))
+	env.set("PATH", p.BinDir()+string(os.PathListSeparator)+env.get("PATH"))
 
 	// Passthrough must *unset*, not merely decline to set: the session inherits
 	// the current environment, so an already-exported value would stay in place
@@ -476,6 +476,9 @@ func (e *env) set(k, v string) {
 }
 
 // unset removes a key entirely, so the child does not inherit it.
+// get reads the copy being assembled, not the process environment.
+func (e *env) get(k string) string { return e.values[k] }
+
 func (e *env) unset(k string) {
 	if _, seen := e.values[k]; !seen {
 		return
