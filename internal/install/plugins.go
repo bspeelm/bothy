@@ -70,18 +70,24 @@ func packagePath(p platform.Info) string {
 // sitting at a revision other than the pinned one counts as missing.
 func installedRevs(p platform.Info) map[string]string {
 	out := map[string]string{}
-	raw, err := os.ReadFile(packagePath(p))
-	if err != nil {
-		return out
-	}
-	var f packageFile
-	if err := toml.Unmarshal(raw, &f); err != nil {
-		return out
-	}
-	for _, d := range f.Plugin.Deps {
+	for _, d := range installedDeps(p) {
 		out[d.Use] = d.Rev
 	}
 	return out
+}
+
+// installedDeps is what package.toml currently records, or nothing when there
+// is no readable file.
+func installedDeps(p platform.Info) []packageDep {
+	raw, err := os.ReadFile(packagePath(p))
+	if err != nil {
+		return nil
+	}
+	var f packageFile
+	if err := toml.Unmarshal(raw, &f); err != nil {
+		return nil
+	}
+	return f.Plugin.Deps
 }
 
 // writePackageFile writes the pins for `ya pkg install` to act on. No
@@ -89,9 +95,20 @@ func installedRevs(p platform.Info) map[string]string {
 // this one from its own model, so a comment would not survive the first
 // install.
 func writePackageFile(p platform.Info, plugins []Plugin) error {
+	// `ya` records a hash of what it deployed and compares the directory
+	// against it to spot edits made by hand. Writing the field empty reads as
+	// an edit, so bumping a pin aborted with "you have modified the contents
+	// of the plugin" -- the one operation slots/yazi.toml documents. The hash
+	// is ya's own bookkeeping, not a pin: it ignores a value it is given and
+	// overwrites it, so bothy carries it across rather than computing one.
+	hashes := map[string]string{}
+	for _, d := range installedDeps(p) {
+		hashes[d.Use] = d.Hash
+	}
 	var f packageFile
 	for _, pl := range plugins {
-		f.Plugin.Deps = append(f.Plugin.Deps, packageDep{Use: pl.Use, Rev: pl.Rev})
+		f.Plugin.Deps = append(f.Plugin.Deps,
+			packageDep{Use: pl.Use, Rev: pl.Rev, Hash: hashes[pl.Use]})
 	}
 	f.Flavor.Deps = []packageDep{}
 	out, err := toml.Marshal(f)
