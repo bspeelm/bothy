@@ -95,6 +95,19 @@ This lived in Go as well as here, and the two lists disagreed about which
 agents existed — aider had a guard and no provider. A test asserts every agent
 declares at least one and that each one reaches the guard.
 
+## `credentials` — what a confined agent needs through the wall
+
+`bothy confine` mounts the project directory and nothing else from `$HOME`, so
+an agent needs its own credentials named or it cannot log in:
+
+```toml
+credentials = ["~/.claude", "~/.claude.json"]
+```
+
+Only paths that exist are mounted. Leave the field out if you do not know them:
+empty means bothy does not know, and `bothy confine` says so rather than
+building a wall the agent cannot authenticate through.
+
 ## `[[file]]` — bothy generates its config
 
 ```toml

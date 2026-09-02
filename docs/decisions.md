@@ -1099,7 +1099,11 @@ overwrite it.
 **The wall is the filesystem, and the README says so.** Mounted: the project
 directory, writable, because editing it is the job; and the agent's own
 credentials, without which it cannot log in and the wall protects nothing
-anyone wanted. Not walled: the network, because the agent calls its API. #116
+anyone wanted. Those paths are declared by the provider (`credentials` in
+`slots/`), not hardcoded -- 0.6.0 shipped them as two literals naming Claude's,
+which left the other two agents unable to authenticate. An agent bothy has not
+learned says so and points at `agent.credentials` rather than building a wall
+nothing can work through. Not walled: the network, because the agent calls its API. #116
 proposed an allowlist, which needs pasta or slirp configuration and is a second
 feature. A wall people misunderstand is worse than none, so the limits are
 stated where the feature is.

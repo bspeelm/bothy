@@ -26,11 +26,14 @@ type Provider struct {
 	// Detect names environment variables this program exports while running.
 	// bothy refuses to open a workspace inside one, because the layout would
 	// start a second copy in a pane of the first.
-	Detect  []string `toml:"detect"`
-	Fetch   *Fetch   `toml:"fetch"`
-	Advise  *Advise  `toml:"advise"`
-	Files   []File   `toml:"file"`
-	Plugins []Plugin `toml:"plugin"`
+	Detect []string `toml:"detect"`
+	// Credentials are the paths this program authenticates with, mounted into
+	// a confined agent. Empty means bothy does not know them.
+	Credentials []string `toml:"credentials"`
+	Fetch       *Fetch   `toml:"fetch"`
+	Advise      *Advise  `toml:"advise"`
+	Files       []File   `toml:"file"`
+	Plugins     []Plugin `toml:"plugin"`
 }
 
 // Fetch is a release bothy can download. The fields are the fetcher's, and

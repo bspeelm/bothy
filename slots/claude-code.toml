@@ -10,6 +10,7 @@ what      = "the agent that sits in the main pane"
 slot      = "agent"
 platforms = ["linux", "darwin"]
 detect    = ["CLAUDECODE", "CLAUDE_CODE_SSE"]
+credentials = ["~/.claude", "~/.claude.json"]
 
 [advise]
 binary      = "claude"

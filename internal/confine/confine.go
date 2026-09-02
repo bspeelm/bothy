@@ -10,7 +10,9 @@ import (
 	"path/filepath"
 
 	bothy "github.com/bspeelm/bothy"
+	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 const DefaultImage = "bothy-agent"
@@ -67,7 +69,7 @@ func Runtime(p platform.Info) ([]string, error) {
 // label=disable rather than a :z mount: :z relabels the user's project
 // directory, which persists after uninstall. The wall is the mount set and the
 // user namespace; SELinux would be a second one, not at that price.
-func Command(p platform.Info, runtime []string, image, dir, agent string) []string {
+func Command(p platform.Info, runtime []string, image, dir, agent string, creds []string) []string {
 	args := append([]string{}, runtime...)
 	args = append(args, "run", "--rm", "-it",
 		"-v", dir+":/work:rw", "-w", "/work",
@@ -77,17 +79,24 @@ func Command(p platform.Info, runtime []string, image, dir, agent string) []stri
 	)
 	// Its own credentials, and only those: without them it cannot
 	// authenticate and the wall protects nothing wanted.
-	for _, c := range credentials(p) {
+	for _, c := range creds {
 		args = append(args, "-v", c+":/agent/"+filepath.Base(c)+":rw")
 	}
 	return append(args, image, agent)
 }
 
-// credentials are the agent's config paths present on this machine.
-func credentials(p platform.Info) []string {
+// Credentials are the paths to mount: what config names, else what the
+// provider declares, keeping only those that exist here. Per provider rather
+// than hardcoded, for the reason the detection variables are -- two lists of
+// which agents exist will disagree. Empty means bothy does not know them.
+func Credentials(p platform.Info, cfg []string, pr slots.Provider) []string {
+	want := cfg
+	if len(want) == 0 {
+		want = pr.Credentials
+	}
 	var out []string
-	for _, name := range []string{".claude", ".claude.json"} {
-		path := filepath.Join(p.Home, name)
+	for _, c := range want {
+		path := config.Expand(c, p.Home)
 		if _, err := os.Stat(path); err == nil {
 			out = append(out, path)
 		}

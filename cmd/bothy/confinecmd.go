@@ -9,6 +9,7 @@ import (
 	"github.com/bspeelm/bothy/internal/confine"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 // cmdConfine launches the workspace with the agent pane in a container. With
@@ -42,7 +43,19 @@ func cmdConfine(args []string) error {
 		image = confine.DefaultImage
 	}
 	dir, _ := os.Getwd()
-	cmd := strings.Join(confine.Command(p, runtime, image, dir, install.AgentBinary(cfg.Slots.Agent)), " ")
+	agent := cfg.ProviderOrDefault("agent")
+	pr, _ := slots.Get(agent)
+	creds := confine.Credentials(p, cfg.Agent.Credentials, pr)
+	if len(creds) == 0 {
+		fmt.Fprintf(os.Stderr,
+			"bothy: no credential paths known for %s, so it will start unable to log in.\n"+
+				"       bothy mounts the project and nothing else from $HOME, which is the\n"+
+				"       point — but the agent needs its own credentials through that wall.\n"+
+				"       Name them and this goes away:\n"+
+				"         bothy config set agent.credentials ~/.config/%s\n", agent, agent)
+	}
+	cmd := strings.Join(confine.Command(p, runtime, image, dir,
+		install.AgentBinary(cfg.Slots.Agent), creds), " ")
 
 	if *printOnly {
 		recipe, err := confine.Recipe()

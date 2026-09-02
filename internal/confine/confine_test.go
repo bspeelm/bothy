@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/slots"
 )
 
 func sandbox(t *testing.T) platform.Info {
@@ -20,7 +21,7 @@ func sandbox(t *testing.T) platform.Info {
 // test failure anywhere else.
 func TestTheInvocationMountsTheProjectAndNothingElse(t *testing.T) {
 	p := sandbox(t)
-	args := Command(p, []string{"podman"}, "img", "/work/project", "claude")
+	args := Command(p, []string{"podman"}, "img", "/work/project", "claude", nil)
 	line := strings.Join(args, " ")
 
 	for _, want := range []string{
@@ -39,18 +40,39 @@ func TestTheInvocationMountsTheProjectAndNothingElse(t *testing.T) {
 }
 
 // Without its own credentials the agent cannot authenticate and the wall
-// protects nothing anyone wanted. With none present, none are invented.
+// protects nothing anyone wanted. A path the provider names but the machine
+// does not have is not invented either.
 func TestCredentialsAreMountedOnlyWhenTheyExist(t *testing.T) {
 	p := sandbox(t)
-	if line := strings.Join(Command(p, []string{"podman"}, "i", "/d", "a"), " "); strings.Contains(line, "/agent/") {
-		t.Errorf("mounted a credential that does not exist:\n  %s", line)
+	pr := slots.Provider{Credentials: []string{"~/.claude"}}
+
+	if got := Credentials(p, nil, pr); len(got) != 0 {
+		t.Errorf("Credentials = %q for a path that does not exist", got)
 	}
 	if err := os.MkdirAll(filepath.Join(p.Home, ".claude"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	line := strings.Join(Command(p, []string{"podman"}, "i", "/d", "a"), " ")
+	got := Credentials(p, nil, pr)
+	if len(got) != 1 || !strings.HasSuffix(got[0], ".claude") {
+		t.Fatalf("Credentials = %q, want the one that exists", got)
+	}
+	line := strings.Join(Command(p, []string{"podman"}, "i", "/d", "a", got), " ")
 	if !strings.Contains(line, ".claude:/agent/.claude:rw") {
 		t.Errorf("credentials exist and were not mounted:\n  %s", line)
+	}
+}
+
+// An agent bothy has not learned the paths for is the user's to name, and
+// config wins over the provider so they need not wait for bothy to learn.
+func TestConfigOverridesWhatTheProviderDeclares(t *testing.T) {
+	p := sandbox(t)
+	if err := os.MkdirAll(filepath.Join(p.Home, ".mine"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pr := slots.Provider{Credentials: []string{"~/.claude"}}
+	got := Credentials(p, []string{"~/.mine"}, pr)
+	if len(got) != 1 || !strings.HasSuffix(got[0], ".mine") {
+		t.Errorf("Credentials = %q, want the configured path", got)
 	}
 }
 
