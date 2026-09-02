@@ -45,8 +45,8 @@ budgets: build
 	@size=$$(wc -c < $(BINARY)); \
 	echo "binary: $$size bytes (budget $(MAX_BINARY_BYTES))"; \
 	if [ $$size -gt $(MAX_BINARY_BYTES) ]; then echo "over budget"; exit 1; fi
-	@code=$$(cat $(SOURCES) | grep -v '^[[:space:]]*//' | grep -vc '^[[:space:]]*$$'); \
-	comments=$$(cat $(SOURCES) | grep -c '^[[:space:]]*//'); \
+	@code=$$(cat $(SOURCES) | awk '/^[[:space:]]*\/\*/{b=1} b{if(/\*\//)b=0; next} !/^[[:space:]]*\/\// && NF' | wc -l); \
+	comments=$$(cat $(SOURCES) | awk '/^[[:space:]]*\/\*/{b=1} b{c++; if(/\*\//)b=0; next} /^[[:space:]]*\/\//{c++} END{print c+0}'); \
 	ratio=$$(( comments * 100 / code )); \
 	echo "code:     $$code lines (budget $(MAX_CODE_LINES))"; \
 	echo "comments: $$comments lines, $$ratio% of code (budget $(MAX_COMMENT_RATIO)%)"; \
