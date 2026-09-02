@@ -1,4 +1,4 @@
-# Plan — 0.4.0, the provider format
+# Plan — the provider format, across 0.4.0 and 0.5.0
 
 #69 says "three dialects become one". That is the wrong description of the
 problem, and following it would produce a tidier `slots/` that fixes nothing.
@@ -26,6 +26,14 @@ and there was nothing to be wrong against — because **nothing in the data says
 that `yazi` fills `browser`**.
 
 That is the defect. The three dialects are a symptom.
+
+Put plainly: **a provider file says how to get the program and nothing about
+what it is.** `slots/tools/yazi.toml` carries a repository, a version minimum
+and a set of checksums, and never says that yazi is the file browser or that
+it is what makes image previews possible. Both of those are things it
+provides, in the two senses the format needs — `slot` for the role it fills,
+`provides` for the capabilities it delivers. The doctor currently knows the
+second only because it is typed by hand into `Checks()`.
 
 ## What is actually wrong
 
@@ -140,8 +148,12 @@ leaves the multiplexer's renderer in tier three, where 0.5.0 finds it.
 
 ## Order
 
-Each step ends green, and the first two are worth doing whatever happens to
-the rest.
+Split across two milestones. 0.4.0 makes providers *declare* what they are;
+0.5.0 changes where they live and how they are parsed, alongside the mux seam
+(#64) — which is the same problem seen from the other end, a provider that
+still needs Go.
+
+Each step ends green.
 
 1. **Fix `passthrough`.** A live bug in a documented feature, independent of
    the format. Slot names win — they are what `Validate` already demands and
@@ -166,6 +178,8 @@ the rest.
 6. **#56, the agent slot**, as the first provider added under the finished
    format — which is also the test of whether it worked.
 
+**Steps 1–3 are 0.4.0. Steps 4–6 are 0.5.0**, where the mux seam already is.
+
 ## Open questions
 
 1. **Does `extras` become slots?** `fzf`, `ripgrep`, `fd`, `jq`, `zoxide`,
@@ -177,13 +191,10 @@ the rest.
    field with no reader invites it to be wrong for a milestone. It could wait
    for 0.6.0 without holding anything up.
 
-3. **How much migration is owed?** `slots/` is not a user-facing surface —
-   nobody has written a provider file. If that is true, steps 4 and 5 need no
-   compatibility at all, and the format can change in one commit. If bothy
-   means it about "adding a provider is a file", it may already be too late to
-   assume that.
+3. ~~How much migration is owed?~~ **None.** `slots/` is `//go:embed`-ed, so
+   no one can add a provider without forking and rebuilding: it is source code
+   that happens to be TOML, and contributing a provider means opening a pull
+   request. The format can change in a single commit. (`docs/adding-a-provider.md`
+   is a contributor's guide, not a promise to anyone's local files.)
 
-4. **Does this fit in 0.4.0?** Six steps, one of which rewrites how every
-   generated file is chosen. Splitting 4–6 into 0.5.0 and leaving 0.4.0 as
-   "the bug, the slot field, the header" is defensible, and it would put the
-   mux seam and the format in the same milestone, where they may belong.
+4. ~~Does this fit in 0.4.0?~~ **No, and it is split above.**
