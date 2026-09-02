@@ -30,7 +30,7 @@ import (
 	"github.com/bspeelm/bothy/internal/doctor"
 )
 
-var images = []string{"fedora:44", "ubuntu:24.04"}
+var images = []string{"fedora:44", "ubuntu:24.04", "debian:trixie", "archlinux:latest"}
 
 // The one distro-specific thing in this test, kept in one visible place
 // because it is exactly the README's "what you need first": a missing entry
@@ -42,6 +42,10 @@ var images = []string{"fedora:44", "ubuntu:24.04"}
 var prep = map[string]string{
 	"fedora": "dnf -y install git ncurses",
 	"ubuntu": "apt-get update && apt-get install -y --no-install-recommends git ca-certificates ncurses-bin",
+	// Debian ships infocmp and neither git nor TLS roots.
+	"debian": "apt-get update && apt-get install -y --no-install-recommends git ca-certificates",
+	// Arch ships ncurses and TLS roots in its base image; only git is missing.
+	"archlinux": "pacman -Sy --noconfirm git",
 }
 
 // What the doctor must report inside a headless container after a full

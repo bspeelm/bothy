@@ -411,11 +411,18 @@ into its own folder, and the result works from either side. It has, on the
 whole, had enough of being surprised by containers, and has written some of
 this down.
 
-As for which machines: Fedora and Ubuntu in containers, and macOS on a Mac, on
-every release — installed, exercised, uninstalled, and the whole doctor report
-compared against what it ought to have said. That is the whole of what
-supported means here: not that it ought to work, but that something proved it
-did this morning.
+As for which machines: Fedora, Ubuntu, Debian and Arch in containers, and
+macOS on a Mac, on every release — installed, exercised, uninstalled, and the
+whole doctor report compared against what it ought to have said. That is the
+whole of what supported means here: not that it ought to work, but that
+something proved it did this morning.
+
+Two things bothy has advice for and does not test. **Silverblue and other
+image-based systems**, where `dnf` means `rpm-ostree` and a reboot: bothy is
+written on one and cannot put one in a container. **Mint, Pop!_OS and the other
+derivatives**, which inherit Debian's advice through `ID_LIKE` — their container
+images report `ID=ubuntu`, so a job using one would prove nothing the Ubuntu job
+does not. That path is unit-tested instead.
 
 macOS took eight releases to earn that sentence, having been listed from the
 first on the strength of the binaries being built, which is not the same
