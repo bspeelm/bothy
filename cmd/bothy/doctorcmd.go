@@ -31,9 +31,10 @@ func cmdDoctor(args []string) error {
 func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 	env := doctor.Env{
 		Platform: p, Config: cfg, ProfileName: cfg.Profile,
-		MuxBin:  install.ToolPath(p, cfg.Slots.Mux),
-		RunsIn:  hopTarget(p, cfg),
-		Version: version(),
+		MuxBin:      install.ToolPath(p, cfg.Slots.Mux),
+		SessionName: sessionNameHere(),
+		RunsIn:      hopTarget(p, cfg),
+		Version:     version(),
 		// Check the tools the way bothy will actually run them.
 		ToolEnv: install.SessionEnv(p, cfg),
 	}
@@ -107,6 +108,16 @@ func printCapabilities(rep doctor.Report) {
 			fmt.Printf("%-21s %s\n", line.label+":", strings.Join(line.items, ", "))
 		}
 	}
+}
+
+// sessionNameHere is what bothy would call this directory's session, for the
+// check that asks whether the running one matches.
+func sessionNameHere() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return sessionName(dir)
 }
 
 func mark(s doctor.Severity) string {

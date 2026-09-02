@@ -136,6 +136,9 @@ type Env struct {
 	RunsIn string
 	// MuxBin is the multiplexer binary bothy will actually launch, resolved through its own bin first.
 	MuxBin string
+	// SessionName is what bothy would call this project's session. Passed in
+	// because the naming belongs to the launcher, not to the doctor.
+	SessionName string
 	// Version is the running binary's version, to compare against the
 	// manifest's. Passed in, so this package knows nothing about package main.
 	Version string
@@ -212,6 +215,8 @@ func Checks() []Check {
 		{ID: "tool-provenance", Run: checkToolProvenance},
 		{ID: "tools-reachable", Run: checkToolsReachable},
 		{ID: "theme-palette", Capability: Theme, Run: checkThemePalette},
+		{ID: "theme-reached", Capability: Theme, Run: checkThemeReached},
+		{ID: "session-named", Capability: Sessions, Run: checkSessionIsNamed},
 	}
 }
 
