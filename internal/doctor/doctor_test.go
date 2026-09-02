@@ -203,3 +203,56 @@ func TestChecksResolveBinariesThroughBothysBin(t *testing.T) {
 			i+1, strings.TrimSpace(line))
 	}
 }
+
+// #70. ADR-017 says a stack either gives you a thing or does not, and the
+// check list only implies the answer. Delivers states it.
+func TestDeliversTakesTheWorstAnswer(t *testing.T) {
+	rep := Report{Results: []Result{
+		{ID: "a", Capability: Images, Severity: Pass},
+		{ID: "b", Capability: Images, Severity: Fail},
+		{ID: "c", Capability: Panes, Severity: Pass},
+		{ID: "d", Capability: Panes, Severity: Skip},
+		{ID: "e", Severity: Fail}, // bears on nothing; must not colour anything
+	}}
+	got := rep.Delivers()
+
+	// One failure is enough: a capability with a broken part is not delivered,
+	// however many of its other parts work.
+	if got[Images] != Fail {
+		t.Errorf("images = %s with one check failing, want fail", got[Images])
+	}
+	// And a skip alongside a pass is not a reason to doubt it.
+	if got[Panes] != Pass {
+		t.Errorf("panes = %s with a pass and a skip, want pass", got[Panes])
+	}
+}
+
+// A capability nothing checks is reported as unverified rather than counted as
+// working. Claiming five things and measuring four is the failure mode this
+// grouping exists to make visible.
+func TestACapabilityNothingChecksIsNotClaimed(t *testing.T) {
+	got := Report{Results: []Result{{ID: "a", Capability: Panes, Severity: Pass}}}.Delivers()
+	for _, c := range Capabilities {
+		if c == Panes {
+			continue
+		}
+		if got[c] != Skip {
+			t.Errorf("%s = %s with no check bearing on it, want skip", c, got[c])
+		}
+	}
+}
+
+// Every capability a check names has to be one of the five. A typo would
+// otherwise create a sixth that no report ever mentions, and the check would
+// silently bear on nothing.
+func TestChecksNameRealCapabilities(t *testing.T) {
+	known := map[Capability]bool{}
+	for _, c := range Capabilities {
+		known[c] = true
+	}
+	for _, c := range Checks() {
+		if c.Capability != "" && !known[c.Capability] {
+			t.Errorf("check %q names capability %q, which is not one of the five", c.ID, c.Capability)
+		}
+	}
+}
