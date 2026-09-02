@@ -1,0 +1,18 @@
+# The agent is advised, never installed -- see claude-code.toml for why.
+#
+# aider was the reason this file exists: bothy already refused to open a
+# workspace inside an aider session, and had no other idea aider existed. The
+# nesting guard and the agent list were two lists that disagreed, and this is
+# what one of them looks like.
+
+name      = "aider"
+what      = "the agent that sits in the main pane"
+slot      = "agent"
+platforms = ["linux", "darwin"]
+detect    = ["AIDER_CHAT"]
+
+[advise]
+binary      = "aider"
+
+[advise.install]
+default        = "python -m pip install aider-install && aider-install"
