@@ -59,6 +59,37 @@ type Info struct {
 // nothing outside it, which is what makes `uninstall` a directory removal
 // rather than a manifest replay. See PLAN.md §2.
 
+// strandedSessionRoot recovers the tree for a shell inside a workspace that an
+// older bothy started.
+//
+// Those sessions set XDG_DATA_HOME into the tree and did not name the tree
+// itself, so every bothy command typed in them resolved one level deeper --
+// reporting an empty directory as the workspace and the tools it had installed
+// as the system's. Upgrading does not fix a session that is already running,
+// and nothing about the wrong answers looked wrong.
+//
+// The recovery is exact rather than a guess: those versions set XDG_DATA_HOME
+// to the tree plus "share", so the tree is its parent. BOTHY_SESSION is what
+// makes it safe to read a variable the user may also set for their own
+// reasons -- only bothy sets that one.
+//
+// It can go once no session started by a bothy older than v0.3.1 is plausibly
+// still running, which is a longer time than it sounds.
+func strandedSessionRoot() string {
+	if os.Getenv("BOTHY_SESSION") == "" {
+		return ""
+	}
+	// The shape those versions wrote, and only that shape: <tree>/share, where
+	// the tree is always named bothy. An ordinary ~/.local/share also ends in
+	// "share", and stripping that would send a healthy session to ~/.local.
+	share := os.Getenv("XDG_DATA_HOME")
+	tree := filepath.Dir(share)
+	if filepath.Base(share) != "share" || filepath.Base(tree) != "bothy" {
+		return ""
+	}
+	return tree
+}
+
 // BothyDir is the root of everything bothy owns.
 //
 // Root wins when set, because DataDir is derived from XDG_DATA_HOME and
@@ -109,6 +140,9 @@ func Detect() Info {
 	i.DataDir = xdg("XDG_DATA_HOME", home, ".local", "share")
 
 	i.Root = os.Getenv("BOTHY_DIR")
+	if i.Root == "" {
+		i.Root = strandedSessionRoot()
+	}
 
 	i.DistroID, i.DistroLike, i.DistroVersion = osRelease()
 	i.Container, i.ContainerName = detectContainer()
