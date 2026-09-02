@@ -31,15 +31,10 @@ func cmdDev(args []string) error {
 	if fs.NArg() > 0 && fs.Arg(0) == "attach" {
 		return cmdAttach(fs.Args()[1:])
 	}
-	if *window && *inPlace {
-		return fmt.Errorf("--window and --in-place contradict each other")
-	}
 	p, cfg, err := load()
 	if err != nil {
 		return err
 	}
-
-	mode := launchModeFor(cfg, *window, *inPlace)
 
 	// The layout starts its own agent; running from inside one would nest a second.
 	if agent, nested := nestedAgent(); nested {
@@ -47,21 +42,13 @@ func cmdDev(args []string) error {
 			"      exit this session first, then run bothy", agent)
 	}
 
-	target := *dir
-	if target == "" {
-		target = cfg.Workspace.ProjectDir
+	cwd, _ := os.Getwd()
+	plan, err := planLaunch(p, cfg, cwd, launchFlags{*dir, *profile, *window, *inPlace})
+	if err != nil {
+		return err
 	}
-	if target == "" {
-		target, _ = os.Getwd()
-	}
-	target = expandDir(target, p.Home)
-	if fi, err := os.Stat(target); err != nil || !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", target)
-	}
-
-	name := *profile
-	if name == "" {
-		name = cfg.Profile
+	if fi, err := os.Stat(plan.Dir); err != nil || !fi.IsDir() {
+		return fmt.Errorf("%s is not a directory", plan.Dir)
 	}
 
 	// Before the layout is rendered, so a cancelled setup leaves no debris.
@@ -69,26 +56,18 @@ func cmdDev(args []string) error {
 		return err
 	}
 
-	// Open a terminal that can do the job, if this one cannot. Before the
-	// container hop, so the window opens once, on the host.
-	if decided := decideLaunch(p, mode); decided.Spawn {
-		if err := spawnTerminal(p, target, name); err != nil {
+	if plan.Spawn {
+		if err := spawnTerminal(p, plan.Dir, plan.Profile); err != nil {
 			// Not fatal: the workspace still runs here, without image previews.
 			fmt.Fprintf(os.Stderr, "bothy: %v\n         running in this terminal instead\n", err)
 		} else {
 			return nil
 		}
 	}
-
-	// On the host with a container configured, hop in: the tools live inside
-	// and home is shared, so $PWD means the same thing on both sides.
-	if !p.InContainer() {
-		if container := install.ContainerFor(p, cfg); container != "" {
-			return hopIntoContainer(container, target, name)
-		}
+	if plan.Container != "" {
+		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
 	}
-
-	return launch(p, cfg, target, name, "")
+	return launch(p, cfg, plan.Dir, plan.Profile, "")
 }
 
 // launch renders the profile and hands off to the multiplexer with the
@@ -216,6 +195,53 @@ func cmdAttach(args []string) error {
 		return containerHop(plan.Container, plan.Command)
 	}
 	return runInteractiveEnv(plan.Env, plan.Bin, plan.Args...)
+}
+
+type launchFlags struct {
+	Dir, Profile    string
+	Window, InPlace bool
+}
+
+// launchPlan is what `bothy` will do: spawn a terminal, hop, or run here.
+type launchPlan struct {
+	Dir, Profile string
+	// Reason says why a spawn was chosen, for the message if it then fails.
+	Spawn  bool
+	Reason string
+	// Container is empty to run here.
+	Container string
+}
+
+// decide is a seam: the real one asks the terminal and the host (ADR-011).
+var decide = decideLaunch
+
+// planLaunch decides, touching no disk, so the tree can be tested rather than
+// only run. cwd and the terminal question come in for that reason.
+func planLaunch(p platform.Info, cfg config.Config, cwd string, f launchFlags) (launchPlan, error) {
+	if f.Window && f.InPlace {
+		return launchPlan{}, fmt.Errorf("--window and --in-place contradict each other")
+	}
+	plan := launchPlan{Dir: f.Dir, Profile: f.Profile}
+	if plan.Dir == "" {
+		plan.Dir = cfg.Workspace.ProjectDir
+	}
+	if plan.Dir == "" {
+		plan.Dir = cwd
+	}
+	plan.Dir = expandDir(plan.Dir, p.Home)
+	if plan.Profile == "" {
+		plan.Profile = cfg.Profile
+	}
+
+	// Before the container hop, so the window opens once and on the host.
+	if d := decide(p, launchModeFor(cfg, f.Window, f.InPlace)); d.Spawn {
+		plan.Spawn, plan.Reason = true, d.Reason
+	}
+	// Home is shared, so $PWD means the same thing on both sides.
+	if !p.InContainer() {
+		plan.Container = install.ContainerFor(p, cfg)
+	}
+	return plan, nil
 }
 
 // attachPlan is what `bothy attach` will do: hop into the container the
