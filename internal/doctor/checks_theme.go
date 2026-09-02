@@ -17,6 +17,14 @@ import (
 // The foreground is the probe because every one of these files carries it. The
 // background deliberately does not travel: zellij's `bg` is UI chrome, so
 // looking for it would fail on a correct install.
+// muxDir is the backend's config directory, "" when there is none.
+func muxDir(env Env) string {
+	if env.Mux == nil {
+		return ""
+	}
+	return env.Mux.Dir(env.Platform)
+}
+
 func checkThemeReached(env Env) Result {
 	pal, err := env.Config.Palette(env.Platform)
 	if err != nil {
@@ -31,10 +39,11 @@ func checkThemeReached(env Env) Result {
 		{"browser", filepath.Join(install.YaziDir(env.Platform), "theme.toml")},
 		{"terminal", install.GhosttyConf(env.Platform)},
 	}
-	// The zellij theme is named after the palette, so it is found rather than
-	// constructed.
-	if themes, _ := filepath.Glob(filepath.Join(install.ZellijDir(env.Platform), "themes", "*.kdl")); len(themes) > 0 {
-		targets = append(targets, target{"mux", themes[0]})
+	// The mux theme is named after the palette, so it is found not constructed.
+	if dir := muxDir(env); dir != "" {
+		if themes, _ := filepath.Glob(filepath.Join(dir, "themes", "*.kdl")); len(themes) > 0 {
+			targets = append(targets, target{"mux", themes[0]})
+		}
 	}
 
 	var missing []string

@@ -161,11 +161,12 @@ func checkImagePreviews(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")
 	}
-	mux := env.MuxBin
-	if env.Config.Slots.Mux == "none" {
-		mux = ""
+	mg := probe.MuxGraphics{None: true}
+	if env.Mux != nil && env.MuxBin != "" {
+		carries, reason := env.Mux.Graphics(env.MuxBin)
+		mg = probe.MuxGraphics{Carries: carries, Reason: reason}
 	}
-	g := probe.CheckGraphics(mux, env.Platform.Terminal)
+	g := probe.CheckGraphics(env.Platform.Terminal, mg)
 
 	yaziToml := filepath.Join(env.Platform.ConfigRoot(), "yazi", "yazi.toml")
 	b, err := os.ReadFile(yaziToml)

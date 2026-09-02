@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/bspeelm/bothy/internal/install"
-	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/theme"
 )
 
@@ -29,11 +28,15 @@ func cmdLayout(args []string) error {
 	if err != nil {
 		return err
 	}
-	kdl, err := layout.Render(prof, install.Commands(cfg))
+	backend, _, err := muxPath(p, cfg)
 	if err != nil {
 		return err
 	}
-	fmt.Print(kdl)
+	out, err := backend.Preview(prof, install.Commands(cfg))
+	if err != nil {
+		return err
+	}
+	fmt.Print(out)
 	return nil
 }
 

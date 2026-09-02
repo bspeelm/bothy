@@ -1,6 +1,7 @@
 package doctor
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"github.com/bspeelm/bothy/internal/advice"
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/probe"
 )
 
@@ -21,7 +23,7 @@ func checkTerminalCapability(env Env) Result {
 	if term == "" {
 		term = "an unrecognised terminal"
 	}
-	g := probe.CheckGraphics("", env.Platform.Terminal)
+	g := probe.CheckGraphics(env.Platform.Terminal, probe.MuxGraphics{None: true})
 	if g.Supported {
 		return pass("running in " + term + ", which can draw images")
 	}
@@ -41,24 +43,27 @@ func checkTerminalCapability(env Env) Result {
 	return pass("this terminal cannot draw images, so bothy will open a Ghostty window — " + g.Reason)
 }
 
-func checkZellijConfig(env Env) Result {
+func checkMuxConfig(env Env) Result {
 	if r, ok := env.elsewhere(); ok {
 		return r
 	}
-	if env.Config.Slots.Mux != "zellij" {
-		return skip("mux slot is not zellij")
+	if env.Mux == nil {
+		return skip("no multiplexer backend for the configured slot")
 	}
-	bin, err := env.lookPath("zellij")
+	name := env.Mux.Name()
+	bin, err := env.lookPath(name)
 	if err != nil {
-		return fail("zellij is not installed", "", "run 'bothy install'")
+		return fail(name+" is not installed", "", "run 'bothy install'")
 	}
-	out, err := env.tool(bin, "setup", "--check").CombinedOutput()
+	detail, err := env.Mux.CheckConfig(bin, env.ToolEnv)
+	if errors.Is(err, mux.ErrUnsupported) {
+		return skip(name + " has no configuration check")
+	}
 	if err != nil {
-		return fail("zellij rejects its configuration",
-			strings.TrimSpace(string(out)),
-			"run 'bothy install' to regenerate bothy's zellij config")
+		return fail(name+" rejects its configuration", detail,
+			"run 'bothy install' to regenerate bothy's "+name+" config")
 	}
-	return pass("zellij accepts its config")
+	return pass(name + " accepts its config")
 }
 
 // checkTerminfo catches the container trap: the toolbox image has no

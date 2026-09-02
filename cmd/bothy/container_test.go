@@ -68,7 +68,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	// the manifest records is the version doing the checking.
 	"config-age":      doctor.Pass,
 	"watermark-image": doctor.Skip, // none configured
-	"zellij-config":   doctor.Pass,
+	"mux-config":      doctor.Pass,
 	"terminfo":        doctor.Pass, // only because prep installed infocmp
 	// Warn: in a container the opener forwards to the host,
 	// and neither base image ships flatpak-spawn to forward with. There is

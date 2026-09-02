@@ -230,7 +230,7 @@ func Checks() []Check {
 		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "config-age", Run: checkConfigAge},
 		{ID: "watermark-image", Run: checkWatermarkImage},
-		{ID: "zellij-config", Capability: Isolation, Run: checkZellijConfig},
+		{ID: "mux-config", Capability: Isolation, Run: checkMuxConfig},
 		{ID: "terminfo", Run: checkTerminfo},
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},

@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,12 +10,18 @@ import (
 
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
 )
 
 // Zellij is the multiplexer CI tests.
 type Zellij struct{}
 
 func (Zellij) Name() string { return "zellij" }
+
+// Preview is the KDL zellij is handed at launch.
+func (Zellij) Preview(p layout.Profile, cmds layout.Commands) (string, error) {
+	return render(p, cmds)
+}
 
 func (Zellij) Dir(p platform.Info) string {
 	return filepath.Join(p.ConfigRoot(), "zellij")
@@ -49,7 +56,7 @@ func (Zellij) SessionName(dir string) string {
 // Open writes the rendered layout where zellij reads it, then attaches. The
 // file is regenerated every launch; editing it does nothing.
 func (z Zellij) Open(r Request) error {
-	kdl, err := layout.Render(r.Profile, r.Commands)
+	kdl, err := render(r.Profile, r.Commands)
 	if err != nil {
 		return err
 	}
@@ -106,6 +113,34 @@ func (Zellij) Live(bin string, env []string) []string {
 		}
 	}
 	return live
+}
+
+// MinGraphics is the first zellij that renders images correctly: 0.45.0 added
+// the protocol, 0.45.1 fixed image sizing on startup.
+var MinGraphics = probe.Version{Major: 0, Minor: 45, Patch: 1}
+
+// Graphics gates on the version: below MinGraphics zellij mangles its reply to
+// yazi's capability query, and the reply is parsed as keystrokes.
+func (Zellij) Graphics(bin string) (bool, string) {
+	v, err := probe.ToolVersion(bin)
+	if err != nil {
+		return false, fmt.Sprintf("could not determine the zellij version (%v), "+
+			"so assuming it cannot pass the Kitty graphics protocol through", err)
+	}
+	if v.Less(MinGraphics) {
+		return false, fmt.Sprintf("zellij %s cannot pass the Kitty graphics protocol "+
+			"through; %s or newer can", v, MinGraphics)
+	}
+	return true, "zellij " + v.String() + " implements the Kitty graphics protocol"
+}
+
+// CheckConfig runs `zellij setup --check`, which parses the config and reports
+// what it rejected.
+func (Zellij) CheckConfig(bin string, env []string) (string, error) {
+	cmd := exec.Command(bin, "setup", "--check")
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
 }
 
 // Panes asks zellij what it built. `action dump-layout` is documented; the

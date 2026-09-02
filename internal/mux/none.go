@@ -1,6 +1,9 @@
 package mux
 
-import "github.com/bspeelm/bothy/internal/platform"
+import (
+	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
+)
 
 // None is the second implementation. `slots.mux = "none"` is already an
 // accepted config, and the case has no layout, no session and nothing to
@@ -14,6 +17,14 @@ func (None) SessionName(string) string                  { return "" }
 func (None) CurrentSession() string                     { return "" }
 func (None) Live(string, []string) []string             { return nil }
 func (None) Panes(string, string, []string) (int, bool) { return 0, false }
+
+// Graphics: nothing is in the way when there is no multiplexer.
+func (None) Graphics(string) (bool, string) { return true, "no multiplexer in the way" }
+
+func (None) CheckConfig(string, []string) (string, error) { return "", ErrUnsupported }
+
+// Preview has nothing to show: there are no panes.
+func (None) Preview(layout.Profile, layout.Commands) (string, error) { return "", nil }
 
 // Open runs the agent here. No panes, so nothing is rendered.
 func (None) Open(r Request) error {

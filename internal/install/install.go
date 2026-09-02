@@ -152,10 +152,9 @@ func renderFile(w *render.Writer, f file, data Data) ([]byte, error) {
 // Destinations inside bothy's config root. The launcher points each tool at
 // these, so they are named once and used from both places.
 
-func ZellijDir(p platform.Info) string { return filepath.Join(p.ConfigRoot(), "zellij") }
-func YaziDir(p platform.Info) string   { return filepath.Join(p.ConfigRoot(), "yazi") }
-func VimDir(p platform.Info) string    { return filepath.Join(p.ConfigRoot(), "vim") }
-func VimRC(p platform.Info) string     { return filepath.Join(VimDir(p), "vimrc") }
+func YaziDir(p platform.Info) string { return filepath.Join(p.ConfigRoot(), "yazi") }
+func VimDir(p platform.Info) string  { return filepath.Join(p.ConfigRoot(), "vim") }
+func VimRC(p platform.Info) string   { return filepath.Join(VimDir(p), "vimrc") }
 func GhosttyConf(p platform.Info) string {
 	return filepath.Join(p.ConfigRoot(), "ghostty.conf")
 }
@@ -227,10 +226,24 @@ func conditionMet(when string, cfg config.Config, data Data) bool {
 	return true
 }
 
+// muxGraphics asks the configured backend whether image previews survive it.
+func muxGraphics(p platform.Info, cfg config.Config) probe.MuxGraphics {
+	bin := muxBinary(cfg)
+	if bin == "" {
+		return probe.MuxGraphics{None: true}
+	}
+	b, ok := mux.For(cfg.ProviderOrDefault("mux"))
+	if !ok {
+		return probe.MuxGraphics{Reason: "no backend for the configured multiplexer"}
+	}
+	carries, reason := b.Graphics(ToolPath(p, bin))
+	return probe.MuxGraphics{Carries: carries, Reason: reason}
+}
+
 // buildData assembles the template data, running the graphics probe.
 func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 	name := slug(pal.Name)
-	g := probe.CheckGraphics(ToolPath(p, muxBinary(cfg)), p.Terminal)
+	g := probe.CheckGraphics(p.Terminal, muxGraphics(p, cfg))
 
 	d := Data{
 		Theme:            pal,

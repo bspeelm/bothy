@@ -58,7 +58,7 @@ func decideLaunch(p platform.Info, mode string) launchMode {
 		return launchMode{Spawn: true, Reason: "started without a terminal"}
 	}
 
-	if g := probe.CheckGraphics("", p.Terminal); !g.Supported {
+	if g := probe.CheckGraphics(p.Terminal, probe.MuxGraphics{None: true}); !g.Supported {
 		return launchMode{Spawn: true, Reason: g.Reason}
 	}
 	return launchMode{Reason: "this terminal can draw images; running here"}

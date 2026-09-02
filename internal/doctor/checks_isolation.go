@@ -10,7 +10,6 @@ import (
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/fetch"
 	"github.com/bspeelm/bothy/internal/install"
-	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/state"
 	"github.com/bspeelm/bothy/internal/tools"
 )
@@ -156,7 +155,10 @@ func checkProfileRenders(env Env) Result {
 		return fail("the layout profile does not load", err.Error(),
 			"fix it, or switch back: bothy config set profile cockpit")
 	}
-	if _, err := layout.Render(prof, install.Commands(env.Config)); err != nil {
+	if env.Mux == nil {
+		return skip("no multiplexer backend for the configured slot")
+	}
+	if _, err := env.Mux.Preview(prof, install.Commands(env.Config)); err != nil {
 		return fail("the layout profile does not render", err.Error(),
 			"a pane probably names a slot nothing fills")
 	}

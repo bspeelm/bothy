@@ -28,6 +28,11 @@ type Backend interface {
 	// session; zellij refuses them.
 	SessionName(dir string) string
 
+	// Preview is what the backend would build, as text. `bothy layout` prints
+	// it and a doctor check runs it for the error alone. Separate from Open
+	// because tmux builds by running commands: there is no text to hand back.
+	Preview(p layout.Profile, cmds layout.Commands) (string, error)
+
 	// Open starts the workspace or returns to a running one, replacing this
 	// process. Rendering and launching are one call: tmux splits a live
 	// session, so there is no layout text to hand back first.
@@ -44,6 +49,15 @@ type Backend interface {
 
 	// CurrentSession is the session this shell is inside, "" when it is not.
 	CurrentSession() string
+
+	// Graphics reports whether this multiplexer carries the Kitty graphics
+	// protocol, with the reason when it does not. It sits between the terminal
+	// and the file browser, so it decides whether previews survive.
+	Graphics(bin string) (bool, string)
+
+	// CheckConfig asks the multiplexer whether it accepts its own config.
+	// Returns ErrUnsupported for a backend with no such command.
+	CheckConfig(bin string, env []string) (string, error)
 
 	// Panes counts the panes carrying a command, for comparison against the
 	// profile. A query, not a file read: `list-panes` for tmux, `action
@@ -77,6 +91,10 @@ func runReplacing(env []string, name string, args ...string) error {
 	}
 	return err
 }
+
+// ErrUnsupported is what a backend returns for a question it cannot answer.
+// The caller reports it as a skip, not a failure.
+var ErrUnsupported = errors.New("mux: the backend does not answer that")
 
 // backends is every multiplexer bothy knows. A registry, not build tags
 // (ADR-031): a backend compiles everywhere and is not selected.
