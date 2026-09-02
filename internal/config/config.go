@@ -398,6 +398,20 @@ func fieldFor(v reflect.Value, key string) (reflect.Value, error) {
 	return v, nil
 }
 
+// Retired names keys bothy used to accept and what replaced them, with an
+// empty value where nothing did.
+//
+// A key can be unrecognised for three reasons and bothy could previously name
+// only two: a typo, or a newer bothy that wrote it. The third is a key an
+// older bothy wrote and a newer one retired, which is the one bothy is in a
+// position to be certain about -- it is the one that did the retiring.
+//
+// Any `bothy config set` rewrites config.toml from the struct, so a retired
+// key disappears the next time anything is set.
+var Retired = map[string]string{
+	"workspace.watermark": "workspace.background_image",
+}
+
 // allowed lists the keys whose values are a closed set. Data rather than a
 // function per key, so that anything needing to know what a key accepts --
 // an error message, a test, one day a completion -- can read it.

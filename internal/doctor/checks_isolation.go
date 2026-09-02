@@ -56,18 +56,26 @@ func checkConfigKeys(env Env) Result {
 		return pass("every key in config.toml is recognised")
 	}
 	var lines []string
+	fix := "remove the line, or set it properly: bothy config set <key> <value>"
 	for _, k := range unknown {
-		if near := config.Nearest(k); near != "" {
-			lines = append(lines, fmt.Sprintf("%q — did you mean %q?", k, near))
+		// Retired first: it is the only one of the three bothy can be certain
+		// about, being the thing that retired it.
+		if replacement, ok := config.Retired[k]; ok {
+			if replacement == "" {
+				lines = append(lines, fmt.Sprintf("%q — removed in a later bothy", k))
+				fix = "any 'bothy config set' rewrites config.toml without it"
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("%q — renamed to %q", k, replacement))
+			fix = "bothy config set " + replacement + " <value>, which rewrites the file without the old key"
 			continue
 		}
-		// Nothing close: the other reason a key is unrecognised is that a
-		// newer bothy wrote it.
+		if near := config.Nearest(k); near != "" {
+			lines = append(lines, fmt.Sprintf("%q — did you mean %q?", k, near))
+			fix = "bothy config set " + near + " <value>, and delete the old line"
+			continue
+		}
 		lines = append(lines, fmt.Sprintf("%q — written by a newer bothy?", k))
-	}
-	fix := "remove the line, or set it properly: bothy config set <key> <value>"
-	if near := config.Nearest(unknown[0]); near != "" {
-		fix = "bothy config set " + near + " <value>, and delete the old line"
 	}
 	return warn(fmt.Sprintf("%d unrecognised key(s) in config.toml", len(unknown)),
 		strings.Join(lines, "\n    "), fix)
