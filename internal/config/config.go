@@ -59,6 +59,9 @@ type Agent struct {
 	// Image is the container `bothy confine` runs the agent in. bothy writes
 	// the recipe and never builds it (PLAN.md §11).
 	Image string `toml:"image"`
+	// Credentials override what the provider declares, for an agent bothy has
+	// not learned the paths for.
+	Credentials []string `toml:"credentials"`
 }
 
 // Slots names the provider chosen for each slot. A slot with an empty value

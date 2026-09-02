@@ -320,7 +320,7 @@ not exist.
 
 | | |
 |---|---|
-| the agent's own credentials | mounted, or it cannot log in and the wall protects nothing you wanted |
+| the agent's own credentials | mounted, or it cannot log in and the wall protects nothing you wanted. The paths come from the agent's own file in `slots/`; for one bothy has not learned, set `agent.credentials` |
 | the network | the agent calls its API; that is the job. This is a filesystem wall, not a network one |
 | the project directory | mounted writable, because editing it is the point |
 
