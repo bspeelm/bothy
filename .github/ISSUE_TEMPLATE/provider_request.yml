@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Adding one is usually a single TOML file in `slots/` and no Go — see
-        [docs/adding-a-provider.md](../blob/main/docs/adding-a-provider.md).
+        [docs/adding-a-provider.md](https://github.com/bspeelm/bothy/blob/main/docs/adding-a-provider.md).
         Pull requests welcome; this form is for asking, or for working out
         whether it fits.
 
