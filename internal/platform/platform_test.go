@@ -145,3 +145,54 @@ func TestDetectContainerFromMarkers(t *testing.T) {
 		})
 	}
 }
+
+// A shell inside a workspace an older bothy started has XDG_DATA_HOME pointed
+// into the tree and no name for the tree itself, so every bothy command typed
+// there resolved one level deeper — reporting an empty directory as the
+// workspace and bothy's own tools as the system's. Upgrading does not fix a
+// session already running, and none of the wrong answers looked wrong.
+func TestAStrandedSessionFindsItsTree(t *testing.T) {
+	t.Setenv("BOTHY_SESSION", "1")
+	t.Setenv("BOTHY_DIR", "")
+	t.Setenv("XDG_DATA_HOME", "/home/me/.local/share/bothy/share")
+
+	if got := Detect().BothyDir(); got != "/home/me/.local/share/bothy" {
+		t.Errorf("BothyDir = %q, want the tree the session was started from", got)
+	}
+}
+
+// A session that names its tree is believed, whatever else is set.
+func TestBothyDirWinsOverTheRecovery(t *testing.T) {
+	t.Setenv("BOTHY_SESSION", "1")
+	t.Setenv("BOTHY_DIR", "/elsewhere/bothy")
+	t.Setenv("XDG_DATA_HOME", "/home/me/.local/share/bothy/share")
+
+	if got := Detect().BothyDir(); got != "/elsewhere/bothy" {
+		t.Errorf("BothyDir = %q, want the named tree", got)
+	}
+}
+
+// XDG_DATA_HOME is a variable people set for their own reasons. Outside a
+// bothy session it means what it always meant, and the recovery must not read
+// it — this is why BOTHY_SESSION gates the whole thing.
+func TestYourOwnXdgDataHomeIsLeftAlone(t *testing.T) {
+	t.Setenv("BOTHY_SESSION", "")
+	t.Setenv("BOTHY_DIR", "")
+	t.Setenv("XDG_DATA_HOME", "/home/me/somewhere/share")
+
+	if got := Detect().BothyDir(); got != "/home/me/somewhere/share/bothy" {
+		t.Errorf("BothyDir = %q, want it derived from XDG_DATA_HOME as usual", got)
+	}
+}
+
+// And a bothy session whose data home is not the shape those versions wrote is
+// not second-guessed.
+func TestAnUnfamiliarShapeIsNotGuessedAt(t *testing.T) {
+	t.Setenv("BOTHY_SESSION", "1")
+	t.Setenv("BOTHY_DIR", "")
+	t.Setenv("XDG_DATA_HOME", "/home/me/.local/share")
+
+	if got := Detect().BothyDir(); got != "/home/me/.local/share/bothy" {
+		t.Errorf("BothyDir = %q, want the ordinary derivation", got)
+	}
+}
