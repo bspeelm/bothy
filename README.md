@@ -39,9 +39,10 @@ there for exactly as long as the session lasts, arranges the panes, and opens
 the window. Afterwards it tells you what is broken, if anything is, and what
 to type about it.
 
-When you close the window, everything is as it was. When you uninstall it, one
-folder goes and nothing else does. This is less a feature than an absence of
-features, and it was harder than the features.
+When you close the window, everything is as it was. When you uninstall it, the
+folder it wrote goes, and it names the few things it cannot remove for you.
+This is less a feature than an absence of features, and it was harder than the
+features.
 
 ## Install
 
