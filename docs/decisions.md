@@ -1071,3 +1071,52 @@ it, once flourish was cut rather than budget.
 default is. And `bothy keys` prints a table of zellij's own bindings, because
 bothy sets none of its own; a tenth interface method to carry help text would
 fit the interface to one command rather than to the boundary.
+
+## ADR-034 — The agent can be walled off, on request, and never by default
+
+The agent slot runs an arbitrary command with the user's full permissions: every
+repository, `~/.ssh`, the shell history. bothy does not make that worse — it is
+the access the agent has when started by hand — but bothy owns the launch, which
+is a position to offer something better.
+
+`bothy confine` runs the agent pane in a rootless podman container. Nothing else
+about the workspace changes.
+
+**A command, not a setting.** There is no `confine = true`. A default that
+changes how the agent runs would break for people who never asked for it and
+could not tell why. Typing the command is the opt-in, and not typing it leaves
+bothy exactly as it was.
+
+**bothy writes the recipe and does not build it.** The container needs the agent
+inside it, and installing an agent is what PLAN.md §11 rules out: install
+methods change, credentials are not bothy's business, and one arriving unasked
+is the overstep the rule exists to prevent. So the first `bothy confine` writes
+a Containerfile into bothy's tree, prints the one command that builds it, and
+stops. It teaches rather than fails, because a `--print` flag nobody knows about
+is not a way in. Once written the file is the user's, and bothy does not
+overwrite it.
+
+**The wall is the filesystem, and the README says so.** Mounted: the project
+directory, writable, because editing it is the job; and the agent's own
+credentials, without which it cannot log in and the wall protects nothing
+anyone wanted. Not walled: the network, because the agent calls its API. #116
+proposed an allowlist, which needs pasta or slirp configuration and is a second
+feature. A wall people misunderstand is worse than none, so the limits are
+stated where the feature is.
+
+**`label=disable`, not a `:z` mount.** SELinux enforcing means a bind mount is
+unreadable without one of the two. `:z` relabels the user's project directory
+to `container_file_t`, which persists after `bothy uninstall` and is a change
+outside bothy's tree — measured here, on this repository, and undone. The wall
+is the mount set and the user namespace; SELinux confinement of the container
+would be a second one, and not at that price.
+
+**The toolbox hop.** bothy often runs inside a toolbox, where there is no
+podman, and the host's is reachable through `flatpak-spawn` — the hop the
+`xdg-open` shim already takes. Without either, confinement is unavailable and
+says so; it never silently runs unconfined.
+
+**Linux is what CI tests.** On macOS podman runs a Linux VM: the wall is real
+and its edges differ. ADR-018's pattern applies — an untested platform is
+labelled, not refused. Someone who wants it supported adds a CI job and the
+label comes off.

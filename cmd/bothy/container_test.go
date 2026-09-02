@@ -63,6 +63,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"terminal-capability":   doctor.Warn, // nothing here can draw images: the one expected warning
 	"passthrough":           doctor.Skip, // none configured
 	"isolation":             doctor.Pass,
+	"confine":               doctor.Skip, // opt-in; nothing has asked for it here
 	"config-keys":           doctor.Pass, // the only config is the one the test wrote
 	// The test installs and checks in one run with one binary, so the version
 	// the manifest records is the version doing the checking.

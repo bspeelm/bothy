@@ -226,6 +226,7 @@ func Checks() []Check {
 		{ID: "terminal-capability", Capability: Images, Run: checkTerminalCapability},
 		{ID: "passthrough", Capability: Isolation, Run: checkPassthrough},
 		{ID: "isolation", Capability: Isolation, Run: checkIsolation},
+		{ID: "confine", Capability: Isolation, Run: checkConfine},
 		{ID: "tool-data", Capability: Isolation, Run: checkToolData},
 		{ID: "config-keys", Run: checkConfigKeys},
 		{ID: "config-age", Run: checkConfigAge},

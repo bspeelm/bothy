@@ -43,6 +43,7 @@ var macExpectation = map[string]doctor.Severity{
 	"terminal-capability":   doctor.Warn, // a CI runner draws nothing
 	"passthrough":           doctor.Skip,
 	"isolation":             doctor.Pass,
+	"confine":               doctor.Skip, // opt-in; nothing has asked for it here
 	"tool-data":             doctor.Pass,
 	"config-keys":           doctor.Pass,
 	"config-age":            doctor.Pass,

@@ -248,6 +248,48 @@ bothy config set profile minimal
 Profiles are short TOML files. Write your own and put it in
 `~/.config/bothy/profiles/`. Nobody will know, unless you tell them.
 
+## Walling off the agent
+
+The agent slot runs a command with everything you can reach: every repository,
+`~/.ssh`, your shell history. That is the same access it would have if you
+started it by hand, so bothy is not making it worse — but bothy owns the
+launch, which is a position to make it better.
+
+`bothy confine` runs the agent pane in a container. Nothing else changes: the
+same layout, the same file browser, the same shell. It is opt-in and there is
+no setting that turns it on, so if you never type it, nothing about bothy is
+different.
+
+The first run writes a recipe and tells you the one command that builds it:
+
+```sh
+bothy confine                                  # writes the Containerfile, stops
+podman build -t bothy-agent ~/.local/share/bothy/confine
+bothy confine                                  # now it launches
+```
+
+bothy does not run that build. Building installs an agent, and bothy does not
+install agents — they change how they install, they need credentials bothy has
+no business touching, and one arriving unasked is a workspace tool overstepping.
+The Containerfile is yours once written: change the agent, pin a version, add
+tools. `bothy confine --print` shows it and the exact `podman run`, so you can
+read the wall before trusting it.
+
+**What it stops:** every other project, `~/.ssh`, `~/.aws`, your shell history,
+the rest of `$HOME`.
+
+**What it does not stop, on purpose:**
+
+| | |
+|---|---|
+| the agent's own credentials | mounted, or it cannot log in and the wall protects nothing you wanted |
+| the network | the agent calls its API; that is the job. This is a filesystem wall |
+| the project directory | mounted writable, because editing it is the point |
+
+It needs podman, and it is tested on Linux. On macOS podman runs a Linux VM: it
+works, the wall is real, and its edges are shaped differently — bothy says so
+and carries on rather than pretending either way.
+
 ## Theming
 
 bothy ships one palette, [Dracula](https://github.com/dracula/dracula-theme),
