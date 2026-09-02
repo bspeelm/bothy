@@ -46,8 +46,8 @@ func cmdUninstall(args []string) error {
 		fmt.Println("they keep working but cannot be reattached, and their memory is")
 		fmt.Println("held until they exit. Close them, or: kill " + pids(rep.Orphaned))
 	}
-	// The desktop entry is the one thing bothy writes outside its tree, so it
-	// is the one thing uninstall has to mention rather than silently leave.
+	// Named rather than silently left, like the settings and the confinement
+	// image: what bothy puts outside its tree it says on the way out.
 	if entry := desktopEntryPath(p.DataDir); fileExists(entry) {
 		fmt.Printf("  kept %s — remove with 'bothy desktop-entry --remove'\n", tilde(entry, p.Home))
 	}
