@@ -113,9 +113,9 @@ require("git"):setup { order = 1500 }
 ```
 
 This rule exists because it was broken. bothy's `init.lua` required two plugins
-it never installed, and the config check could not see it: `yazi --clear-cache`
-does not execute `init.lua`. The config looked correct, passed, and would have
-failed only at launch.
+it never installed, and the config check could not see it: the command it uses
+parses the config without executing `init.lua`. The config looked correct,
+passed, and would have failed only at launch.
 
 ## Doctor checks
 

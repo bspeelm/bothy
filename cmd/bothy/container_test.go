@@ -53,7 +53,7 @@ var prep = map[string]string{
 // covered -- the same lesson the isolation job in ci.yml already encodes.
 var onlineExpectation = map[string]doctor.Severity{
 	"tool-data":             doctor.Pass, // named, not prevented: see ADR-022
-	"yazi-config-discarded": doctor.Pass, // --clear-cache parses the config without a terminal
+	"yazi-config-discarded": doctor.Pass, // `ya cache clear` parses the config without a terminal
 	"yazi-version":          doctor.Pass,
 	"yazi-config-keys":      doctor.Pass,
 	"yazi-plugins":          doctor.Pass, // needs git, which is why prep installs it
