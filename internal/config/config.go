@@ -27,6 +27,7 @@ type Config struct {
 	Slots     Slots     `toml:"slots"`
 	Theme     Theme     `toml:"theme"`
 	Editor    Editor    `toml:"editor"`
+	Agent     Agent     `toml:"agent"`
 	Workspace Workspace `toml:"workspace"`
 	Extras    []string  `toml:"extras"`
 	// Passthrough names slots that use your own config directory instead of
@@ -50,6 +51,14 @@ type Editor struct {
 	// launches vim against them. Off by default -- your editor config is
 	// yours -- and worth turning on for a machine with no vim config at all.
 	ProvideConfig bool `toml:"provide_config"`
+}
+
+// Agent holds the settings for the agent slot itself, as opposed to which
+// provider fills it.
+type Agent struct {
+	// Image is the container `bothy confine` runs the agent in. bothy writes
+	// the recipe and never builds it (PLAN.md §11).
+	Image string `toml:"image"`
 }
 
 // Slots names the provider chosen for each slot. A slot with an empty value

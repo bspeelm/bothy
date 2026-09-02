@@ -39,6 +39,7 @@ Usage:
   bothy attach [session]        reattach to this project's session
   bothy ls                      which sessions are running
   bothy keys                    the bindings worth knowing
+  bothy confine                 run the agent walled off from the rest of $HOME
   bothy install [--dry-run]     write the configs, then check them
   bothy doctor  [--json]        report what is broken and how to fix it
   bothy config  [get|set|edit|path]
@@ -98,6 +99,8 @@ func main() {
 		err = cmdLs(args)
 	case "keys":
 		err = cmdKeys(args)
+	case "confine":
+		err = cmdConfine(args)
 	case "config":
 		err = cmdConfig(args)
 	case "layout":

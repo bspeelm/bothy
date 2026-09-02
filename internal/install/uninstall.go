@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/bspeelm/bothy/internal/confine"
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
@@ -37,6 +39,7 @@ func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, erro
 	}
 	removeBinary(p, rep, dryRun, keepBinary)
 	noteUserConfig(p, rep)
+	noteConfineImage(p, rep)
 
 	return rep, nil
 }
@@ -117,6 +120,19 @@ func runningBinary() string {
 
 // noteUserConfig mentions the settings directory, which is the user's and is
 // never removed — it is the one thing worth keeping in git.
+// noteConfineImage names the container image, which is the one thing bothy can
+// cause to exist outside its own tree. It is half a gigabyte and removing the
+// tree does not touch it, so leaving it unmentioned would make "one directory"
+// false by omission.
+func noteConfineImage(p platform.Info, rep *UninstallReport) {
+	runtime, err := confine.Runtime(p)
+	if err != nil || !confine.ImageBuilt(runtime, confine.DefaultImage) {
+		return
+	}
+	rep.Kept = append(rep.Kept, fmt.Sprintf("the %s container image — remove it with: %s rmi %s",
+		confine.DefaultImage, strings.Join(runtime, " "), confine.DefaultImage))
+}
+
 func noteUserConfig(p platform.Info, rep *UninstallReport) {
 	if _, err := os.Stat(p.UserConfigDir()); err == nil {
 		rep.Kept = append(rep.Kept,

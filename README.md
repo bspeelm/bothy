@@ -153,6 +153,7 @@ quiet.
 | `bothy attach` | Go back to one you left running, which has gone on without you |
 | `bothy ls` | Which of them are running |
 | `bothy keys` | The bindings worth knowing, for a first day |
+| `bothy confine` | Run the agent walled off from the rest of `$HOME` |
 | `bothy doctor` | What is wrong, and what to do about it (`--json`, for machines that want to know) |
 | `bothy install` | Apply your settings again after you have changed them |
 | `bothy tools` | Which tools are in use, and where they came from, in case of dispute |
@@ -246,6 +247,118 @@ bothy config set profile minimal
 
 Profiles are short TOML files. Write your own and put it in
 `~/.config/bothy/profiles/`. Nobody will know, unless you tell them.
+
+## Walling off the agent
+
+The agent slot runs a command with everything you can reach: every repository,
+`~/.ssh`, your shell history. That is the same access it would have if you
+started it by hand, so bothy is not making it worse — but bothy owns the
+launch, which is a position to make it better.
+
+`bothy confine` runs the agent pane in a rootless podman container. Nothing
+else changes: the same layout, the same file browser, the same shell.
+
+**It is opt-in and there is no setting that turns it on.** Never type the
+command and nothing about bothy is different.
+
+### Setting it up
+
+Three commands, once. The first one is the instructions — you do not have to
+know the other two in advance:
+
+```sh
+bothy confine
+# bothy: the agent needs an image to run in, and does not have one yet.
+#
+#       bothy wrote the recipe to
+#         ~/.local/share/bothy/confine/Containerfile
+#
+#       build it — this is yours to run, not bothy's:
+#         podman build -t bothy-agent ~/.local/share/bothy/confine
+#
+#       then: bothy confine
+
+podman build -t bothy-agent ~/.local/share/bothy/confine   # about 550 MB, a few minutes
+bothy confine                                              # now it launches
+```
+
+bothy writes that recipe and never builds it. Building installs an agent, and
+bothy does not install agents — they change how they install, they need
+credentials bothy has no business touching, and one arriving unasked is a
+workspace tool overstepping. The Containerfile is yours once written: change
+the agent, pin a version, add tools. bothy will not overwrite it.
+
+`bothy confine --print` shows the recipe and the exact `podman run`, so you can
+read the wall before trusting it.
+
+### If bothy runs in a toolbox
+
+This is the common case on Silverblue, and it has one wrinkle worth knowing:
+**podman is on the host, not in the toolbox.** bothy handles that itself — it
+reaches the host through `flatpak-spawn`, the same way it opens files — so
+`bothy confine` works from inside a toolbox with nothing extra to configure.
+
+Your own podman commands are the part that does not. Inside the toolbox:
+
+```sh
+podman build -t bothy-agent ~/.local/share/bothy/confine
+# bash: podman: command not found
+
+flatpak-spawn --host podman build -t bothy-agent ~/.local/share/bothy/confine
+```
+
+`bothy confine --print` prints the invocation with the hop already in it, so
+you can see which case you are in.
+
+### What it stops, and what it does not
+
+**Stops:** every other project, `~/.ssh`, `~/.aws`, your shell history, the
+rest of `$HOME`. Verified, not assumed — from inside the pane those paths do
+not exist.
+
+**Does not stop, on purpose:**
+
+| | |
+|---|---|
+| the agent's own credentials | mounted, or it cannot log in and the wall protects nothing you wanted |
+| the network | the agent calls its API; that is the job. This is a filesystem wall, not a network one |
+| the project directory | mounted writable, because editing it is the point |
+
+If the credentials are missing the agent starts and says "Not logged in"
+rather than failing — that is the agent's behaviour, not bothy's.
+
+### Configuration
+
+One key, and it is optional:
+
+```toml
+[agent]
+image = "bothy-agent"    # the image bothy runs the agent in; this is the default
+```
+
+There is deliberately no `confine = true`. A default that changes how the agent
+runs would break for people who never asked for it and could not tell why.
+
+### Cleaning up
+
+`bothy uninstall` removes bothy's tree, and the Containerfile goes with it. **It
+does not remove the container image** — bothy did not build it and will not
+delete half a gigabyte you might want. Uninstall says so, with the command for
+your machine:
+
+```
+kept the bothy-agent container image — remove it with: podman rmi bothy-agent
+```
+
+That is the one thing bothy can cause to exist outside its own directory, which
+is why it is named here and again on the way out.
+
+### Where it works
+
+Tested on Linux with podman. On macOS podman runs a Linux VM: it works, the
+wall is real, and its edges are shaped differently — bothy says so and carries
+on rather than pretending either way. With no podman at all, `bothy confine`
+fails and tells you; it never silently runs unconfined.
 
 ## Theming
 
