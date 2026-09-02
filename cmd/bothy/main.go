@@ -53,8 +53,8 @@ Usage:
   bothy version
 
 Every generated file says it is bothy's and names where to put your own
-changes. Everything bothy writes lives under ~/.local/share/bothy, and
-'bothy uninstall' removes that one directory.
+changes. The workspace lives under ~/.local/share/bothy and your settings
+under ~/.config/bothy; 'bothy uninstall' removes the first and names the rest.
 `
 
 // isHelpFlag names the flags main answers itself rather than handing on.
