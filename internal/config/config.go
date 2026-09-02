@@ -101,9 +101,8 @@ type Workspace struct {
 	// screen, and a picture bothy chose would be wrong on most of them. See
 	// docs/watermark.md.
 	//
-	// Named for what it is rather than what it is for. The rename is what lets
-	// a config written by an older bothy -- where this key was a boolean
-	// called `watermark` -- meet the unknown-key path instead of a type error.
+	// Renaming this again means an entry in Retired, or a config carrying the
+	// old name meets a type error rather than a warning.
 	BackgroundImage string `toml:"background_image"`
 	// PaneFrames is "full", "titles" or "none".
 	//
@@ -140,18 +139,16 @@ func Default() Config {
 // withoutUnreadableKeys removes keys the decoder cannot assign, returning the
 // remaining TOML and the names it dropped.
 //
-// A key whose *type* changed between versions is the same problem as one whose
-// name changed, and #31 settled that answer: warn, never refuse. The decoder
-// stops at the first such key, so it has to be removed and the decode retried
-// -- otherwise every key after it would quietly keep its default, which is a
-// worse failure than the error it replaced.
+// A value bothy cannot read is a warning rather than a refusal, for the reasons
+// in ADR-027. Two things about doing it:
 //
-// The key is found by position rather than by name: go-toml reports a row and
-// column for a type error and leaves Key() empty, so the line is what there is
-// to go on.
+// The decoder stops at the first such key, so it is removed and the decode
+// retried; otherwise every key after it would quietly keep its default. And
+// the key is found by position, because go-toml reports a row for a type error
+// and leaves Key() empty.
 //
-// Bounded because the loop is driven by an error: a decoder reporting a line
-// this cannot remove would otherwise spin.
+// Bounded: the loop is driven by an error, and a decoder reporting a line this
+// cannot remove would spin.
 func withoutUnreadableKeys(src []byte) ([]byte, []string) {
 	var dropped []string
 	for range 16 {
@@ -222,11 +219,9 @@ func Load(p platform.Info) (Config, error) {
 	// Unmarshal over the defaults so an absent key keeps its default rather
 	// than becoming the zero value.
 	//
-	// Strict, but only to *collect* what it does not recognise. An unknown key
-	// is not an error: a config that refuses to load is worse than a typo, and
-	// a key written by a newer bothy must not brick an older one, or carrying
-	// ~/.config/bothy between machines in git breaks in the other direction.
-	// The decoder populates the struct fully either way.
+	// Strict, but only to *collect* what it does not recognise: an unrecognised
+	// key is a warning, never a refusal (ADR-027). The decoder populates the
+	// struct fully either way.
 	src, unreadable := withoutUnreadableKeys(src)
 	cfg.Unreadable = unreadable
 
@@ -341,10 +336,9 @@ func (c Config) ContainerFor(p platform.Info, installedIn string) string {
 
 // Set applies a dotted key assignment, as used by `bothy config set`.
 //
-// The walk mirrors Keys(): both derive from the struct, so adding a field
-// makes it listable and settable at once. A hand-written switch beside a
-// reflect-derived Keys() drifts in one direction only -- towards keys that are
-// offered, suggested, and then refused.
+// The walk mirrors Keys(): both derive from the struct, so a new field is
+// listable and settable at once, and neither can offer a key the other
+// refuses.
 //
 // Only the assigned value is checked. Cross-field rules are left to Validate
 // at install time, because enforcing them per-assignment makes some orderings
@@ -401,10 +395,9 @@ func fieldFor(v reflect.Value, key string) (reflect.Value, error) {
 // Retired names keys bothy used to accept and what replaced them, with an
 // empty value where nothing did.
 //
-// A key can be unrecognised for three reasons and bothy could previously name
-// only two: a typo, or a newer bothy that wrote it. The third is a key an
-// older bothy wrote and a newer one retired, which is the one bothy is in a
-// position to be certain about -- it is the one that did the retiring.
+// A key is unrecognised for one of three reasons: a typo, a newer bothy that
+// wrote it, or a retirement. Only the third can be answered with certainty,
+// because bothy is the thing that retired it.
 //
 // Any `bothy config set` rewrites config.toml from the struct, so a retired
 // key disappears the next time anything is set.

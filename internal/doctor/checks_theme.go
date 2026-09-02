@@ -11,10 +11,9 @@ import (
 
 // checkThemeReached verifies the palette arrived in the files the tools read.
 //
-// theme-palette resolves a *custom* palette file and skips for everyone using
-// the built-in one, which is nearly everyone -- so the theme capability was
-// claimed by a check that almost never ran (#110). ADR-007 has the rule this
-// broke: test the effect, not the artefact.
+// theme-palette resolves a *custom* palette file and skips for the built-in
+// one, which is nearly everyone, so it says nothing about whether the colours
+// arrived. ADR-007: test the effect, not the artefact.
 //
 // The foreground colour is the probe because every one of these files carries
 // it. The background deliberately does not travel: zellij's `bg` is the UI

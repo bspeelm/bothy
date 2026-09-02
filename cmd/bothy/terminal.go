@@ -143,8 +143,7 @@ var hostBothyLookup = func() (string, error) {
 //
 // The fallback covers a host PATH that omits ~/.local/bin in a non-login
 // shell, which is common enough that reporting "not found" would usually be
-// wrong. It can be checked from in here because home is shared -- which is the
-// same fact that made the original assumption tempting.
+// wrong. It is checkable from in here because home is shared.
 func hostBothy(p platform.Info) (string, error) {
 	if path, err := hostBothyLookup(); err == nil && path != "" {
 		return path, nil
