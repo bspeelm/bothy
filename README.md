@@ -102,8 +102,12 @@ README rather than from `du`.
 
 Each download is checked against a recorded checksum before bothy keeps it.
 A checksum is not a signature; it proves the file is the one bothy expected,
-not that anyone trustworthy expected it. The distinction is on the roadmap,
-which is where distinctions go.
+not that anyone trustworthy expected it.
+
+That gap is closed for bothy itself: every release artifact is signed in the
+workflow that built it, and `install.sh --verify` checks the signature rather
+than only the checksum. It is **not** closed for the eight tools above. Those
+are other projects' releases, and bothy cannot sign what it did not build.
 
 If you already have good enough copies, bothy downloads nothing and tells you
 which of yours it is using. What it did fetch, it keeps: when a later bothy

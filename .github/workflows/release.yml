@@ -6,6 +6,12 @@ on:
 
 permissions:
   contents: write
+  # Keyless signing: id-token mints the OIDC token that binds the certificate
+  # to this workflow, attestations writes the result. There is no private key
+  # to store, rotate or leak, which is the whole reason for choosing this over
+  # a personal one (ADR-030).
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -34,5 +40,26 @@ jobs:
         with:
           version: '~> v2'
           args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Everything the release page offers, not just the archives. Attesting
+      # the tarballs alone would leave the .deb unsigned and checksums.txt --
+      # the file the default install trusts -- swappable by whoever could swap
+      # the artifact it vouches for.
+      - name: sign the release artifacts
+        id: attest
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/bothy_*.tar.gz
+            dist/*.deb
+            dist/checksums.txt
+      # The bundle is published beside the artifacts so that verifying needs no
+      # GitHub account. `gh attestation verify` without --bundle asks the API,
+      # which requires a login; with one it reads from disk.
+      - name: publish the attestation bundle
+        run: |
+          cp "${{ steps.attest.outputs.bundle-path }}" attestation.jsonl
+          gh release upload "${GITHUB_REF_NAME}" attestation.jsonl --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

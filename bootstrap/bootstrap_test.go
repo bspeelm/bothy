@@ -31,9 +31,22 @@ import (
 // sums controls what that file says -- "" omits it entirely, which is what an
 // old release looks like.
 func releaseServer(archive []byte, sums string) (*httptest.Server, *string) {
+	return releaseServerWith(archive, sums, "")
+}
+
+// releaseServerWith also serves the attestation bundle the release workflow
+// uploads. bundle "" is a release from before signing, which the script has to
+// refuse to call verified rather than pass over.
+func releaseServerWith(archive []byte, sums, bundle string) (*httptest.Server, *string) {
 	asked := new(string)
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case strings.HasSuffix(r.URL.Path, "attestation.jsonl"):
+			if bundle == "" {
+				http.NotFound(w, r)
+				return
+			}
+			fmt.Fprint(w, bundle)
 		case strings.HasSuffix(r.URL.Path, "checksums.txt"):
 			if sums == "" {
 				http.NotFound(w, r)
@@ -261,5 +274,123 @@ func TestBootstrapSaysWhenItCannotVerify(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".local", "bin", "bothy")); err != nil {
 		t.Error("nothing was installed")
+	}
+}
+
+// stubGh puts a fake gh on PATH ahead of any real one. ok controls whether
+// `gh attestation verify` succeeds, which is the only thing the script asks of
+// it -- so the test exercises the script's handling rather than Sigstore.
+func stubGh(t *testing.T, ok bool) string {
+	t.Helper()
+	dir := t.TempDir()
+	exit := "1"
+	if ok {
+		exit = "0"
+	}
+	script := "#!/bin/sh\nexit " + exit + "\n"
+	if err := os.WriteFile(filepath.Join(dir, "gh"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// pathWithoutGh is a PATH carrying everything install.sh uses and no gh.
+// Prepending an empty directory does not work: the real gh is still further
+// along, and the test then measures gh rather than the script.
+func pathWithoutGh(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, tool := range []string{
+		"sh", "uname", "mktemp", "curl", "wget", "sha256sum", "shasum",
+		"awk", "cut", "tar", "mkdir", "install", "rm", "cat",
+	} {
+		real, err := exec.LookPath(tool)
+		if err != nil {
+			continue // not every machine has every one; the script copes
+		}
+		if err := os.Symlink(real, filepath.Join(dir, tool)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+// verifyRun runs the installer against a release, with PATH and BOTHY_VERIFY
+// arranged by the caller. exclusive replaces PATH rather than prepending.
+func verifyRun(t *testing.T, bundle, path string, verify bool) (string, error) {
+	return verifyRunPath(t, bundle, path, verify, false)
+}
+
+func verifyRunPath(t *testing.T, bundle, path string, verify, exclusive bool) (string, error) {
+	t.Helper()
+	archive := releaseArchive(t, "#!/bin/sh\necho ok\n")
+	srv, _ := releaseServerWith(archive, checksumsFor(archive, archiveName(t)), bundle)
+	defer srv.Close()
+
+	home := t.TempDir()
+	args := []string{"install.sh"}
+	if verify {
+		args = append(args, "--verify")
+	}
+	cmd := exec.Command("sh", args...)
+	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
+	switch {
+	case exclusive:
+		cmd.Env = append(cmd.Env, "PATH="+path)
+	case path != "":
+		cmd.Env = append(cmd.Env, "PATH="+path+":"+os.Getenv("PATH"))
+	}
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// The default install is unchanged, and says what it did not check rather than
+// leaving provenance an undocumented option nobody finds.
+func TestBootstrapNamesProvenanceWithoutRequiringIt(t *testing.T) {
+	out, err := verifyRun(t, "", "", false)
+	if err != nil {
+		t.Fatalf("install.sh failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "checksum verified") {
+		t.Errorf("the checksum path changed:\n%s", out)
+	}
+	if !strings.Contains(out, "--verify") {
+		t.Errorf("nothing points at provenance verification:\n%s", out)
+	}
+}
+
+func TestBootstrapVerifiesProvenanceWhenAsked(t *testing.T) {
+	out, err := verifyRun(t, "{}\n", stubGh(t, true), true)
+	if err != nil {
+		t.Fatalf("install.sh failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "provenance verified") {
+		t.Errorf("verification not reported:\n%s", out)
+	}
+}
+
+// The case the whole feature exists for: a signature that does not check out
+// stops the install, rather than degrading to the checksum that cannot catch
+// a release swapped by whoever could swap its checksum too.
+func TestBootstrapRefusesUnverifiableProvenance(t *testing.T) {
+	out, err := verifyRun(t, "{}\n", stubGh(t, false), true)
+	if err == nil {
+		t.Fatalf("install.sh succeeded on a failed verification:\n%s", out)
+	}
+	if !strings.Contains(out, "FAILED") {
+		t.Errorf("failure not reported plainly:\n%s", out)
+	}
+}
+
+// No silent downgrade: asked to verify without a verifier is an error, not a
+// level. Same for a release that published no bundle.
+func TestBootstrapRefusesToPretendItVerified(t *testing.T) {
+	out, err := verifyRunPath(t, "{}\n", pathWithoutGh(t), true, true)
+	if err == nil || !strings.Contains(out, "gh CLI is not installed") {
+		t.Errorf("a missing verifier was not an error:\n%s", out)
+	}
+	out, err = verifyRun(t, "", stubGh(t, true), true)
+	if err == nil || !strings.Contains(out, "publishes none") {
+		t.Errorf("an unsigned release was not an error:\n%s", out)
 	}
 }
