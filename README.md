@@ -341,17 +341,25 @@ runs would break for people who never asked for it and could not tell why.
 
 ### Cleaning up
 
-`bothy uninstall` removes bothy's tree, and the Containerfile goes with it. **It
-does not remove the container image** — bothy did not build it and will not
-delete half a gigabyte you might want. Uninstall says so, with the command for
-your machine:
+`bothy uninstall` removes bothy's tree and the binary. The Containerfile is
+inside the tree, so it goes with it. Three things are left, and uninstall names
+each one rather than leaving you to find it:
+
+| left behind | why | remove it with |
+|---|---|---|
+| `~/.config/bothy` | your settings, not bothy's | `rm -r ~/.config/bothy` |
+| the container image | ~550 MB bothy did not build | `podman rmi bothy-agent` |
+| the desktop entry, if you added one | outside the tree by necessity | `bothy desktop-entry --remove` |
 
 ```
-kept the bothy-agent container image — remove it with: podman rmi bothy-agent
+$ bothy uninstall
+removed ~/.local/share/bothy
+  kept ~/.config/bothy (your settings — delete it yourself if you want it gone)
+  kept the bothy-agent container image — remove it with: podman rmi bothy-agent
 ```
 
-That is the one thing bothy can cause to exist outside its own directory, which
-is why it is named here and again on the way out.
+Inside a toolbox that last command comes back with the `flatpak-spawn` hop
+already in it, because that is the command that works where you are standing.
 
 ### Where it works
 
