@@ -465,6 +465,35 @@ explains, and on balance that is the right way round. The plan for the
 project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
 the project better than most plans do, which is to say partially.
 
+## Authorship
+
+Claude, Anthropic's coding agent, wrote essentially all of the code in this
+repository. The design is the human author's: the architecture, the constraints
+the project is built under, and the decisions recorded in
+[`docs/decisions.md`](docs/decisions.md) — including discarding a working
+revision 1, which passed its tests, because it was the wrong shape.
+[`CLAUDE.md`](CLAUDE.md) holds the rules the code is written to.
+
+The human author has not read most of the code line by line. He has read the
+paths that can damage a machine: the install script, the uninstall path, and
+the container invocation `bothy confine` builds.
+
+In place of line-by-line review the project is verified by process. The test
+suite runs on every change, on four Linux distributions in containers and on
+macOS. Security properties are asserted as invariants rather than described —
+one test fails if the confined agent's invocation ever mounts `$HOME`. The code
+and comment budgets are failing checks in the `Makefile`, not aspirations. And
+the code is audited by AI systems other than the one that wrote it; those audits
+found two real bugs, a shell-splitting edge case ([#146](https://github.com/bspeelm/bothy/issues/146))
+and hardcoded agent credentials in `confine`
+([#147](https://github.com/bspeelm/bothy/issues/147)), both fixed. One
+consequence of the six-thousand-line budget is that a skeptical stranger can
+read the whole thing in an afternoon. Anyone doubting the process is invited to
+do that, and to file what they find.
+
+A longer account of how this was built is written up separately.
+<!-- TODO: link write-up -->
+
 ## Credits and licence
 
 MIT — see [`LICENSE`](LICENSE).
