@@ -122,13 +122,9 @@ func launch(p platform.Info, cfg config.Config, dir, profileName string) error {
 		return err
 	}
 
-	mux := cfg.Slots.Mux
-	if mux == "" {
-		mux = "zellij"
-	}
-	bin, err := lookPathIn(p, mux)
+	_, bin, err := muxPath(p, cfg)
 	if err != nil {
-		return fmt.Errorf("%s is not installed — run 'bothy install'", mux)
+		return err
 	}
 
 	if err := os.Chdir(dir); err != nil {
@@ -228,6 +224,18 @@ func liveSessions(bin string, env []string) []string {
 	return live
 }
 
+// muxPath resolves the multiplexer this session will run. The slot, the
+// fallback and the not-installed message were three copies apiece; the
+// backend seam (#64) will take what remains behind here.
+func muxPath(p platform.Info, cfg config.Config) (name, bin string, err error) {
+	name = cfg.ProviderOrDefault("mux")
+	bin, err = lookPathIn(p, name)
+	if err != nil {
+		return name, "", fmt.Errorf("%s is not installed — run 'bothy install'", name)
+	}
+	return name, bin, nil
+}
+
 // bothy's own bin first: a zellij bothy supplied is not on the ambient PATH.
 func lookPathIn(p platform.Info, name string) (string, error) {
 	if own, ok := install.InstalledBinary(p, name); ok {
@@ -288,10 +296,7 @@ type attachPlan struct {
 }
 
 func planAttach(p platform.Info, cfg config.Config, session string, args []string) (attachPlan, error) {
-	mux := cfg.Slots.Mux
-	if mux == "" {
-		mux = "zellij"
-	}
+	mux := cfg.ProviderOrDefault("mux")
 	// Bare `bothy attach` means this project's session. Naming one explicitly
 	// still works, which is how you reach a session for somewhere else.
 	if len(args) == 0 && session != "" {

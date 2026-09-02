@@ -18,13 +18,9 @@ func cmdLs(args []string) error {
 	if err != nil {
 		return err
 	}
-	mux := cfg.Slots.Mux
-	if mux == "" {
-		mux = "zellij"
-	}
-	bin, err := lookPathIn(p, mux)
+	_, bin, err := muxPath(p, cfg)
 	if err != nil {
-		return fmt.Errorf("%s is not installed — run 'bothy install'", mux)
+		return err
 	}
 
 	live := liveSessions(bin, install.SessionEnv(p, cfg))
