@@ -43,9 +43,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # The tap and the AUR package publish to other repositories, which
-          # GITHUB_TOKEN cannot reach: it is scoped to this one. An unset
-          # secret arrives as an empty string, which is why .goreleaser.yaml
-          # reads them with envOrDefault and skips on empty.
+          # GITHUB_TOKEN cannot reach: it is scoped to this one. Both are read
+          # as .Env values, so both must be set here even when empty -- a name
+          # goreleaser cannot resolve fails the release after the tag is pushed,
+          # which is how 0.8.0 shipped without its cask.
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
       # Everything the release page offers, not just the archives. Attesting
