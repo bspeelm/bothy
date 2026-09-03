@@ -135,37 +135,16 @@ quiet.
 
 ## Commands
 
+Three of them matter:
+
 | | |
 |---|---|
-| `bothy` | Open the workspace |
-| `bothy attach` | Go back to one you left running, which has gone on without you |
-| `bothy ls` | Which of them are running |
-| `bothy keys` | The bindings worth knowing, for a first day |
-| `bothy confine` | Run the agent walled off from the rest of `$HOME` |
-| `bothy doctor` | What is wrong, and what to do about it (`--json`, for machines that want to know) |
-| `bothy install` | Apply your settings again after you have changed them |
-| `bothy tools` | Which tools are in use, and where they came from, in case of dispute |
-| `bothy upgrade` | How to upgrade this copy, for the way you installed it |
-| `bothy outdated` | Which pinned tools have newer releases upstream (`--json`) |
-| `bothy config set <key> <value>` | Change a setting |
-| `bothy layout` | Print the layout it would open, should you doubt it |
-| `bothy theme example` | Print a blank palette, for filling in |
-| `bothy desktop-entry` | Print a `.desktop` launcher (`--install` writes it) |
-| `bothy uninstall` | Remove bothy, and everything it brought, and nothing it did not |
+| `bothy` | open the workspace |
+| `bothy doctor` | what is wrong, and what to type (`--json` for machines) |
+| `bothy config set <key> <value>` | change a setting |
 
-### More than one project at a time
-
-Each directory gets its own session, named after it, so there is nothing to
-tear down when you move between them:
-
-```sh
-cd ~/other-project && bothy    # a second room; the first keeps running
-bothy ls                       # both of them
-bothy attach bothy-first       # back to the one you left, agent and all
-```
-
-Sessions survive closing the window. They do not survive a reboot, which is
-the correct amount of permanence for a room.
+There are fifteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
+[how to read a doctor report](https://github.com/bspeelm/bothy/wiki/The-doctor).
 
 ## What it touches
 
@@ -213,37 +192,11 @@ between a tool and the person who has to use it.
 
 ## Swapping parts
 
-Every part can be changed. Most of it needn't be, and most of it won't be.
+bothy has five slots — terminal, multiplexer, browser, editor, agent — and each
+is a name in a config file. Change one, run `bothy install`, and it tells you
+what that stack can and cannot give you.
 
-| part | default | alternatives |
-|---|---|---|
-| terminal | ghostty | kitty, wezterm — none of which bothy installs |
-| multiplexer | zellij | or turn it off, and run the agent in this terminal |
-| file browser | yazi | or turn it off |
-| editor | vim | nano, helix |
-| agent | claude-code | any command you care to name |
-| theme | dracula | any palette you write down |
-
-```sh
-bothy config set slots.editor helix
-```
-
-Most people change the editor and nothing else. The others change everything,
-once, and then also nothing else.
-
-Three layouts come with bothy, and are called profiles because everything
-has to be called something. `cockpit` is the default: files on top, agent and
-shell beneath — the screenshot, and the reason any of this exists. `editor`
-puts an editor, an agent and a shell side by side, for people who would
-rather type than watch. `minimal` is an agent and a shell and nothing else,
-for small screens and for being somewhere else over SSH.
-
-```sh
-bothy config set profile minimal
-```
-
-Profiles are short TOML files. Write your own and put it in
-`~/.config/bothy/profiles/`.
+[Swapping parts, and theming](https://github.com/bspeelm/bothy/wiki/Swapping-parts-and-theming).
 
 ## Walling off the agent
 
@@ -277,70 +230,14 @@ rather than failing — that is the agent's behaviour, not bothy's.
 
 [Setting it up, the toolbox case, configuration and cleanup](https://github.com/bspeelm/bothy/wiki/Walling-off-the-agent).
 
-## Theming
-
-bothy ships one palette, [Dracula](https://github.com/dracula/dracula-theme),
-which has outlasted most of the software it was first drawn for, and colours
-every tool from the same eleven values, including a vim colour
-scheme it writes for you so that you do not have to learn how. If you would
-prefer another, write it:
-
-```sh
-bothy theme example > ~/.config/bothy/my-palette.toml
-$EDITOR ~/.config/bothy/my-palette.toml
-bothy config set theme.palette ~/.config/bothy/my-palette.toml
-```
-
-This is also how a palette you have paid for gets in. bothy contains no
-colours except its own, so anything you licensed stays on your machine, and
-bothy stays the colour it arrived in. A test checks this, because good
-intentions do not.
-
 ## Where it runs
 
-If your terminal can draw images (Ghostty, Kitty, WezTerm), bothy runs in it.
-If it cannot, bothy opens a Ghostty window instead, so that previews come out
-as pictures rather than as a suggestion of pictures. `--in-place` and
-`--window` overrule that judgement in either direction, for those who know
-better, or think they do. If you overrule it every time, make it the standing
-answer with `bothy config set workspace.launch here`, or `window` for the
-opposite; the flags still win for a single run. With no graphical display —
-over SSH, say — it stays where it is, which is generally the sensible thing to
-do when somewhere else.
+Linux and macOS. Fedora, Ubuntu, Debian and Arch are installed, exercised and
+uninstalled in containers on every release, and macOS on a real Mac — that is
+what supported means here. Silverblue and the Debian derivatives get advice
+bothy cannot test in a container, and says so.
 
-iTerm2 draws images too, by a protocol of its own that Zellij does not carry,
-so previews there arrive as characters after all. The doctor says which of the
-two is at fault rather than leaving you to adjust the wrong setting.
-
-Inside a Toolbx or Distrobox container, bothy remembers which container it
-put its tools in and goes back there when you launch it from the host. If you
-install from a container that has none of the tools, bothy downloads the lot
-into its own folder, and the result works from either side. It has, on the
-whole, had enough of being surprised by containers, and has written some of
-this down.
-
-As for which machines: Fedora, Ubuntu, Debian and Arch in containers, and
-macOS on a Mac, on every release — installed, exercised, uninstalled, and the
-whole doctor report compared against what it ought to have said. That is the
-whole of what supported means here: not that it ought to work, but that
-something proved it did this morning.
-
-Two things bothy has advice for and does not test. **Silverblue and other
-image-based systems**, where `dnf` means `rpm-ostree` and a reboot: bothy is
-written on one and cannot put one in a container. **Mint, Pop!_OS and the other
-derivatives**, which inherit Debian's advice through `ID_LIKE` — their container
-images report `ID=ubuntu`, so a job using one would prove nothing the Ubuntu job
-does not. That path is unit-tested instead.
-
-macOS took eight releases to earn that sentence, having been listed from the
-first on the strength of the binaries being built, which is not the same
-thing. The first Mac to run it found a file opener naming a program macOS does
-not have; the first machine in CI found an uninstall that reported success and
-left the binary behind. Both are fixed. Neither would have been found by
-reading the code.
-
-Anywhere else, bothy runs and the doctor tells you what it cannot do on that
-machine. Nobody has checked. It does not pretend otherwise.
+[Which terminals, which stacks, and what is untested](https://github.com/bspeelm/bothy/wiki/Where-it-runs).
 
 ## What bothy is not
 
@@ -358,31 +255,11 @@ yours, and it does not need to be thanked.
 
 ## What you can depend on
 
-These are the parts bothy will not change out from under you within a major
-version. Rename or remove any of them and that is a breaking change, announced
-as one.
+Within a major version: the `config.toml` keys, the profile and palette
+schemas, the two directories, and the `doctor --json` shape. `config.toml`
+carries `schema = 1`.
 
-- **The keys in `config.toml`.** Existing keys are not renamed or removed. When
-  one has to change, the old name keeps working and `bothy doctor` names the
-  replacement — that is what `config.Retired` is for.
-- **The profile and palette TOML schemas**, so a profile you wrote keeps
-  rendering.
-- **The two directories.** `~/.local/share/bothy/` holds what bothy installs,
-  `~/.config/bothy/` holds what you set. Neither moves.
-- **The `doctor --json` shape**, and the check IDs in it. `--json` exists so
-  something else can read it; IDs may be added, but an existing one keeps its
-  meaning. New checks are additive, so parse defensively and ignore what you do
-  not recognise.
-
-`config.toml` carries `schema = 1`, written at the top of the file. It is
-bothy's bookkeeping rather than a setting — `bothy config set` refuses it — and
-it exists so a newer bothy can recognise an older file deliberately rather than
-by absence. A config from a *newer* bothy still loads: `doctor` warns, and the
-keys this version understands still work.
-
-What is not covered: anything printed for a human to read, the layout of
-`bothy doctor`'s normal output, and the internal Go packages. Those change when
-there is a reason.
+[What that obliges, and what is deliberately not covered](https://github.com/bspeelm/bothy/wiki/What-you-can-depend-on).
 
 ## Contributing
 

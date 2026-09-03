@@ -14,10 +14,14 @@ import (
 // whose checks had deliberately been removed. Prose has no compiler, so this
 // stands in for one on the two things most likely to rot.
 
-var readmeCommand = regexp.MustCompile(`(?m)^\| ` + "`" + `bothy ?([a-z-]*)[^` + "`" + `]*` + "`")
+// Each command is a heading on the wiki page: ### `bothy attach [session]`.
+var documentedCommand = regexp.MustCompile("(?m)^### `bothy ?([a-z-]*)")
 
-func TestEveryCommandInTheReadmeExists(t *testing.T) {
-	readme, err := os.ReadFile("../../README.md")
+// Commands are documented on the wiki page, not the README, which now names
+// only the three worth typing on a first day. The page is the reference, so
+// it is the thing that must not drift from main.go.
+func TestEveryDocumentedCommandExists(t *testing.T) {
+	readme, err := os.ReadFile("../../wiki/Commands.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,18 +31,18 @@ func TestEveryCommandInTheReadmeExists(t *testing.T) {
 	}
 
 	var checked int
-	for _, m := range readmeCommand.FindAllStringSubmatch(string(readme), -1) {
+	for _, m := range documentedCommand.FindAllStringSubmatch(string(readme), -1) {
 		sub := m[1]
 		if sub == "" {
 			continue // bare `bothy`, which is main's no-argument path
 		}
 		checked++
 		if !strings.Contains(string(main), `case "`+sub+`"`) {
-			t.Errorf("README documents `bothy %s`, which main.go does not handle", sub)
+			t.Errorf("wiki/Commands.md documents `bothy %s`, which main.go does not handle", sub)
 		}
 	}
 	if checked < 5 {
-		t.Errorf("only found %d commands in the README table; the pattern has drifted", checked)
+		t.Errorf("only found %d commands on the wiki page; the pattern has drifted", checked)
 	}
 }
 
@@ -541,5 +545,28 @@ func TestWikiLinksIntoThisRepoResolve(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Error("no links from wiki/ into this repository; this test is asserting nothing")
+	}
+}
+
+// A link that did not survive the shell is invisible to the check above: it
+// finds what it recognises, so a target left as `$R/docs/...` is not a broken
+// link, it is no link at all, and everything passes.
+func TestNoWikiLinkCarriesAnUnexpandedVariable(t *testing.T) {
+	pages, err := filepath.Glob(filepath.Join("../..", "wiki", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := regexp.MustCompile(`\]\(([^)]*)\)`)
+	for _, page := range pages {
+		body, err := os.ReadFile(page)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range target.FindAllStringSubmatch(string(body), -1) {
+			if strings.ContainsAny(m[1], "$`") {
+				t.Errorf("%s links to %q, which never expanded",
+					filepath.Base(page), m[1])
+			}
+		}
 	}
 }
