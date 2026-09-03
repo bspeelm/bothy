@@ -17,9 +17,8 @@
 
 
 
-You type one word in a directory and get three panes: your files above, an
-agent below on the left, and a shell on the right for when the agent says it
-has done something and you would like to see whether it has.
+A terminal workspace assembled from tools you already have. 
+One command opens a file browser, an agent and a shell in one window, configured and checked.
 
 ```sh
 cd ~/some-project
@@ -36,17 +35,14 @@ making sure it did nothing else, and it still occasionally has to be reminded.
 ## What happens when you type it
 
 bothy looks at what you already have. If the tools are there, it uses them and
-tells you so, with the faint air of someone who expected to have to do more.
-If some are missing, it lists them, says what they weigh, and waits for you to
-say yes. Then it writes its configs into a folder of its own, points each tool
+tells you so. If some are missing, it lists them and guides you trough obtaining them
+Then it writes its configs into a folder of its own, points each tool
 there for exactly as long as the session lasts, arranges the panes, and opens
 the window. Afterwards it tells you what is broken, if anything is, and what
-to type about it.
+to do about it.
 
 When you close the window, everything is as it was. When you uninstall it, the
 folder it wrote goes, and it names the few things it cannot remove for you.
-This is less a feature than an absence of features, and it was harder than the
-features.
 
 The same thing in order, with the reasons for the order, is
 [what happens when you type it](https://github.com/bspeelm/bothy/wiki/What-happens-when-you-type-bothy).
@@ -56,7 +52,7 @@ The same thing in order, with the reasons for the order, is
 You need **git**, and **curl** or **wget**. Everything else bothy brings, or
 tells you how to get. A terminal that can draw images — Ghostty, Kitty,
 WezTerm — makes previews real pictures rather than block art, and an AI agent
-is optional, though it is what the middle pane is for.
+is optional, though it is what the middle pane is for (and sort of the point).
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
@@ -179,6 +175,8 @@ Within a major version: the `config.toml` keys, the profile and palette
 schemas, the two directories, and the `doctor --json` shape. `config.toml`
 carries `schema = 1`.
 
+I will continue to make tweaks and push maintenance builds, but these are the features it ships with and most likely will stick with. 
+
 [What that obliges, and what is deliberately not covered](https://github.com/bspeelm/bothy/wiki/What-you-can-depend-on).
 
 ## Contributing
@@ -191,9 +189,8 @@ bug in the provider format, not in you.
 
 What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). Why
 things are the way they are is recorded in
-[`docs/decisions.md`](docs/decisions.md). It is longer than the code it
-explains, and on balance that is the right way round. The plan for the
-project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
+[`docs/decisions.md`](docs/decisions.md). 
+The plan for the project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
 the project better than most plans do, which is to say partially.
 
 ## Authorship
