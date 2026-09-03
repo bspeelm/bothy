@@ -1,0 +1,33 @@
+# Maintainer: Bryan Speelman <bryspeelm@pm.me>
+pkgname=bothy
+pkgver=0.7.0
+pkgrel=1
+pkgdesc='A turn-key terminal workspace built from tools you already trust'
+arch=('x86_64' 'aarch64')
+url='https://github.com/bspeelm/bothy'
+license=('MIT')
+depends=('glibc')
+makedepends=('go>=1.24' 'git')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('ebb8467f7ac87d0abbb8d720b20872d13f16328da109e51b8bcb53bc615b577e')
+
+build() {
+  cd "$pkgname-$pkgver"
+  # Matches .goreleaser.yaml exactly, including the version string: it stamps
+  # {{ .Version }}, which has no leading v, and two channels reporting different
+  # versions for one release is what #60 exists to prevent.
+  CGO_ENABLED=0 go build -mod=vendor \
+    -ldflags "-s -w -X main.Version=$pkgver" \
+    -o bothy ./cmd/bothy
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  go test ./...
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 bothy "$pkgdir/usr/bin/bothy"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
