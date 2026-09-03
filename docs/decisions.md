@@ -152,11 +152,13 @@ nothing; duplicating binaries costs disk. So bothy fills gaps rather than
 duplicating: a tool already on `PATH` that meets the minimum version is used
 as-is, and only a missing or too-old one is fetched, into bothy's own `bin/`
 which is prepended to `PATH` for its session only. A filled-in tool never
-shadows your everyday one. Filling in the entire toolset costs about 124 MB of
-static binaries on disk, from roughly 131 MB of downloaded archives — measured
-2026-08-31 against the pins in `bothy.lock`. Both numbers are dated because an
-undated measurement is one nobody knows to re-take; an earlier version of this
-paragraph said 48 MB long after that had stopped being true.
+shadows your everyday one. Filling in the entire toolset downloads about 49 MB
+of release archives, which unpack to roughly 124 MB of static binaries on disk
+— the download figure re-measured 2026-09-03 against the pins in `bothy.lock`
+and the GitHub release API, the on-disk figure dated 2026-08-31. The earlier
+download figure here said 131 MB and was wrong — and the version before that
+said 48 MB, which was right, and was "corrected" upward. An undated measurement
+is one nobody knows to re-take; a dated wrong one at least says when to check.
 
 The cost is that bothy does less. It no longer carries your `.vimrc` or your
 delta wiring to a new machine — but revision 1's own rule already said those
@@ -1175,7 +1177,7 @@ shape.
 
 **`doctor --json` is the one that had already hardened without being
 declared.** It exists so CI can read it, the issue templates ask reporters to
-paste it, and there are 32 check IDs in it. It was going to become a contract
+paste it, and it carries an ID for every check bothy runs. It was going to become a contract
 whether or not it was written down; the only choice was whether the contract
 was the one intended.
 

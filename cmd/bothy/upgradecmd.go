@@ -71,6 +71,11 @@ func upgradeMethod(p platform.Info, ver string) (string, string) {
 // against paths this machine does not have.
 func describeInstall(self string, p platform.Info, ver string) (string, string) {
 	switch {
+	// EvalSymlinks resolves a cask into Caskroom, the one marker both brew prefixes share.
+	case strings.Contains(self, "/Caskroom/"):
+		return "This copy is at " + self + ", which Homebrew owns:",
+			"brew upgrade --cask bothy"
+
 	case strings.HasPrefix(self, "/usr/bin/"), strings.HasPrefix(self, "/usr/local/bin/"):
 		// Which package manager is a question about the machine, not the path.
 		if _, err := exec.LookPath("rpm"); err == nil {
