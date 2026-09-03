@@ -95,6 +95,3 @@ work, so the instinct is named before it fires.
 - **Open the pull request when the work is done** and the checks are green,
   not before. Do not keep pushing to a PR under review, and do not arm
   auto-merge on a branch still being added to.
-
-These come from `/var/mnt/workbench/agent-context`, which is the source; this
-file is bothy's copy of what applies here.
