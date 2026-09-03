@@ -707,7 +707,7 @@ restating because it is not obvious: Ghostty says nothing at all about a
 an opacity set too low, and sends you tuning a setting that was never the
 problem.
 
-`docs/watermark.md` now carries the compositing recipe rather than describing
+the wiki's watermark page now carries the compositing recipe rather than describing
 a file bothy installs — including the arithmetic, because the useful part was
 never the picture but the trick of making a window-shaped canvas put art where
 a pane will be.
@@ -1153,11 +1153,11 @@ the setup bothy was built from". Every trap in it became a `doctor` check;
 reading it teaches you where bothy came from, not how to use it.
 
 What is left in `docs/` is what someone arriving would want:
-[`what-happens.md`](what-happens.md) for the run,
+[what happens when you type it](https://github.com/bspeelm/bothy/wiki/What-happens-when-you-type-bothy) for the run,
 [`decisions.md`](decisions.md) for the why, [`PLAN.md`](PLAN.md) for the
 architecture, [`north-star.md`](north-star.md) for the aim,
 [`adding-a-provider.md`](adding-a-provider.md) for extending it, and
-[`watermark.md`](watermark.md) for the one feature with a setup worth its own
+[the watermark](https://github.com/bspeelm/bothy/wiki/The-watermark) for the one feature with a setup worth its own
 page. [`README.md`](README.md) says which is which, because a directory
 listing does not.
 
@@ -1299,3 +1299,50 @@ README's authorship section already says what happened in the maintainer's own
 words. That section is his account; this is the decision record, and a project
 whose argument is that its reasoning is written down cannot make an exception
 for the reasoning that produced it.
+
+## ADR-039 — The wiki is the documentation; `docs/` is for people changing it
+
+**Status:** accepted. Amends ADR-035.
+
+ADR-035 sorted `docs/` into what is read and what was, and left the reader-facing
+pages there. That was right when `docs/` was the only place documentation could
+live. It is not any more.
+
+**The wiki is the manual.** Fourteen pages: the vocabulary, a first session, the
+commands, the doctor, installing, security, troubleshooting, the profiles, the
+watermark, and what a run actually does. It is not a bin for what would not fit
+in the README — it is where someone using bothy looks, and the README is a front
+door pointing into it.
+
+**So `docs/` keeps only what someone changing bothy needs**: `decisions.md`,
+`PLAN.md`, `north-star.md`, `adding-a-provider.md`, `reviewed.md`, and
+`history/`. `what-happens.md` and `watermark.md` moved to the wiki, which is
+where a user was always going to look for them.
+
+**Two dead sections of `PLAN.md` became pointers** rather than being deleted.
+Its §1 recounted revision 2 — history, and ADR-009 already records the decision.
+Its §10 listed phases A through F, every one done. Both are now three lines
+pointing at `history/`, and PLAN.md drops from 455 lines to 335.
+
+They keep their numbers because twenty files cite `PLAN.md` by section, and a
+walked roadmap is not worth renumbering the architecture over.
+
+**Four stale claims went with the overlap.** `PLAN.md` §7 listed seven slots,
+two of which — `theme` and `extras` — are config keys and not slots, and its
+provider lists predated neovim, aider and gemini-cli. Its §8 was written as a
+diff against revision 1, describing what "shifts" rather than what is.
+`north-star.md` §4 called the unified provider format future work and said the
+per-slot directories "exist on disk and are empty"; ADR-032 shipped that format
+in 0.5.0 and the directories are gone. Its §5 twice offered `bothy plan`, a
+command ADR-024 cut before it existed.
+
+Both documents now point at the one accurate place rather than paraphrasing
+it: the format at `adding-a-provider.md`, the model at `north-star.md` §4, the
+doctor at the wiki, and the check IDs at `Checks()`, which is the only list that
+cannot go stale.
+
+**The prose budget makes this a real trade rather than a preference.** Every
+markdown file counts against 0.75× the code (ADR-038's framework, §4); adding a
+manual and keeping a roadmap that shipped were not both affordable. Retiring
+dead weight is the response the budget asks for — raising the cap instead is
+listed as a framework failure.

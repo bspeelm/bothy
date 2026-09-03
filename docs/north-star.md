@@ -74,33 +74,15 @@ ADR-009 holds. The promise weakens on that stack; it is never broken.
 
 ## 4. Slots and providers
 
-The slot model was built for this, and three things have to change before it
-can carry it.
-
-**There is one provider format, and today there are three.** `slots/` holds
-three unrelated dialects: tools (`name`, `binary`, `repo`, `min_version`,
-`reason`, `[assets]`), advice (`name`, `what`, `binary`, `[install]`,
-`[[avoid]]`), and plugins (`name`, `use`, `gives`, `needs`), parsed by three
-structs in three packages. The per-slot directories the model implies —
-`slots/mux/`, `slots/browser/`, `slots/terminal/` — exist on disk and are empty.
-Unifying them is the largest single item on the road, and everything below
-assumes it.
-
-**Providers declare where they run and what they give.** The unified file gains
-three fields:
-
-```toml
-platforms = ["linux", "darwin"]
-provides  = ["panes", "sessions", "images"]
-redirect  = "env"          # env | flag | none — how bothy points it at its own config
-```
-
-The planner in §5 is a walk over these. A new terminal or multiplexer is a new
-file, and the matrix updates itself.
+Five slots — terminal, mux, browser, editor, agent — each filled by a provider
+described in one TOML file under `slots/`, declaring the platforms it runs on
+and the capabilities it supplies. The format is
+[`adding-a-provider.md`](adding-a-provider.md); the decision to have exactly one
+of them is [ADR-032](decisions.md#adr-032--one-provider-file-and-a-config-provider-stops-needing-go).
 
 **There are three provider tiers, and saying so is more honest than claiming
-one.** ADR-005 says adding a provider must touch no Go. That has never been
-strictly true and pretending otherwise hides where the real cost is:
+one.** ADR-005 said adding a provider must touch no Go. That was never strictly
+true, and pretending otherwise hid where the cost is:
 
 | tier | what it takes | examples |
 |---|---|---|
@@ -120,7 +102,7 @@ format buys back.
 
 ## 5. Sense, score, constrain, recommend, apply
 
-The first run, and `bothy plan` at any time, does one pass:
+The first run does one pass:
 
 1. **Sense.** Platform, terminal, display, container, what is on `PATH` and at
    what version.
@@ -169,7 +151,7 @@ Three rules keep it honest:
   stack that gives you panes and nothing else is still a stack; the user decides
   whether it is enough.
 
-`bothy` on first run does this. `bothy plan` re-runs it. `bothy doctor` stays as
+`bothy` on first run does this; `bothy install` re-runs it. `bothy doctor` stays as
 the after-the-fact check. One engine, three entry points.
 
 ## 6. Reference stacks
@@ -229,15 +211,7 @@ platforms, which is why those two land before 1.0 and these two do not.
 
 ## 7. What this costs
 
-Stated plainly, because a plan that only lists benefits is a sales document
-(PLAN.md §9).
-
-**The multiplexer is seven seams, not one.** `internal/layout` is a Zellij KDL
-emitter under a generic name, and six more `== "zellij"` decisions live outside
-it: the config directory, the template branch, `ZELLIJ_CONFIG_DIR`, `--layout`
-at launch, the graphics gate's version check, and a doctor check that counts
-panes by reading Zellij's own session-layout file. A backend interface has to
-cover all seven or the second backend leaks through the gaps.
+Stated plainly, because a document that only lists benefits is a sales document.
 
 **Every supported stack is a job forever.** ADR-012 is what makes "supported"
 mean anything, and it is also the bill. Each row in §6 is a CI job that can go
@@ -248,14 +222,15 @@ because `$HOME` is a bind-mounted host directory the test inspects from outside.
 A macOS runner has no equivalent, so it is a differently shaped job rather than
 another row in the same table.
 
-**Three terminal tables have to become one.** bothy recognises four terminals,
-scores three for graphics, and can spawn exactly one. A capability model needs a
-single table, and that is where iTerm2 and the terminals that draw nothing both
-have to be written down.
+**A second multiplexer costs more than a file.** The backend interface exists
+and was measured: a tmux spike came to +178 lines against an estimate of +50
+to +100, and was not merged
+([ADR-033](decisions.md#adr-033--the-multiplexer-is-a-backend-and-the-interface-was-measured)).
+Each backend is a renderer, a doctor check and a graphics gate.
 
-**The planner overlaps the doctor and must not duplicate it.** One is
-prospective and one retrospective; if they answer the same question twice they
-will eventually disagree, and the disagreement will be silent.
+**Terminals are recognised in more than one place.** bothy knows four, scores
+three for graphics, and can spawn one. Those are not yet a single table, and
+until they are, adding a terminal means finding each of them.
 
 ## 8. What 1.0 claims
 

@@ -14,10 +14,14 @@ import (
 // whose checks had deliberately been removed. Prose has no compiler, so this
 // stands in for one on the two things most likely to rot.
 
-var readmeCommand = regexp.MustCompile(`(?m)^\| ` + "`" + `bothy ?([a-z-]*)[^` + "`" + `]*` + "`")
+// Each command is a heading on the wiki page: ### `bothy attach [session]`.
+var documentedCommand = regexp.MustCompile("(?m)^### `bothy ?([a-z-]*)")
 
-func TestEveryCommandInTheReadmeExists(t *testing.T) {
-	readme, err := os.ReadFile("../../README.md")
+// Commands are documented on the wiki page, not the README, which now names
+// only the three worth typing on a first day. The page is the reference, so
+// it is the thing that must not drift from main.go.
+func TestEveryDocumentedCommandExists(t *testing.T) {
+	readme, err := os.ReadFile("../../wiki/Commands.md")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,18 +31,18 @@ func TestEveryCommandInTheReadmeExists(t *testing.T) {
 	}
 
 	var checked int
-	for _, m := range readmeCommand.FindAllStringSubmatch(string(readme), -1) {
+	for _, m := range documentedCommand.FindAllStringSubmatch(string(readme), -1) {
 		sub := m[1]
 		if sub == "" {
 			continue // bare `bothy`, which is main's no-argument path
 		}
 		checked++
 		if !strings.Contains(string(main), `case "`+sub+`"`) {
-			t.Errorf("README documents `bothy %s`, which main.go does not handle", sub)
+			t.Errorf("wiki/Commands.md documents `bothy %s`, which main.go does not handle", sub)
 		}
 	}
 	if checked < 5 {
-		t.Errorf("only found %d commands in the README table; the pattern has drifted", checked)
+		t.Errorf("only found %d commands on the wiki page; the pattern has drifted", checked)
 	}
 }
 
@@ -262,7 +266,7 @@ func TestEveryReleaseCredentialIsSetByTheWorkflow(t *testing.T) {
 // two separate attempts, and a real Mac rejected both. Prose may explain the
 // removal; a command line may not carry the flag.
 func TestNoBrewCommandOffersARemovedFlag(t *testing.T) {
-	body, err := os.ReadFile(filepath.Join("../..", "README.md"))
+	body, err := os.ReadFile(filepath.Join("../..", "wiki", "Installing.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -278,7 +282,7 @@ func TestNoBrewCommandOffersARemovedFlag(t *testing.T) {
 		}
 	}
 	if !seen {
-		t.Error("no brew install line in the README; this test is asserting nothing")
+		t.Error("no brew install line on the install page; this test is asserting nothing")
 	}
 }
 
@@ -336,17 +340,17 @@ func TestCIAndTheContainerTestAgreeOnImages(t *testing.T) {
 // with no entry here fails, which is the point: Homebrew was advertised as
 // the first way in while `bothy upgrade` called it unrecognised.
 var upgradeAdvice = map[string]string{
-	"Script":   "install.sh",
-	"Homebrew": "brew upgrade --cask",
+	"script":   "install.sh",
+	"homebrew": "brew upgrade --cask",
 	"dnf":      "dnf upgrade",
 	"apt":      "apt install",
-	"Go":       "go install",
-	"Source":   "make install-binary",
+	"go":       "go install",
+	"source":   "make install-binary",
 }
 
 func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
 	root := "../.."
-	readme, err := os.ReadFile(filepath.Join(root, "README.md"))
+	readme, err := os.ReadFile(filepath.Join(root, "wiki", "Installing.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,15 +359,15 @@ func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Scoped to the install table: "What you need first" above it also has
+	// Scoped to the channel table: "What you need first" above it also has
 	// bold first cells, and lists prerequisites rather than channels.
 	section := string(readme)
-	start := strings.Index(section, "### Getting bothy")
+	start := strings.Index(section, "## Every channel")
 	if start < 0 {
-		t.Fatal("no '### Getting bothy' heading; the README shape has changed")
+		t.Fatal("no '## Every channel' heading; the install page shape has changed")
 	}
 	section = section[start:]
-	if end := strings.Index(section, "\n### "); end > 0 {
+	if end := strings.Index(section, "\n## "); end > 0 {
 		section = section[:end]
 	}
 	rows := regexp.MustCompile(`(?m)^\| \*\*([^*]+)\*\* \|`).FindAllStringSubmatch(section, -1)
@@ -371,23 +375,29 @@ func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
 		t.Fatalf("found %d install rows; the table shape has changed", len(rows))
 	}
 	for _, r := range rows {
-		method := r[1]
+		method := strings.ToLower(r[1])
 		want, known := upgradeAdvice[method]
 		if !known {
-			t.Errorf("the README offers %q and this test does not know what "+
+			t.Errorf("the install page offers %q and this test does not know what "+
 				"`bothy upgrade` should say about it", method)
 			continue
 		}
 		if !strings.Contains(string(upgrade), want) {
-			t.Errorf("the README offers %q but upgradecmd.go never says %q", method, want)
+			t.Errorf("the install page offers %q but upgradecmd.go never says %q", method, want)
 		}
 	}
 
-	// "Six ways in" is prose next to a table; it drifts the moment a row moves.
-	counts := map[int]string{5: "Five", 6: "Six", 7: "Seven", 8: "Eight"}
+	// The README counts the channels in prose while the table lives on the
+	// wiki, so the two are now in different files and drift more easily.
+	front, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[int]string{5: "five", 6: "six", 7: "seven", 8: "eight"}
 	if word, ok := counts[len(rows)]; ok &&
-		!strings.Contains(section, word+" ways in") {
-		t.Errorf("the table has %d rows; the README does not say %q ways in", len(rows), word)
+		!strings.Contains(strings.ToLower(string(front)), word+" ways in") {
+		t.Errorf("the install page lists %d channels; the README does not say %q ways in",
+			len(rows), word)
 	}
 }
 
@@ -541,5 +551,67 @@ func TestWikiLinksIntoThisRepoResolve(t *testing.T) {
 	}
 	if checked == 0 {
 		t.Error("no links from wiki/ into this repository; this test is asserting nothing")
+	}
+}
+
+// A link that did not survive the shell is invisible to the check above: it
+// finds what it recognises, so a target left as `$R/docs/...` is not a broken
+// link, it is no link at all, and everything passes.
+func TestNoWikiLinkCarriesAnUnexpandedVariable(t *testing.T) {
+	pages, err := filepath.Glob(filepath.Join("../..", "wiki", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := regexp.MustCompile(`\]\(([^)]*)\)`)
+	for _, page := range pages {
+		body, err := os.ReadFile(page)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range target.FindAllStringSubmatch(string(body), -1) {
+			if strings.ContainsAny(m[1], "$`") {
+				t.Errorf("%s links to %q, which never expanded",
+					filepath.Base(page), m[1])
+			}
+		}
+	}
+}
+
+// Home is the wiki's index; a page it does not list is a page nobody finds,
+// and a link to a page that does not exist is a dead end. Both are easy to
+// leave behind when pages are added or renamed.
+func TestHomeIndexesEveryWikiPage(t *testing.T) {
+	dir := filepath.Join("../..", "wiki")
+	pages, err := filepath.Glob(filepath.Join(dir, "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	home, err := os.ReadFile(filepath.Join(dir, "Home.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Wiki-internal links are bare page names: [text](Page-Name).
+	linked := map[string]bool{}
+	for _, m := range regexp.MustCompile(`\]\(([A-Za-z][A-Za-z0-9-]*)\)`).
+		FindAllStringSubmatch(string(home), -1) {
+		linked[m[1]] = true
+	}
+	if len(linked) == 0 {
+		t.Fatal("Home.md links to no pages; this test is asserting nothing")
+	}
+
+	exists := map[string]bool{}
+	for _, p := range pages {
+		exists[strings.TrimSuffix(filepath.Base(p), ".md")] = true
+	}
+	for name := range exists {
+		if name != "Home" && !linked[name] {
+			t.Errorf("wiki/%s.md exists but Home does not link it", name)
+		}
+	}
+	for name := range linked {
+		if !exists[name] {
+			t.Errorf("Home links to %q, which is not a page", name)
+		}
 	}
 }

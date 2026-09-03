@@ -109,7 +109,7 @@ type Workspace struct {
 	// BackgroundImage sits behind the terminal: a path to a file of your own,
 	// empty for none. A path rather than a switch because the image has to be
 	// composited where a pane will be, which depends on your screen, so bothy
-	// ships no art. See docs/watermark.md. Renaming it needs an entry in
+	// ships no art; the wiki's watermark page has the recipe. Renaming it needs an entry in
 	// Retired, or an old config meets a type error rather than a warning.
 	BackgroundImage string `toml:"background_image"`
 	// PaneFrames is "full", "titles" or "none". Set explicitly rather than

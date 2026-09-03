@@ -45,127 +45,46 @@ This is less a feature than an absence of features, and it was harder than the
 features.
 
 The same thing in order, with the reasons for the order, is
-[`docs/what-happens.md`](docs/what-happens.md).
+[what happens when you type it](https://github.com/bspeelm/bothy/wiki/What-happens-when-you-type-bothy).
 
 ## Install
 
-### What you need first
+You need **git**, and **curl** or **wget**. Everything else bothy brings, or
+tells you how to get. A terminal that can draw images — Ghostty, Kitty,
+WezTerm — makes previews real pictures rather than block art, and an AI agent
+is optional, though it is what the middle pane is for.
 
-| | |
-|---|---|
-| **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it. |
-| **curl** or **wget** | Only for the install script below, and only one of them. |
-| **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else you get an approximation made of characters, which is roughly what terminals have been offering since 1978. |
-| **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
-| **Go** and **make** | Only if you build from source, which nobody has to. |
+```sh
+curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
+```
 
-bothy brings everything else. If any of the above is missing, `bothy doctor`
-says so, says what to type, and leaves it at that.
-
-### Getting bothy
-
-Six ways in. They all arrive at the same program and the same version.
-
-| | for | |
-|---|---|---|
-| **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
-| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` — read [macOS and Gatekeeper](#macos-and-gatekeeper) first |
-| **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
-| **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
-| **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
-| **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
-
-### macOS and Gatekeeper
-
-bothy is not signed with an Apple Developer ID, so macOS may refuse to run a
-copy a browser or Homebrew downloaded. The Homebrew cask clears the flag for
-you as it installs — a Gatekeeper check skipped on your behalf, which you
-should know about. `curl` never attaches the flag, so the script is unaffected.
-
-[What the warning means, and how to clear it by hand](https://github.com/bspeelm/bothy/wiki/Installing-and-verifying#macos-and-gatekeeper).
-
-### Checking what you got
-
-Every release artifact is signed by the workflow that built it, in a public
-log — so a swapped download is detectable whether or not anyone checks. dnf and
-`go install` verify automatically; for the rest the signature is one command,
-opt-in because it needs the `gh` CLI.
-
-[Which channel checks what, and the two commands](https://github.com/bspeelm/bothy/wiki/Installing-and-verifying#checking-what-you-got).
-
-Then, from any directory you happen to be in:
+No root, nothing layered onto the host, so this works unchanged on Silverblue
+and inside Toolbx. Then, from any directory:
 
 ```sh
 bothy
 ```
 
-The first run sets things up. It lists what you are missing, asks before
-downloading anything, then opens the window. It is not fast. It does not need
-to be; you will do this once.
+The first run lists what you are missing, asks before downloading anything,
+then opens the window. It is not fast. It does not need to be; you will do this
+once.
 
-### What gets installed
-
-If you have none of them, eight tools: about 49 MB to download, roughly 124 MB
-on disk once unpacked. That is a fair amount of disk for three panes, and it is
-written here so that you find out from the README rather than from `du`.
-
-| | | | |
-|---|---|---|---|
-| zellij | yazi | lazygit | ripgrep |
-| fzf | fd | jq | zoxide |
-
-Each is pinned to a version and a checksum in `bothy.lock`, and checked before
-bothy keeps it. These are other projects' releases, so a checksum is as far as
-it goes — bothy does not sign what it did not build.
-
-If you already have good enough copies, bothy downloads nothing and tells you
-which of yours it is using. What it did fetch, it keeps: when a later bothy
-pins a newer version, the next `bothy install` fetches that one and leaves
-your own copies exactly where they were.
-
-It never calls your package manager, never asks for root, and never adds
-anything to your `PATH`. It is aware that this is unusual, and would prefer
-not to discuss it.
-
-Two things it will not install for you. Ghostty, because it ships no
-ready-made binaries and every route to it needs root. And the agent, because
-your AI tools and their credentials are your business, and bothy has enough
-of its own. `bothy doctor` gives you the right command for both and then goes
-quiet.
+There are six ways in — dnf, apt, Homebrew, Go, source — and each verifies
+what it fetched differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
+[What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security).
 
 ## Commands
 
+Three of them matter:
+
 | | |
 |---|---|
-| `bothy` | Open the workspace |
-| `bothy attach` | Go back to one you left running, which has gone on without you |
-| `bothy ls` | Which of them are running |
-| `bothy keys` | The bindings worth knowing, for a first day |
-| `bothy confine` | Run the agent walled off from the rest of `$HOME` |
-| `bothy doctor` | What is wrong, and what to do about it (`--json`, for machines that want to know) |
-| `bothy install` | Apply your settings again after you have changed them |
-| `bothy tools` | Which tools are in use, and where they came from, in case of dispute |
-| `bothy upgrade` | How to upgrade this copy, for the way you installed it |
-| `bothy outdated` | Which pinned tools have newer releases upstream (`--json`) |
-| `bothy config set <key> <value>` | Change a setting |
-| `bothy layout` | Print the layout it would open, should you doubt it |
-| `bothy theme example` | Print a blank palette, for filling in |
-| `bothy desktop-entry` | Print a `.desktop` launcher (`--install` writes it) |
-| `bothy uninstall` | Remove bothy, and everything it brought, and nothing it did not |
+| `bothy` | open the workspace |
+| `bothy doctor` | what is wrong, and what to type (`--json` for machines) |
+| `bothy config set <key> <value>` | change a setting |
 
-### More than one project at a time
-
-Each directory gets its own session, named after it, so there is nothing to
-tear down when you move between them:
-
-```sh
-cd ~/other-project && bothy    # a second room; the first keeps running
-bothy ls                       # both of them
-bothy attach bothy-first       # back to the one you left, agent and all
-```
-
-Sessions survive closing the window. They do not survive a reboot, which is
-the correct amount of permanence for a room.
+There are fifteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
+[how to read a doctor report](https://github.com/bspeelm/bothy/wiki/The-doctor).
 
 ## What it touches
 
@@ -175,75 +94,26 @@ the correct amount of permanence for a room.
 ```
 
 Nothing else. Not `~/.config/yazi`, not `~/.vimrc`, not `~/.bashrc`, not your
-git config. bothy writes into its own folder and, when it launches, tells each
-tool to look there — using environment variables that exist for that session
-and afterwards do not. Your shell keeps its own `PATH` and its own opinion of
-what an editor is, and bothy has learned not to ask.
+git config. bothy writes into its own folder and, when it launches, points each
+tool there — with environment variables that last for that session and then do
+not.
 
-The second folder is yours. Put it in git. Clone it on the next machine. Run
-`bothy`. You will have the same room, which is about as much continuity as
-anyone is offered.
+The second folder is yours. Put it in git, clone it on the next machine, run
+`bothy`, and you have the same room.
 
-`bothy uninstall` removes the first folder and the binary. Three things are
-left, and it names each on the way out rather than leaving you to find them:
+`bothy uninstall` removes the first folder and the binary, and names the three
+things it leaves rather than leaving you to find them.
 
-| left behind | why | remove it with |
-|---|---|---|
-| `~/.config/bothy` | your settings, not bothy's | `rm -r ~/.config/bothy` |
-| the container image, if you confined the agent | ~550 MB bothy did not build | `podman rmi bothy-agent` |
-| the desktop entry, if you added one | outside the tree by necessity | `bothy desktop-entry --remove` |
-
-### Using your own config instead
-
-If you already have a Yazi setup you like, keep it. Most people who have one
-do.
-
-```toml
-# ~/.config/bothy/config.toml
-passthrough = ["browser"]
-```
-
-bothy then points Yazi at your config rather than its own, and does not read
-yours on the way past. Name the slot rather than what is in it — `"yazi"` is
-understood too, and stops meaning anything the day you put something else in
-the browser slot. To adjust bothy's config rather than replace it, put a
-file in `~/.config/bothy/overrides/<tool>/<file>`. bothy adds it to the end
-of its own, so yours wins, which is the correct ending to most arguments
-between a tool and the person who has to use it.
+[Using your own tool config instead of bothy's](https://github.com/bspeelm/bothy/wiki/Swapping-parts-and-theming) ·
+[what uninstall leaves, and why](https://github.com/bspeelm/bothy/wiki/Installing#removing-it).
 
 ## Swapping parts
 
-Every part can be changed. Most of it needn't be, and most of it won't be.
+bothy has five slots — terminal, multiplexer, browser, editor, agent — and each
+is a name in a config file. Change one, run `bothy install`, and it tells you
+what that stack can and cannot give you.
 
-| part | default | alternatives |
-|---|---|---|
-| terminal | ghostty | kitty, wezterm — none of which bothy installs |
-| multiplexer | zellij | or turn it off, and run the agent in this terminal |
-| file browser | yazi | or turn it off |
-| editor | vim | nano, helix |
-| agent | claude-code | any command you care to name |
-| theme | dracula | any palette you write down |
-
-```sh
-bothy config set slots.editor helix
-```
-
-Most people change the editor and nothing else. The others change everything,
-once, and then also nothing else.
-
-Three layouts come with bothy, and are called profiles because everything
-has to be called something. `cockpit` is the default: files on top, agent and
-shell beneath — the screenshot, and the reason any of this exists. `editor`
-puts an editor, an agent and a shell side by side, for people who would
-rather type than watch. `minimal` is an agent and a shell and nothing else,
-for small screens and for being somewhere else over SSH.
-
-```sh
-bothy config set profile minimal
-```
-
-Profiles are short TOML files. Write your own and put it in
-`~/.config/bothy/profiles/`.
+[Swapping parts, and theming](https://github.com/bspeelm/bothy/wiki/Swapping-parts-and-theming).
 
 ## Walling off the agent
 
@@ -277,70 +147,14 @@ rather than failing — that is the agent's behaviour, not bothy's.
 
 [Setting it up, the toolbox case, configuration and cleanup](https://github.com/bspeelm/bothy/wiki/Walling-off-the-agent).
 
-## Theming
-
-bothy ships one palette, [Dracula](https://github.com/dracula/dracula-theme),
-which has outlasted most of the software it was first drawn for, and colours
-every tool from the same eleven values, including a vim colour
-scheme it writes for you so that you do not have to learn how. If you would
-prefer another, write it:
-
-```sh
-bothy theme example > ~/.config/bothy/my-palette.toml
-$EDITOR ~/.config/bothy/my-palette.toml
-bothy config set theme.palette ~/.config/bothy/my-palette.toml
-```
-
-This is also how a palette you have paid for gets in. bothy contains no
-colours except its own, so anything you licensed stays on your machine, and
-bothy stays the colour it arrived in. A test checks this, because good
-intentions do not.
-
 ## Where it runs
 
-If your terminal can draw images (Ghostty, Kitty, WezTerm), bothy runs in it.
-If it cannot, bothy opens a Ghostty window instead, so that previews come out
-as pictures rather than as a suggestion of pictures. `--in-place` and
-`--window` overrule that judgement in either direction, for those who know
-better, or think they do. If you overrule it every time, make it the standing
-answer with `bothy config set workspace.launch here`, or `window` for the
-opposite; the flags still win for a single run. With no graphical display —
-over SSH, say — it stays where it is, which is generally the sensible thing to
-do when somewhere else.
+Linux and macOS. Fedora, Ubuntu, Debian and Arch are installed, exercised and
+uninstalled in containers on every release, and macOS on a real Mac — that is
+what supported means here. Silverblue and the Debian derivatives get advice
+bothy cannot test in a container, and says so.
 
-iTerm2 draws images too, by a protocol of its own that Zellij does not carry,
-so previews there arrive as characters after all. The doctor says which of the
-two is at fault rather than leaving you to adjust the wrong setting.
-
-Inside a Toolbx or Distrobox container, bothy remembers which container it
-put its tools in and goes back there when you launch it from the host. If you
-install from a container that has none of the tools, bothy downloads the lot
-into its own folder, and the result works from either side. It has, on the
-whole, had enough of being surprised by containers, and has written some of
-this down.
-
-As for which machines: Fedora, Ubuntu, Debian and Arch in containers, and
-macOS on a Mac, on every release — installed, exercised, uninstalled, and the
-whole doctor report compared against what it ought to have said. That is the
-whole of what supported means here: not that it ought to work, but that
-something proved it did this morning.
-
-Two things bothy has advice for and does not test. **Silverblue and other
-image-based systems**, where `dnf` means `rpm-ostree` and a reboot: bothy is
-written on one and cannot put one in a container. **Mint, Pop!_OS and the other
-derivatives**, which inherit Debian's advice through `ID_LIKE` — their container
-images report `ID=ubuntu`, so a job using one would prove nothing the Ubuntu job
-does not. That path is unit-tested instead.
-
-macOS took eight releases to earn that sentence, having been listed from the
-first on the strength of the binaries being built, which is not the same
-thing. The first Mac to run it found a file opener naming a program macOS does
-not have; the first machine in CI found an uninstall that reported success and
-left the binary behind. Both are fixed. Neither would have been found by
-reading the code.
-
-Anywhere else, bothy runs and the doctor tells you what it cannot do on that
-machine. Nobody has checked. It does not pretend otherwise.
+[Which terminals, which stacks, and what is untested](https://github.com/bspeelm/bothy/wiki/Where-it-runs).
 
 ## What bothy is not
 
@@ -351,49 +165,25 @@ machine. Nobody has checked. It does not pretend otherwise.
 - A manager for your agent's config, keys or hooks. Those are yours, and so are the consequences
 - A sandbox. The agent runs as you, in your repository, with your permissions. Its edits and commits are real and are not bothy's to undo. Uninstalling removes bothy — its tools, its configs — and nothing the agent did
 - A Flatpak. Flathub does not accept command-line software, and bothy downloads its tools as it goes, which Flatpak packaging was invented to prevent
-- Ambitious
 
-It is a room. You go in, the work happens, you leave. It keeps nothing of
-yours, and it does not need to be thanked.
+It is a room. You go in, the work happens, you leave, and it keeps nothing of
+yours.
 
 ## What you can depend on
 
-These are the parts bothy will not change out from under you within a major
-version. Rename or remove any of them and that is a breaking change, announced
-as one.
+Within a major version: the `config.toml` keys, the profile and palette
+schemas, the two directories, and the `doctor --json` shape. `config.toml`
+carries `schema = 1`.
 
-- **The keys in `config.toml`.** Existing keys are not renamed or removed. When
-  one has to change, the old name keeps working and `bothy doctor` names the
-  replacement — that is what `config.Retired` is for.
-- **The profile and palette TOML schemas**, so a profile you wrote keeps
-  rendering.
-- **The two directories.** `~/.local/share/bothy/` holds what bothy installs,
-  `~/.config/bothy/` holds what you set. Neither moves.
-- **The `doctor --json` shape**, and the check IDs in it. `--json` exists so
-  something else can read it; IDs may be added, but an existing one keeps its
-  meaning. New checks are additive, so parse defensively and ignore what you do
-  not recognise.
-
-`config.toml` carries `schema = 1`, written at the top of the file. It is
-bothy's bookkeeping rather than a setting — `bothy config set` refuses it — and
-it exists so a newer bothy can recognise an older file deliberately rather than
-by absence. A config from a *newer* bothy still loads: `doctor` warns, and the
-keys this version understands still work.
-
-What is not covered: anything printed for a human to read, the layout of
-`bothy doctor`'s normal output, and the internal Go packages. Those change when
-there is a reason.
+[What that obliges, and what is deliberately not covered](https://github.com/bspeelm/bothy/wiki/What-you-can-depend-on).
 
 ## Contributing
 
 See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding a tool
 bothy fetches is one config file. Adding one it configures is a file and some
-templates — it used to need a branch in Go as well, and no longer does. Only
-the multiplexer needs Go, because it reads the layout and writes something
-else; if anything else seems to, stop, because something has gone wrong, and
-it is probably ours. Most contributions so
-far have been to the reasons rather than the code, which is either a good sign
-or the only one.
+templates. Only the multiplexer needs Go, because it reads the layout and
+writes something else; if anything else seems to, stop and say so — that is a
+bug in the provider format, not in you.
 
 What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). Why
 things are the way they are is recorded in
