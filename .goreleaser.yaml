@@ -53,7 +53,11 @@ homebrew_casks:
     repository:
       owner: bspeelm
       name: homebrew-bothy
-      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
+      # .Env, not envOrDefault: the latter is not a function in the goreleaser
+      # the action installs, and a template that cannot compile is only found
+      # at release time, after the tag is pushed. The workflow always sets the
+      # variable, empty when the secret is absent.
+      token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
     skip_upload: false
     homepage: https://github.com/bspeelm/bothy
     description: A turn-key terminal workspace built from tools you already trust
@@ -77,7 +81,7 @@ aur_sources:
     # form cannot be verified without a real release -- and a release that
     # fails on a missing credential fails after the tag is pushed.
     skip_upload: true
-    private_key: '{{ envOrDefault "AUR_KEY" "" }}'
+    private_key: '{{ .Env.AUR_KEY }}'
     git_url: ssh://aur@aur.archlinux.org/bothy.git
     depends: [glibc]
     makedepends: ['go>=1.24', git]

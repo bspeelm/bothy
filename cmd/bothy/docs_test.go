@@ -191,3 +191,52 @@ func TestPlatformSplitsStayShims(t *testing.T) {
 		}
 	}
 }
+
+// Publishing credentials are read at release time, after the tag is pushed and
+// after CI has passed: CI runs goreleaser with --skip=publish, so these
+// templates are never compiled and these variables are never read. Two bugs
+// have reached a tag this way -- a workflow that set neither variable, and
+// `envOrDefault`, which is not a function goreleaser defines.
+//
+// So the pairing is asserted here: every credential the release config reads
+// is a plain .Env reference, and the workflow sets it.
+func TestEveryReleaseCredentialIsSetByTheWorkflow(t *testing.T) {
+	root := "../.."
+	cfg, err := os.ReadFile(filepath.Join(root, ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	flow, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Anything but `{{ .Env.NAME }}` -- a helper, a default, a pipeline -- is
+	// a template that compiles here and fails at release time.
+	body := string(cfg)
+	for _, line := range strings.Split(body, "\n") {
+		field, value, ok := strings.Cut(line, ":")
+		if !ok || !strings.Contains(value, "{{") {
+			continue
+		}
+		field = strings.TrimSpace(field)
+		if field != "token" && field != "private_key" {
+			continue
+		}
+		if !regexp.MustCompile(`\{\{\s*\.Env\.[A-Z_]+\s*\}\}`).MatchString(value) {
+			t.Errorf("%s uses a template that is only compiled at release time: %s",
+				field, strings.TrimSpace(value))
+		}
+	}
+
+	used := regexp.MustCompile(`\{\{\s*\.Env\.([A-Z_]+)\s*\}\}`).FindAllStringSubmatch(body, -1)
+	if len(used) == 0 {
+		t.Fatal("no credentials found in .goreleaser.yaml; this test is asserting nothing")
+	}
+	for _, m := range used {
+		name := m[1]
+		if !strings.Contains(string(flow), name+":") {
+			t.Errorf(".goreleaser.yaml reads %s, which release.yml never sets", name)
+		}
+	}
+}
