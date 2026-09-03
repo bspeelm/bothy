@@ -576,3 +576,42 @@ func TestNoWikiLinkCarriesAnUnexpandedVariable(t *testing.T) {
 		}
 	}
 }
+
+// Home is the wiki's index; a page it does not list is a page nobody finds,
+// and a link to a page that does not exist is a dead end. Both are easy to
+// leave behind when pages are added or renamed.
+func TestHomeIndexesEveryWikiPage(t *testing.T) {
+	dir := filepath.Join("../..", "wiki")
+	pages, err := filepath.Glob(filepath.Join(dir, "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	home, err := os.ReadFile(filepath.Join(dir, "Home.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Wiki-internal links are bare page names: [text](Page-Name).
+	linked := map[string]bool{}
+	for _, m := range regexp.MustCompile(`\]\(([A-Za-z][A-Za-z0-9-]*)\)`).
+		FindAllStringSubmatch(string(home), -1) {
+		linked[m[1]] = true
+	}
+	if len(linked) == 0 {
+		t.Fatal("Home.md links to no pages; this test is asserting nothing")
+	}
+
+	exists := map[string]bool{}
+	for _, p := range pages {
+		exists[strings.TrimSuffix(filepath.Base(p), ".md")] = true
+	}
+	for name := range exists {
+		if name != "Home" && !linked[name] {
+			t.Errorf("wiki/%s.md exists but Home does not link it", name)
+		}
+	}
+	for name := range linked {
+		if !exists[name] {
+			t.Errorf("Home links to %q, which is not a page", name)
+		}
+	}
+}

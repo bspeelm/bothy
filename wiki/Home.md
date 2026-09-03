@@ -30,6 +30,11 @@ Two directories, and it is worth knowing which is which:
 ~/.config/bothy/        your things — settings, palette, overrides
 ```
 
+## Start here
+
+- **[Your first session](Your-first-session)** — opening the room, what the
+  three panes are for, moving between them, and leaving without losing them.
+
 ## Using it
 
 - **[Commands](Commands)** — all fifteen, with their flags.
@@ -39,11 +44,14 @@ Two directories, and it is worth knowing which is which:
   two platforms with edges.
 - **[Security](Security)** — what bothy verifies, what it deliberately does
   not, and where the wall around the agent ends.
+- **[Troubleshooting](Troubleshooting)** — the failures people actually hit,
+  by symptom.
 
 ## Fitting it to your machine
 
 - **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
   confine`, the toolbox case, and removing it.
+- **[Profiles](Profiles)** — the three layouts that ship, and writing your own.
 - **[Swapping parts, and theming](Swapping-parts-and-theming)** — the five
   slots and the palette.
 - **[Where it runs](Where-it-runs)** — which terminals, which stacks, and what
