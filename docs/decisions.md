@@ -1222,7 +1222,7 @@ implying the attestation satisfies Gatekeeper.
 
 **The flag comes from the downloader, not the binary.** Homebrew and browsers
 attach it; `curl` does not, so the install script is unaffected. The tap's
-install line therefore carries `--no-quarantine`, and `bothy doctor` has a
+install line therefore carries `--cask --no-quarantine`, and `bothy doctor` has a
 `quarantine` check that names the `xattr -dr` command with the path filled in
 — the same gate/probe/explain shape as every other check (ADR-007).
 

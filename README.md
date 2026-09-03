@@ -69,7 +69,7 @@ Six ways in. They all arrive at the same program and the same version.
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
-| **Homebrew** | macOS, and Linux if you already use brew | `brew install --no-quarantine bspeelm/bothy/bothy` — see [macOS and Gatekeeper](#macos-and-gatekeeper) for why the flag |
+| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask --no-quarantine bspeelm/bothy/bothy` — see [macOS and Gatekeeper](#macos-and-gatekeeper) for why the flag |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
@@ -92,10 +92,12 @@ The warning appears when the file carries macOS's `com.apple.quarantine` flag.
 Homebrew and web browsers attach it; `curl` does not, so the install script is
 unaffected.
 
-Install without it:
+Install without it. `--cask` is not optional: `--no-quarantine` is a cask flag,
+and without it Homebrew reads the line as a formula install and rejects the
+option.
 
 ```sh
-brew install --no-quarantine bspeelm/bothy/bothy
+brew install --cask --no-quarantine bspeelm/bothy/bothy
 ```
 
 Or clear it from a copy you already have:
