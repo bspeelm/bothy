@@ -498,3 +498,48 @@ func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
 		}
 	}
 }
+
+// The wiki is a separate git repository, so its links into this one are
+// absolute URLs -- which TestEveryRelativeDocLinkResolves skips as external.
+// Its whole design is short answers deep-linking into decisions.md, and
+// anchors derive from heading text, so a retitled ADR breaks every link to it
+// silently.
+//
+// It catches a broken link, not a wrong one: an anchor pointing at the wrong
+// ADR still resolves, and only a reader notices. Writing three of these by
+// hand produced exactly that, and this test would not have caught it.
+func TestWikiLinksIntoThisRepoResolve(t *testing.T) {
+	root := "../.."
+	pages, err := filepath.Glob(filepath.Join(root, "wiki", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pages) == 0 {
+		t.Skip("no wiki pages yet")
+	}
+
+	blob := regexp.MustCompile(`https://github\.com/bspeelm/bothy/blob/main/([^)#\s]+)(#([^)\s]+))?`)
+	checked := 0
+	for _, page := range pages {
+		body, err := os.ReadFile(page)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range blob.FindAllStringSubmatch(string(body), -1) {
+			checked++
+			target := filepath.Join(root, m[1])
+			if _, err := os.Stat(target); err != nil {
+				t.Errorf("%s links to %q, which is not in this repository",
+					filepath.Base(page), m[1])
+				continue
+			}
+			if m[3] != "" && !hasHeading(t, target, m[3]) {
+				t.Errorf("%s links to %s#%s, and that heading does not exist",
+					filepath.Base(page), m[1], m[3])
+			}
+		}
+	}
+	if checked == 0 {
+		t.Error("no links from wiki/ into this repository; this test is asserting nothing")
+	}
+}

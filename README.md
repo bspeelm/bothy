@@ -77,66 +77,21 @@ Six ways in. They all arrive at the same program and the same version.
 
 ### macOS and Gatekeeper
 
-bothy is not signed with an Apple Developer ID. macOS attaches
-`com.apple.quarantine` to anything a browser or Homebrew downloads, and
-Gatekeeper refuses to run an unsigned file carrying it:
+bothy is not signed with an Apple Developer ID, so macOS may refuse to run a
+copy a browser or Homebrew downloaded. The Homebrew cask clears the flag for
+you as it installs — a Gatekeeper check skipped on your behalf, which you
+should know about. `curl` never attaches the flag, so the script is unaffected.
 
-> **"bothy" not opened.** Apple could not verify "bothy" is free of malware
-> that may harm your Mac or compromise your privacy.
-
-That is not a claim anything is wrong with the binary. Gatekeeper asks whether
-Apple can identify a paying developer account behind it; the answer is no.
-bothy's releases are signed by the workflow that built them and recorded in a
-public log (ADR-030), which says where the bytes came from — a stronger
-statement, and a different question from the one being asked.
-
-**The cask clears the flag for you, and you should know that it does.** There
-is no longer a way to ask Homebrew not to quarantine — `--no-quarantine` was
-removed in Homebrew 4.7 — so the cask runs `xattr -dr com.apple.quarantine` on
-the binary as it installs. That is a Gatekeeper check being skipped on your
-behalf. If you would rather it were not, install by another route: `curl` does
-not attach the flag, so the script below is unaffected.
-
-```sh
-brew install --cask bspeelm/bothy/bothy
-```
-
-If you have a copy that macOS is already refusing — installed before this
-landed, or downloaded from the releases page in a browser — clear it by hand:
-
-```sh
-xattr -dr com.apple.quarantine "$(which bothy)"
-```
-
-`bothy doctor` recognises the flag and prints that command with the right path
-filled in.
+[What the warning means, and how to clear it by hand](https://github.com/bspeelm/bothy/wiki/Installing-and-verifying#macos-and-gatekeeper).
 
 ### Checking what you got
 
 Every release artifact is signed by the workflow that built it, in a public
-log — so a swapped download is detectable whether or not anyone checks.
+log — so a swapped download is detectable whether or not anyone checks. dnf and
+`go install` verify automatically; for the rest the signature is one command,
+opt-in because it needs the `gh` CLI.
 
-| installed with | checked by |
-|---|---|
-| Homebrew | the sha256 in the cask, automatic; the signature on request |
-| dnf | dnf, against Copr's key — automatic |
-| `go install` | Go, against [sum.golang.org](https://sum.golang.org) — automatic |
-| script | a checksum, automatic; the signature on request |
-| `.deb` | the signature on request |
-| source | you compiled it yourself |
-
-The checksum catches a corrupted download. The signature also says the bytes
-came out of this repository's workflow; checking it needs the
-[`gh` CLI](https://cli.github.com), so it is opt-in. Without it you are
-trusting HTTPS and GitHub, as you do to clone the repository.
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh -s -- --verify
-gh attestation verify ./bothy_*.deb --repo bspeelm/bothy --bundle attestation.jsonl
-```
-
-Take `attestation.jsonl` from the release page. Neither command needs a GitHub
-account, and neither passes quietly when it cannot check.
+[Which channel checks what, and the two commands](https://github.com/bspeelm/bothy/wiki/Installing-and-verifying#checking-what-you-got).
 
 Then, from any directory you happen to be in:
 
@@ -147,14 +102,6 @@ bothy
 The first run sets things up. It lists what you are missing, asks before
 downloading anything, then opens the window. It is not fast. It does not need
 to be; you will do this once.
-
-> On Silverblue and other image-based systems, `dnf` means `rpm-ostree
-> install` and a reboot, which is the price of an operating system that does
-> not change under you. The script needs neither.
-
-> The `.deb` is a file rather than a repository, so `apt upgrade` will not
-> bring you the next one; download it when you want it. Running a Debian
-> archive is a commitment, and this one has not made it.
 
 ### What gets installed
 
@@ -237,6 +184,15 @@ The second folder is yours. Put it in git. Clone it on the next machine. Run
 `bothy`. You will have the same room, which is about as much continuity as
 anyone is offered.
 
+`bothy uninstall` removes the first folder and the binary. Three things are
+left, and it names each on the way out rather than leaving you to find them:
+
+| left behind | why | remove it with |
+|---|---|---|
+| `~/.config/bothy` | your settings, not bothy's | `rm -r ~/.config/bothy` |
+| the container image, if you confined the agent | ~550 MB bothy did not build | `podman rmi bothy-agent` |
+| the desktop entry, if you added one | outside the tree by necessity | `bothy desktop-entry --remove` |
+
 ### Using your own config instead
 
 If you already have a Yazi setup you like, keep it. Most people who have one
@@ -302,55 +258,6 @@ else changes: the same layout, the same file browser, the same shell.
 **It is opt-in and there is no setting that turns it on.** Never type the
 command and nothing about bothy is different.
 
-### Setting it up
-
-Three commands, once. The first one is the instructions — you do not have to
-know the other two in advance:
-
-```sh
-bothy confine
-# bothy: the agent needs an image to run in, and does not have one yet.
-#
-#       bothy wrote the recipe to
-#         ~/.local/share/bothy/confine/Containerfile
-#
-#       build it — this is yours to run, not bothy's:
-#         podman build -t bothy-agent ~/.local/share/bothy/confine
-#
-#       then: bothy confine
-
-podman build -t bothy-agent ~/.local/share/bothy/confine   # about 550 MB, a few minutes
-bothy confine                                              # now it launches
-```
-
-bothy writes that recipe and never builds it. Building installs an agent, and
-bothy does not install agents — they change how they install, they need
-credentials bothy has no business touching, and one arriving unasked is a
-workspace tool overstepping. The Containerfile is yours once written: change
-the agent, pin a version, add tools. bothy will not overwrite it.
-
-`bothy confine --print` shows the recipe and the exact `podman run`, so you can
-read the wall before trusting it.
-
-### If bothy runs in a toolbox
-
-This is the common case on Silverblue, and it has one wrinkle worth knowing:
-**podman is on the host, not in the toolbox.** bothy handles that itself — it
-reaches the host through `flatpak-spawn`, the same way it opens files — so
-`bothy confine` works from inside a toolbox with nothing extra to configure.
-
-Your own podman commands are the part that does not. Inside the toolbox:
-
-```sh
-podman build -t bothy-agent ~/.local/share/bothy/confine
-# bash: podman: command not found
-
-flatpak-spawn --host podman build -t bothy-agent ~/.local/share/bothy/confine
-```
-
-`bothy confine --print` prints the invocation with the hop already in it, so
-you can see which case you are in.
-
 ### What it stops, and what it does not
 
 **Stops:** every other project, `~/.ssh`, `~/.aws`, your shell history, the
@@ -368,46 +275,7 @@ not exist.
 If the credentials are missing the agent starts and says "Not logged in"
 rather than failing — that is the agent's behaviour, not bothy's.
 
-### Configuration
-
-One key, and it is optional:
-
-```toml
-[agent]
-image = "bothy-agent"    # the image bothy runs the agent in; this is the default
-```
-
-There is deliberately no `confine = true`. A default that changes how the agent
-runs would break for people who never asked for it and could not tell why.
-
-### Cleaning up
-
-`bothy uninstall` removes bothy's tree and the binary. The Containerfile is
-inside the tree, so it goes with it. Three things are left, and uninstall names
-each one rather than leaving you to find it:
-
-| left behind | why | remove it with |
-|---|---|---|
-| `~/.config/bothy` | your settings, not bothy's | `rm -r ~/.config/bothy` |
-| the container image | ~550 MB bothy did not build | `podman rmi bothy-agent` |
-| the desktop entry, if you added one | outside the tree by necessity | `bothy desktop-entry --remove` |
-
-```
-$ bothy uninstall
-removed ~/.local/share/bothy
-  kept ~/.config/bothy (your settings — delete it yourself if you want it gone)
-  kept the bothy-agent container image — remove it with: podman rmi bothy-agent
-```
-
-Inside a toolbox that last command comes back with the `flatpak-spawn` hop
-already in it, because that is the command that works where you are standing.
-
-### Where it works
-
-Tested on Linux with podman. On macOS podman runs a Linux VM: it works, the
-wall is real, and its edges are shaped differently — bothy says so and carries
-on rather than pretending either way. With no podman at all, `bothy confine`
-fails and tells you; it never silently runs unconfined.
+[Setting it up, the toolbox case, configuration and cleanup](https://github.com/bspeelm/bothy/wiki/Walling-off-the-agent).
 
 ## Theming
 
