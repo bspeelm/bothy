@@ -37,7 +37,7 @@ But as is often the case the journey was more interesting than the destination. 
 the whole journey, but it is well documented in
 [the decision log](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md) — thirty-four ADRs,
 including the ones where the answer was "don't build that" — in
-[what happens when you type `bothy`](https://github.com/bspeelm/bothy/blob/main/docs/what-happens.md),
+[what happens when you type `bothy`](https://github.com/bspeelm/bothy/wiki/What-happens-when-you-type-bothy),
 and in [the plans as they shipped](https://github.com/bspeelm/bothy/tree/main/docs/history).
 
 So yeah, try it out. If you already have the tools, it just sets up a config and alias. If you don't,
@@ -50,3 +50,9 @@ what it is, and wouldn't be doing all of this if I didn't think it was at least 
 folk. I am also keenly aware that the audience for something like this is probably pretty narrow, as
 anyone who cares has probably already done this. However, I like it, and if a few other people do
 too, then I am happy.
+
+---
+
+[The documentation](https://github.com/bspeelm/bothy/wiki) ·
+[the code](https://github.com/bspeelm/bothy) ·
+[install it](https://github.com/bspeelm/bothy/wiki/Installing)
