@@ -64,15 +64,50 @@ says so, says what to type, and leaves it at that.
 
 ### Getting bothy
 
-Five ways in. They all arrive at the same program and the same version.
+Six ways in. They all arrive at the same program and the same version.
 
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
+| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask --no-quarantine bspeelm/bothy/bothy` — see [macOS and Gatekeeper](#macos-and-gatekeeper) for why the flag |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
+
+### macOS and Gatekeeper
+
+bothy is not signed with an Apple Developer ID, so macOS may refuse to run it:
+
+> **"bothy" not opened.** Apple could not verify "bothy" is free of malware
+> that may harm your Mac or compromise your privacy.
+
+This is not a claim that anything is wrong with the binary. Gatekeeper asks
+whether Apple can identify a paying developer account behind it, and the answer
+is no. bothy's releases are signed by the workflow that built them and logged
+publicly (ADR-030), which is a stronger statement about where the bytes came
+from — and a different question from the one being asked.
+
+The warning appears when the file carries macOS's `com.apple.quarantine` flag.
+Homebrew and web browsers attach it; `curl` does not, so the install script is
+unaffected.
+
+Install without it. `--cask` is not optional: `--no-quarantine` is a cask flag,
+and without it Homebrew reads the line as a formula install and rejects the
+option.
+
+```sh
+brew install --cask --no-quarantine bspeelm/bothy/bothy
+```
+
+Or clear it from a copy you already have:
+
+```sh
+xattr -dr com.apple.quarantine "$(which bothy)"
+```
+
+`bothy doctor` recognises the flag and prints the second command with the right
+path filled in.
 
 ### Checking what you got
 
@@ -81,6 +116,7 @@ log — so a swapped download is detectable whether or not anyone checks.
 
 | installed with | checked by |
 |---|---|
+| Homebrew | the sha256 in the cask, automatic; the signature on request |
 | dnf | dnf, against Copr's key — automatic |
 | `go install` | Go, against [sum.golang.org](https://sum.golang.org) — automatic |
 | script | a checksum, automatic; the signature on request |

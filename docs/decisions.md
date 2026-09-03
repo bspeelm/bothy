@@ -1197,3 +1197,35 @@ round-trips through `Load`, but `Keys()` skips it and `config set` refuses it,
 because it is bookkeeping rather than a preference. The `bothy:"managed"` tag
 marks it, so the next field of that kind does not have to rediscover the
 question.
+
+## ADR-037 — bothy is not signed for Gatekeeper
+
+**Status:** accepted
+
+macOS refuses to run bothy when the file carries `com.apple.quarantine`,
+telling the reader that Apple "could not verify bothy is free of malware".
+Clearing that requires signing with an Apple Developer ID and notarising the
+result, which requires an Apple Developer account at $99 a year.
+
+**bothy will not pay it.** The project ships one static binary and takes no
+money; an annual fee to a third party to make a dialog go away is a recurring
+obligation the project does not want, and one that would outlive anyone's
+interest in maintaining it.
+
+**What bothy does instead is stronger about a different question.** Every
+release artifact is signed by the workflow that built it and recorded in a
+public transparency log (ADR-030), so the bytes can be traced to this
+repository's Actions run. Gatekeeper does not ask that; it asks whether Apple
+can identify an accountable developer account. Both are real assurances and
+neither substitutes for the other, so the README says so plainly rather than
+implying the attestation satisfies Gatekeeper.
+
+**The flag comes from the downloader, not the binary.** Homebrew and browsers
+attach it; `curl` does not, so the install script is unaffected. The tap's
+install line therefore carries `--cask --no-quarantine`, and `bothy doctor` has a
+`quarantine` check that names the `xattr -dr` command with the path filled in
+— the same gate/probe/explain shape as every other check (ADR-007).
+
+The alternative considered and rejected was ad-hoc signing (`codesign -s -`),
+which produces a signature Gatekeeper does not accept for downloaded files and
+would only add a step that changes nothing.
