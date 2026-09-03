@@ -34,9 +34,18 @@ section img[alt=""] {
   border: 0;
 }
 
-.caption {
+figure {
+  margin: 0 0 20px;
+}
+
+/* The anchor must be a block: an inline box around a block image leaves the
+   image overlapping whatever follows. */
+figure a {
   display: block;
-  margin: -10px 0 20px;
+}
+
+figcaption {
+  margin-top: 8px;
   font-size: 12px;
   color: #888;
 }
@@ -77,7 +86,7 @@ header img[alt="Logo"] {
     color: #d7bbff;
   }
 
-  a small, small, .caption {
+  a small, small, figcaption {
     color: #7f8496;
   }
 
