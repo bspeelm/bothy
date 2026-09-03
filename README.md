@@ -470,34 +470,28 @@ the project better than most plans do, which is to say partially.
 
 ## Authorship
 
-Claude, Anthropic's coding agent, wrote essentially all of the code in this
-repository. The design is the human author's: the architecture, the constraints
-the project is built under, and the decisions recorded in
-[`docs/decisions.md`](docs/decisions.md) — including discarding a working
-revision 1, which passed its tests, because it was the wrong shape.
-[`CLAUDE.md`](CLAUDE.md) holds the rules the code is written to.
+I wanted an easy way to make my development setup portable. All of the things
+that I use and nothing I don't. So I started working on it with Claude and this
+is the result. I designed the architecture, the constraints and made the
+decisions all while having Claude plan and execute on and within them. Those
+decisions are recorded here: [`docs/decisions.md`](docs/decisions.md)
 
-The human author has not read most of the code line by line. He has read the
-paths that can damage a machine: the install script, the uninstall path, and
-the container invocation `bothy confine` builds.
+For the rules that Claude followed you can see them here:
+[`CLAUDE.md`](CLAUDE.md)
 
-In place of line-by-line review the project is verified by process. The test
-suite runs on every push and every pull request; separately, bothy is
-installed, exercised and uninstalled end to end on four Linux distributions in
-containers and on a Mac, with the whole doctor report compared against what it
-ought to have said. Security properties are asserted as invariants rather than
-described — one test fails if the confined agent's invocation ever mounts
-`$HOME`. The code and comment budgets are failing checks in the `Makefile`, not
-aspirations. And the code is audited by AI systems other than the one that
-wrote it; those audits found two real bugs, a shell-splitting edge case
-([#146](https://github.com/bspeelm/bothy/issues/146)) and hardcoded agent
-credentials in `confine` ([#147](https://github.com/bspeelm/bothy/issues/147)),
-both fixed. One consequence of the six-thousand-line budget is that a skeptical
-stranger can read the whole thing in an afternoon. Anyone doubting the process
-is invited to do that, and to file what they find.
+I have not read most of the code. I did verify the sensitive bits: the install
+script, the uninstall path, and the container invocation. Maybe I
+over-engineered the installation security but that is important and not worth
+taking risks on. The rest is verified by process: the test suite, the code and
+comment budgets enforced in the [`Makefile`](Makefile), and audits by AI systems
+other than the one that wrote the code.
 
-<!-- TODO: when the write-up is published, uncomment this and link it.
-A longer account of how this was built is written up separately: [link]. -->
+So just to say it up front, this is a small project where the rigor was half the
+point. Learning how to use these tools can still produce something useful though
+and that is where we find ourselves.
+
+A longer account of how this was built is
+[here](https://bspeelm.github.io/bothy/how-it-was-built.html).
 
 ## Credits and licence
 
