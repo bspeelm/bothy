@@ -9,6 +9,19 @@ and there is no step that needs a reboot
 That is the whole reason it works unchanged on Silverblue, Kinoite and Bazzite,
 and inside Toolbx and Distrobox.
 
+## What you need first
+
+| | |
+|---|---|
+| **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it. |
+| **curl** or **wget** | Only for the install script below, and only one of them. |
+| **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else you get an approximation made of characters, which is roughly what terminals have been offering since 1978. |
+| **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
+| **Go** and **make** | Only if you build from source, which nobody has to. |
+
+bothy brings everything else. If any of the above is missing, `bothy doctor`
+says so, says what to type, and leaves it at that.
+
 ## The short version
 
 ```sh
@@ -86,3 +99,47 @@ xattr -dr com.apple.quarantine "$(which bothy)"
 `bothy doctor` recognises the flag and prints that command with your path in it.
 The reasoning, including why this project will not pay Apple $99 a year, is
 [ADR-037](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-037--bothy-is-not-signed-and-the-cask-clears-the-flag-itself).
+
+## What gets installed
+
+If you have none of them, eight tools: about 49 MB to download, roughly 124 MB
+on disk once unpacked. That is a fair amount of disk for three panes, and it is
+written here so that you find out from the README rather than from `du`.
+
+| | | | |
+|---|---|---|---|
+| zellij | yazi | lazygit | ripgrep |
+| fzf | fd | jq | zoxide |
+
+Each is pinned to a version and a checksum in `bothy.lock`, and checked before
+bothy keeps it. These are other projects' releases, so a checksum is as far as
+it goes — bothy does not sign what it did not build.
+
+If you already have good enough copies, bothy downloads nothing and tells you
+which of yours it is using. What it did fetch, it keeps: when a later bothy
+pins a newer version, the next `bothy install` fetches that one and leaves
+your own copies exactly where they were.
+
+It never calls your package manager, never asks for root, and never adds
+anything to your `PATH`. It is aware that this is unusual, and would prefer
+not to discuss it.
+
+Two things it will not install for you. Ghostty, because it ships no
+ready-made binaries and every route to it needs root. And the agent, because
+your AI tools and their credentials are your business, and bothy has enough
+of its own. `bothy doctor` gives you the right command for both and then goes
+quiet.
+
+## Removing it
+
+`bothy uninstall` removes bothy's tree and the binary. `--dry-run` shows what
+would go. Three things are left, and it names each on the way out:
+
+| left behind | why | remove it with |
+|---|---|---|
+| `~/.config/bothy` | your settings, not bothy's | `rm -r ~/.config/bothy` |
+| the container image, if you confined the agent | ~550 MB bothy did not build | `podman rmi bothy-agent` |
+| the desktop entry, if you added one | outside the tree by necessity | `bothy desktop-entry --remove` |
+
+Nothing else needs undoing: bothy never touched your dotfiles, never called
+your package manager, and never added anything to your `PATH`.

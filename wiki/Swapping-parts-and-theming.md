@@ -51,6 +51,24 @@ colours except its own, so anything you licensed stays on your machine, and
 bothy stays the colour it arrived in. A test checks this, because good
 intentions do not.
 
+## Using your own tool config instead
+
+If you already have a Yazi setup you like, keep it. Most people who have one
+do.
+
+```toml
+# ~/.config/bothy/config.toml
+passthrough = ["browser"]
+```
+
+bothy then points Yazi at your config rather than its own, and does not read
+yours on the way past. Name the slot rather than what is in it — `"yazi"` is
+understood too, and stops meaning anything the day you put something else in
+the browser slot. To adjust bothy's config rather than replace it, put a
+file in `~/.config/bothy/overrides/<tool>/<file>`. bothy adds it to the end
+of its own, so yours wins, which is the correct ending to most arguments
+between a tool and the person who has to use it.
+
 ---
 
 Why the slots are shaped this way, and why only the multiplexer needs Go:

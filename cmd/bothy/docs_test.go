@@ -266,7 +266,7 @@ func TestEveryReleaseCredentialIsSetByTheWorkflow(t *testing.T) {
 // two separate attempts, and a real Mac rejected both. Prose may explain the
 // removal; a command line may not carry the flag.
 func TestNoBrewCommandOffersARemovedFlag(t *testing.T) {
-	body, err := os.ReadFile(filepath.Join("../..", "README.md"))
+	body, err := os.ReadFile(filepath.Join("../..", "wiki", "Installing.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestNoBrewCommandOffersARemovedFlag(t *testing.T) {
 		}
 	}
 	if !seen {
-		t.Error("no brew install line in the README; this test is asserting nothing")
+		t.Error("no brew install line on the install page; this test is asserting nothing")
 	}
 }
 
@@ -340,17 +340,17 @@ func TestCIAndTheContainerTestAgreeOnImages(t *testing.T) {
 // with no entry here fails, which is the point: Homebrew was advertised as
 // the first way in while `bothy upgrade` called it unrecognised.
 var upgradeAdvice = map[string]string{
-	"Script":   "install.sh",
-	"Homebrew": "brew upgrade --cask",
+	"script":   "install.sh",
+	"homebrew": "brew upgrade --cask",
 	"dnf":      "dnf upgrade",
 	"apt":      "apt install",
-	"Go":       "go install",
-	"Source":   "make install-binary",
+	"go":       "go install",
+	"source":   "make install-binary",
 }
 
 func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
 	root := "../.."
-	readme, err := os.ReadFile(filepath.Join(root, "README.md"))
+	readme, err := os.ReadFile(filepath.Join(root, "wiki", "Installing.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,15 +359,15 @@ func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Scoped to the install table: "What you need first" above it also has
+	// Scoped to the channel table: "What you need first" above it also has
 	// bold first cells, and lists prerequisites rather than channels.
 	section := string(readme)
-	start := strings.Index(section, "### Getting bothy")
+	start := strings.Index(section, "## Every channel")
 	if start < 0 {
-		t.Fatal("no '### Getting bothy' heading; the README shape has changed")
+		t.Fatal("no '## Every channel' heading; the install page shape has changed")
 	}
 	section = section[start:]
-	if end := strings.Index(section, "\n### "); end > 0 {
+	if end := strings.Index(section, "\n## "); end > 0 {
 		section = section[:end]
 	}
 	rows := regexp.MustCompile(`(?m)^\| \*\*([^*]+)\*\* \|`).FindAllStringSubmatch(section, -1)
@@ -375,23 +375,29 @@ func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
 		t.Fatalf("found %d install rows; the table shape has changed", len(rows))
 	}
 	for _, r := range rows {
-		method := r[1]
+		method := strings.ToLower(r[1])
 		want, known := upgradeAdvice[method]
 		if !known {
-			t.Errorf("the README offers %q and this test does not know what "+
+			t.Errorf("the install page offers %q and this test does not know what "+
 				"`bothy upgrade` should say about it", method)
 			continue
 		}
 		if !strings.Contains(string(upgrade), want) {
-			t.Errorf("the README offers %q but upgradecmd.go never says %q", method, want)
+			t.Errorf("the install page offers %q but upgradecmd.go never says %q", method, want)
 		}
 	}
 
-	// "Six ways in" is prose next to a table; it drifts the moment a row moves.
-	counts := map[int]string{5: "Five", 6: "Six", 7: "Seven", 8: "Eight"}
+	// The README counts the channels in prose while the table lives on the
+	// wiki, so the two are now in different files and drift more easily.
+	front, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[int]string{5: "five", 6: "six", 7: "seven", 8: "eight"}
 	if word, ok := counts[len(rows)]; ok &&
-		!strings.Contains(section, word+" ways in") {
-		t.Errorf("the table has %d rows; the README does not say %q ways in", len(rows), word)
+		!strings.Contains(strings.ToLower(string(front)), word+" ways in") {
+		t.Errorf("the install page lists %d channels; the README does not say %q ways in",
+			len(rows), word)
 	}
 }
 

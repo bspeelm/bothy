@@ -49,81 +49,29 @@ The same thing in order, with the reasons for the order, is
 
 ## Install
 
-### What you need first
+You need **git**, and **curl** or **wget**. Everything else bothy brings, or
+tells you how to get. A terminal that can draw images — Ghostty, Kitty,
+WezTerm — makes previews real pictures rather than block art, and an AI agent
+is optional though rather the point.
 
-| | |
-|---|---|
-| **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it. |
-| **curl** or **wget** | Only for the install script below, and only one of them. |
-| **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else you get an approximation made of characters, which is roughly what terminals have been offering since 1978. |
-| **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
-| **Go** and **make** | Only if you build from source, which nobody has to. |
+```sh
+curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
+```
 
-bothy brings everything else. If any of the above is missing, `bothy doctor`
-says so, says what to type, and leaves it at that.
-
-### Getting bothy
-
-Six ways in. They all arrive at the same program and the same version.
-
-| | for | |
-|---|---|---|
-| **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
-| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` — read [macOS and Gatekeeper](https://github.com/bspeelm/bothy/wiki/Installing#macos-gatekeeper) first |
-| **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
-| **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
-| **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
-| **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
-
-### Checking what you got, and macOS
-
-Every release artifact is signed by the workflow that built it, in a public
-log. dnf and `go install` verify automatically; for the rest it is one opt-in
-command. On a Mac, an unsigned binary meets Gatekeeper — the Homebrew cask
-clears the flag for you, and `curl` never attaches it.
-
-[Every channel and what checks it](https://github.com/bspeelm/bothy/wiki/Installing) · [what bothy verifies, and
-what it does not](https://github.com/bspeelm/bothy/wiki/Security).
-
-Then, from any directory you happen to be in:
+No root, nothing layered onto the host, so this works unchanged on Silverblue
+and inside Toolbx. Then, from any directory:
 
 ```sh
 bothy
 ```
 
-The first run sets things up. It lists what you are missing, asks before
-downloading anything, then opens the window. It is not fast. It does not need
-to be; you will do this once.
+The first run lists what you are missing, asks before downloading anything,
+then opens the window. It is not fast. It does not need to be; you will do this
+once.
 
-### What gets installed
-
-If you have none of them, eight tools: about 49 MB to download, roughly 124 MB
-on disk once unpacked. That is a fair amount of disk for three panes, and it is
-written here so that you find out from the README rather than from `du`.
-
-| | | | |
-|---|---|---|---|
-| zellij | yazi | lazygit | ripgrep |
-| fzf | fd | jq | zoxide |
-
-Each is pinned to a version and a checksum in `bothy.lock`, and checked before
-bothy keeps it. These are other projects' releases, so a checksum is as far as
-it goes — bothy does not sign what it did not build.
-
-If you already have good enough copies, bothy downloads nothing and tells you
-which of yours it is using. What it did fetch, it keeps: when a later bothy
-pins a newer version, the next `bothy install` fetches that one and leaves
-your own copies exactly where they were.
-
-It never calls your package manager, never asks for root, and never adds
-anything to your `PATH`. It is aware that this is unusual, and would prefer
-not to discuss it.
-
-Two things it will not install for you. Ghostty, because it ships no
-ready-made binaries and every route to it needs root. And the agent, because
-your AI tools and their credentials are your business, and bothy has enough
-of its own. `bothy doctor` gives you the right command for both and then goes
-quiet.
+There are six ways in — dnf, apt, Homebrew, Go, source — and each verifies
+what it fetched differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
+[What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security).
 
 ## Commands
 
@@ -146,41 +94,18 @@ There are fifteen. [All of them, with their flags](https://github.com/bspeelm/bo
 ```
 
 Nothing else. Not `~/.config/yazi`, not `~/.vimrc`, not `~/.bashrc`, not your
-git config. bothy writes into its own folder and, when it launches, tells each
-tool to look there — using environment variables that exist for that session
-and afterwards do not. Your shell keeps its own `PATH` and its own opinion of
-what an editor is, and bothy has learned not to ask.
+git config. bothy writes into its own folder and, when it launches, points each
+tool there — with environment variables that last for that session and then do
+not.
 
-The second folder is yours. Put it in git. Clone it on the next machine. Run
-`bothy`. You will have the same room, which is about as much continuity as
-anyone is offered.
+The second folder is yours. Put it in git, clone it on the next machine, run
+`bothy`, and you have the same room.
 
-`bothy uninstall` removes the first folder and the binary. Three things are
-left, and it names each on the way out rather than leaving you to find them:
+`bothy uninstall` removes the first folder and the binary, and names the three
+things it leaves rather than leaving you to find them.
 
-| left behind | why | remove it with |
-|---|---|---|
-| `~/.config/bothy` | your settings, not bothy's | `rm -r ~/.config/bothy` |
-| the container image, if you confined the agent | ~550 MB bothy did not build | `podman rmi bothy-agent` |
-| the desktop entry, if you added one | outside the tree by necessity | `bothy desktop-entry --remove` |
-
-### Using your own config instead
-
-If you already have a Yazi setup you like, keep it. Most people who have one
-do.
-
-```toml
-# ~/.config/bothy/config.toml
-passthrough = ["browser"]
-```
-
-bothy then points Yazi at your config rather than its own, and does not read
-yours on the way past. Name the slot rather than what is in it — `"yazi"` is
-understood too, and stops meaning anything the day you put something else in
-the browser slot. To adjust bothy's config rather than replace it, put a
-file in `~/.config/bothy/overrides/<tool>/<file>`. bothy adds it to the end
-of its own, so yours wins, which is the correct ending to most arguments
-between a tool and the person who has to use it.
+[Using your own tool config instead of bothy's](https://github.com/bspeelm/bothy/wiki/Swapping-parts-and-theming) ·
+[what uninstall leaves, and why](https://github.com/bspeelm/bothy/wiki/Installing#removing-it).
 
 ## Swapping parts
 
