@@ -1198,34 +1198,48 @@ because it is bookkeeping rather than a preference. The `bothy:"managed"` tag
 marks it, so the next field of that kind does not have to rediscover the
 question.
 
-## ADR-037 — bothy is not signed for Gatekeeper
+## ADR-037 — bothy is not signed, and the cask clears the flag itself
 
 **Status:** accepted
 
-macOS refuses to run bothy when the file carries `com.apple.quarantine`,
-telling the reader that Apple "could not verify bothy is free of malware".
-Clearing that requires signing with an Apple Developer ID and notarising the
-result, which requires an Apple Developer account at $99 a year.
+macOS attaches `com.apple.quarantine` to what a browser or Homebrew downloads,
+and Gatekeeper refuses an unsigned file carrying it, telling the reader bothy
+may be malware. Clearing that properly means signing with an Apple Developer ID
+and notarising, which costs $99 a year.
 
 **bothy will not pay it.** The project ships one static binary and takes no
-money; an annual fee to a third party to make a dialog go away is a recurring
-obligation the project does not want, and one that would outlive anyone's
-interest in maintaining it.
+money; a recurring fee to a third party to remove a dialog is an obligation
+that would outlive anyone's interest in maintaining this.
 
-**What bothy does instead is stronger about a different question.** Every
-release artifact is signed by the workflow that built it and recorded in a
-public transparency log (ADR-030), so the bytes can be traced to this
-repository's Actions run. Gatekeeper does not ask that; it asks whether Apple
-can identify an accountable developer account. Both are real assurances and
-neither substitutes for the other, so the README says so plainly rather than
-implying the attestation satisfies Gatekeeper.
+**There is no longer a user-side opt-out.** `--no-quarantine` was removed in
+Homebrew 4.7, and `HOMEBREW_CASK_OPTS="--no-quarantine"` fails with it — the
+flag is gone from the codebase, not merely discouraged. Two README revisions
+recommended it before a real Mac rejected both; the instruction was written on
+Linux and never run.
 
-**The flag comes from the downloader, not the binary.** Homebrew and browsers
-attach it; `curl` does not, so the install script is unaffected. The tap's
-install line therefore carries `--cask --no-quarantine`, and `bothy doctor` has a
-`quarantine` check that names the `xattr -dr` command with the path filled in
-— the same gate/probe/explain shape as every other check (ADR-007).
+**So the cask does it, in a post-install hook** — `xattr -dr
+com.apple.quarantine` on the staged binary, the pattern goreleaser documents
+for exactly this. `bothy doctor` keeps its `quarantine` check for copies that
+arrived another way.
 
-The alternative considered and rejected was ad-hoc signing (`codesign -s -`),
-which produces a signature Gatekeeper does not accept for downloaded files and
-would only add a step that changes nothing.
+**This is a Gatekeeper check skipped on the user's behalf, and the README says
+so** rather than presenting the cask as simply working. Someone who would
+rather that did not happen has a route: `curl` does not attach the flag, so the
+install script is unaffected. Saying it plainly is the point — a tool whose
+pitch is that it touches nothing you did not ask it to cannot quietly disable a
+security check.
+
+**What bothy does instead is stronger about a different question.** Release
+artifacts are signed by the workflow that built them and recorded in a public
+transparency log (ADR-030), so the bytes trace to this repository's Actions
+run. Gatekeeper does not ask that. Neither assurance substitutes for the other.
+
+**Ad-hoc signing was considered and rejected**: `codesign -s -` produces a
+signature Gatekeeper does not accept for downloaded files, so it would add a
+step that changes nothing.
+
+**Watch this.** Homebrew is ending support for casks that fail Gatekeeper
+checks, with 1 September 2026 named as the date. That policy governs the
+official `homebrew/cask` repository; bothy publishes to its own tap, which is
+why this still works. If it is ever enforced tap-wide, the Homebrew channel
+goes rather than the money.

@@ -59,6 +59,15 @@ homebrew_casks:
       # variable, empty when the secret is absent.
       token: '{{ .Env.HOMEBREW_TAP_TOKEN }}'
     skip_upload: false
+    # Homebrew removed --no-quarantine in 4.7, so the user cannot opt out and
+    # the cask has to do it. Without this the binary installs and Gatekeeper
+    # refuses to run it, unsigned (ADR-037).
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/bothy"]
+          end
     homepage: https://github.com/bspeelm/bothy
     description: A turn-key terminal workspace built from tools you already trust
     # No dependencies declared: bothy fetches what it needs into its own tree,

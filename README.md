@@ -69,7 +69,7 @@ Six ways in. They all arrive at the same program and the same version.
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
-| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask --no-quarantine bspeelm/bothy/bothy` — see [macOS and Gatekeeper](#macos-and-gatekeeper) for why the flag |
+| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` — read [macOS and Gatekeeper](#macos-and-gatekeeper) first |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
@@ -77,37 +77,39 @@ Six ways in. They all arrive at the same program and the same version.
 
 ### macOS and Gatekeeper
 
-bothy is not signed with an Apple Developer ID, so macOS may refuse to run it:
+bothy is not signed with an Apple Developer ID. macOS attaches
+`com.apple.quarantine` to anything a browser or Homebrew downloads, and
+Gatekeeper refuses to run an unsigned file carrying it:
 
 > **"bothy" not opened.** Apple could not verify "bothy" is free of malware
 > that may harm your Mac or compromise your privacy.
 
-This is not a claim that anything is wrong with the binary. Gatekeeper asks
-whether Apple can identify a paying developer account behind it, and the answer
-is no. bothy's releases are signed by the workflow that built them and logged
-publicly (ADR-030), which is a stronger statement about where the bytes came
-from — and a different question from the one being asked.
+That is not a claim anything is wrong with the binary. Gatekeeper asks whether
+Apple can identify a paying developer account behind it; the answer is no.
+bothy's releases are signed by the workflow that built them and recorded in a
+public log (ADR-030), which says where the bytes came from — a stronger
+statement, and a different question from the one being asked.
 
-The warning appears when the file carries macOS's `com.apple.quarantine` flag.
-Homebrew and web browsers attach it; `curl` does not, so the install script is
-unaffected.
-
-Install without it. `--cask` is not optional: `--no-quarantine` is a cask flag,
-and without it Homebrew reads the line as a formula install and rejects the
-option.
+**The cask clears the flag for you, and you should know that it does.** There
+is no longer a way to ask Homebrew not to quarantine — `--no-quarantine` was
+removed in Homebrew 4.7 — so the cask runs `xattr -dr com.apple.quarantine` on
+the binary as it installs. That is a Gatekeeper check being skipped on your
+behalf. If you would rather it were not, install by another route: `curl` does
+not attach the flag, so the script below is unaffected.
 
 ```sh
-brew install --cask --no-quarantine bspeelm/bothy/bothy
+brew install --cask bspeelm/bothy/bothy
 ```
 
-Or clear it from a copy you already have:
+If you have a copy that macOS is already refusing — installed before this
+landed, or downloaded from the releases page in a browser — clear it by hand:
 
 ```sh
 xattr -dr com.apple.quarantine "$(which bothy)"
 ```
 
-`bothy doctor` recognises the flag and prints the second command with the right
-path filled in.
+`bothy doctor` recognises the flag and prints that command with the right path
+filled in.
 
 ### Checking what you got
 

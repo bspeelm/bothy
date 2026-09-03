@@ -241,11 +241,10 @@ func TestEveryReleaseCredentialIsSetByTheWorkflow(t *testing.T) {
 	}
 }
 
-// --no-quarantine is a cask option. Homebrew reads `brew install --no-quarantine`
-// as a formula install and rejects the flag, which is what the README shipped
-// until a Mac user hit it. The pairing is cheap to assert and was got wrong on
-// the first try.
-func TestBrewLinesPairNoQuarantineWithCask(t *testing.T) {
+// Homebrew removed --no-quarantine in 4.7. The README recommended it twice, on
+// two separate attempts, and a real Mac rejected both. Prose may explain the
+// removal; a command line may not carry the flag.
+func TestNoBrewCommandOffersARemovedFlag(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join("../..", "README.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -256,8 +255,9 @@ func TestBrewLinesPairNoQuarantineWithCask(t *testing.T) {
 			continue
 		}
 		seen = true
-		if strings.Contains(line, "--no-quarantine") && !strings.Contains(line, "--cask") {
-			t.Errorf("brew line passes --no-quarantine without --cask: %s", strings.TrimSpace(line))
+		if strings.Contains(line, "--no-quarantine") {
+			t.Errorf("brew line offers a flag Homebrew removed in 4.7: %s",
+				strings.TrimSpace(line))
 		}
 	}
 	if !seen {
