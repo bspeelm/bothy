@@ -52,7 +52,7 @@ The same thing in order, with the reasons for the order, is
 You need **git**, and **curl** or **wget**. Everything else bothy brings, or
 tells you how to get. A terminal that can draw images — Ghostty, Kitty,
 WezTerm — makes previews real pictures rather than block art, and an AI agent
-is optional though rather the point.
+is optional, though it is what the middle pane is for.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
@@ -165,10 +165,9 @@ bothy cannot test in a container, and says so.
 - A manager for your agent's config, keys or hooks. Those are yours, and so are the consequences
 - A sandbox. The agent runs as you, in your repository, with your permissions. Its edits and commits are real and are not bothy's to undo. Uninstalling removes bothy — its tools, its configs — and nothing the agent did
 - A Flatpak. Flathub does not accept command-line software, and bothy downloads its tools as it goes, which Flatpak packaging was invented to prevent
-- Ambitious
 
-It is a room. You go in, the work happens, you leave. It keeps nothing of
-yours, and it does not need to be thanked.
+It is a room. You go in, the work happens, you leave, and it keeps nothing of
+yours.
 
 ## What you can depend on
 
@@ -182,12 +181,9 @@ carries `schema = 1`.
 
 See [`docs/adding-a-provider.md`](docs/adding-a-provider.md). Adding a tool
 bothy fetches is one config file. Adding one it configures is a file and some
-templates — it used to need a branch in Go as well, and no longer does. Only
-the multiplexer needs Go, because it reads the layout and writes something
-else; if anything else seems to, stop, because something has gone wrong, and
-it is probably ours. Most contributions so
-far have been to the reasons rather than the code, which is either a good sign
-or the only one.
+templates. Only the multiplexer needs Go, because it reads the layout and
+writes something else; if anything else seems to, stop and say so — that is a
+bug in the provider format, not in you.
 
 What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). Why
 things are the way they are is recorded in

@@ -223,25 +223,25 @@ fails a test, and a check naming a capability outside the five fails a test.
 
 ## 9. What this costs
 
-Stated plainly, because a plan that only lists benefits is a sales document.
+Stated plainly, because a document that only lists benefits is a sales document.
 
-**Several hundred lines of tested code get deleted.** The backup directory,
-content-hash drift detection, restore-on-uninstall and the git-settings revert
-exist to protect files bothy will no longer touch. `state.Manifest` shrinks to a
-list of installed binaries.
-
-**bothy does less.** It no longer carries your `.vimrc` or your delta wiring to
-a new machine. Those are dotfiles, and revision 1's own rule — when unsure
-whether something belongs in bothy or in the underlying tool, it belongs in the
-underlying tool — says they were never bothy's to carry.
+**bothy does less than it could.** It does not carry your `.vimrc` to a new
+machine, because that is a dotfile and belongs to the tool that reads it. What
+it carries is `~/.config/bothy/`.
 
 **Two configs for the same tool, on purpose.** Your Yazi keybindings do not
 apply inside bothy unless you pass Yazi through. That is the price of isolation
-and it cuts both ways.
+and it cuts both ways
+([ADR-009](decisions.md#adr-009--bothy-is-isolated-it-brings-its-own-config-tree)).
 
-**A bigger behaviour on non-Ghostty terminals.** Spawning a window is more than
-revision 1 ever did, and on a headless box there is nothing to spawn — so the
-run-in-place path has to stay correct, not become an afterthought.
+**Spawning a window is a behaviour to keep correct.** On a terminal that cannot
+draw images bothy opens Ghostty instead; on a headless box there is nothing to
+spawn. The run-in-place path is not an afterthought, and a doctor check covers
+which one this machine gets.
+
+**Every supported platform is a job forever.** ADR-012 is what makes
+"supported" mean anything and it is also the bill: each one is a CI job that can
+go red on someone else's schedule.
 
 ---
 

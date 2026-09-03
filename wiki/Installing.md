@@ -15,7 +15,7 @@ and inside Toolbx and Distrobox.
 |---|---|
 | **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it. |
 | **curl** or **wget** | Only for the install script below, and only one of them. |
-| **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else you get an approximation made of characters, which is roughly what terminals have been offering since 1978. |
+| **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else previews fall back to block art. |
 | **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
 | **Go** and **make** | Only if you build from source, which nobody has to. |
 
@@ -121,8 +121,7 @@ pins a newer version, the next `bothy install` fetches that one and leaves
 your own copies exactly where they were.
 
 It never calls your package manager, never asks for root, and never adds
-anything to your `PATH`. It is aware that this is unusual, and would prefer
-not to discuss it.
+anything to your `PATH`.
 
 Two things it will not install for you. Ghostty, because it ships no
 ready-made binaries and every route to it needs root. And the agent, because

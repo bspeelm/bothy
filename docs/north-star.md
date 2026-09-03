@@ -211,15 +211,7 @@ platforms, which is why those two land before 1.0 and these two do not.
 
 ## 7. What this costs
 
-Stated plainly, because a plan that only lists benefits is a sales document
-(PLAN.md §9).
-
-**The multiplexer is seven seams, not one.** `internal/layout` is a Zellij KDL
-emitter under a generic name, and six more `== "zellij"` decisions live outside
-it: the config directory, the template branch, `ZELLIJ_CONFIG_DIR`, `--layout`
-at launch, the graphics gate's version check, and a doctor check that counts
-panes by reading Zellij's own session-layout file. A backend interface has to
-cover all seven or the second backend leaks through the gaps.
+Stated plainly, because a document that only lists benefits is a sales document.
 
 **Every supported stack is a job forever.** ADR-012 is what makes "supported"
 mean anything, and it is also the bill. Each row in §6 is a CI job that can go
@@ -230,14 +222,15 @@ because `$HOME` is a bind-mounted host directory the test inspects from outside.
 A macOS runner has no equivalent, so it is a differently shaped job rather than
 another row in the same table.
 
-**Three terminal tables have to become one.** bothy recognises four terminals,
-scores three for graphics, and can spawn exactly one. A capability model needs a
-single table, and that is where iTerm2 and the terminals that draw nothing both
-have to be written down.
+**A second multiplexer costs more than a file.** The backend interface exists
+and was measured: a tmux spike came to +178 lines against an estimate of +50
+to +100, and was not merged
+([ADR-033](decisions.md#adr-033--the-multiplexer-is-a-backend-and-the-interface-was-measured)).
+Each backend is a renderer, a doctor check and a graphics gate.
 
-**The planner overlaps the doctor and must not duplicate it.** One is
-prospective and one retrospective; if they answer the same question twice they
-will eventually disagree, and the disagreement will be silent.
+**Terminals are recognised in more than one place.** bothy knows four, scores
+three for graphics, and can spawn one. Those are not yet a single table, and
+until they are, adding a terminal means finding each of them.
 
 ## 8. What 1.0 claims
 
