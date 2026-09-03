@@ -1162,3 +1162,38 @@ listing does not.
 **The link test now covers `docs/history/` too.** It globbed `docs/*.md`, so
 moving a file into `history/` silently removed it from checking — the reorganisation
 would have been the thing that stopped verifying itself.
+
+## ADR-036 — What "stable" obliges, and why the config schema warns
+
+**Status:** accepted
+
+1.0 is a promise about stability rather than a feature level, and until now
+nothing said which parts of bothy someone could depend on. Four surfaces are
+declared in the README's *What you can depend on*: the `config.toml` keys, the
+profile and palette schemas, the two directories, and the `doctor --json`
+shape.
+
+**`doctor --json` is the one that had already hardened without being
+declared.** It exists so CI can read it, the issue templates ask reporters to
+paste it, and there are 32 check IDs in it. It was going to become a contract
+whether or not it was written down; the only choice was whether the contract
+was the one intended.
+
+**`schema = 1` warns where the manifest refuses.** `state.Manifest` returns an
+error on a version from the future, because a manifest it cannot read means it
+cannot account for installed binaries, and guessing there removes files. A
+config from the future is the opposite case: the keys this version knows still
+mean what they meant, and refusing would break every command including the
+`bothy upgrade` that fixes it and the `doctor` that explains it. So the check
+warns. This follows ADR-027, which settled the same question for unreadable
+keys.
+
+**A file with no `schema` key is schema 1**, not schema 0. Every config written
+before the key existed already had the shape the key names, so treating absence
+as "unknown" would warn every existing user about nothing.
+
+**`schema` is written but not settable.** It appears in `config.toml` and
+round-trips through `Load`, but `Keys()` skips it and `config set` refuses it,
+because it is bookkeeping rather than a preference. The `bothy:"managed"` tag
+marks it, so the next field of that kind does not have to rediscover the
+question.

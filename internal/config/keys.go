@@ -19,6 +19,10 @@ func keysOf(t reflect.Type, prefix string) []string {
 		if tag == "" || tag == "-" {
 			continue
 		}
+		// Managed fields round-trip through the file but are not settable.
+		if f.Tag.Get("bothy") == "managed" {
+			continue
+		}
 		name := prefix + tag
 		if f.Type.Kind() == reflect.Struct {
 			out = append(out, keysOf(f.Type, name+".")...)

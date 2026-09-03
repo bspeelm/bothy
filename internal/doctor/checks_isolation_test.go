@@ -63,3 +63,28 @@ func TestRetiredKeysPointSomewhereReal(t *testing.T) {
 		}
 	}
 }
+
+// A config with no schema key is schema 1, not schema 0: every file written
+// before the key existed already had the shape the key names.
+func TestAConfigWithoutTheKeyIsSchemaOne(t *testing.T) {
+	env := Env{Platform: platform.Info{Home: t.TempDir()}, Config: config.Default()}
+	if res := checkConfigSchema(env); res.Severity != Pass {
+		t.Errorf("severity = %v, want Pass: %s", res.Severity, res.Summary)
+	}
+}
+
+// A file from a newer bothy warns and keeps working. Refusing would break the
+// `bothy upgrade` that fixes it.
+func TestAFutureSchemaWarnsRatherThanRefuses(t *testing.T) {
+	cfg := config.Default()
+	cfg.Schema = config.Schema + 1
+	env := Env{Platform: platform.Info{Home: t.TempDir()}, Config: cfg}
+
+	res := checkConfigSchema(env)
+	if res.Severity != Warn {
+		t.Errorf("severity = %v, want Warn", res.Severity)
+	}
+	if res.Fix == "" {
+		t.Error("a warning with no fix leaves the reader nowhere to go")
+	}
+}
