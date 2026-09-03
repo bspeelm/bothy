@@ -490,8 +490,8 @@ So just to say it up front, this is a small project where the rigor was half the
 point. Learning how to use these tools can still produce something useful though
 and that is where we find ourselves.
 
-<!-- TODO: when the write-up is published, uncomment this and link it.
-A longer account of how this was built is written up separately: [link]. -->
+A longer account of how this was built is
+[here](https://bspeelm.github.io/bothy/how-it-was-built.html).
 
 ## Credits and licence
 
