@@ -4,8 +4,9 @@
 > another matter.*
 
 What bothy is, so that every milestone can be judged by whether it gets closer.
-The road itself is [`plan-1.0.md`](plan-1.0.md); the reasons things are the way
-they are are in [`decisions.md`](decisions.md).
+The reasons things are the way they are are in [`decisions.md`](decisions.md).
+The road as it was planned is [`history/plan-1.0.md`](history/plan-1.0.md), kept
+as a record now rather than a route.
 
 ---
 
