@@ -32,6 +32,68 @@ archives:
       - LICENSE
       - README.md
 
+# Two channels published from the tag, so their versions are derived rather
+# than hand-bumped. #60's failure mode is a channel whose version drifts from
+# the release it claims to be, and deriving is the only way that cannot happen.
+#
+# Both need a credential in the release environment and are skipped without
+# one: HOMEBREW_TAP_TOKEN, a fine-grained PAT with Contents: write on
+# bspeelm/homebrew-bothy and nothing else; and AUR_KEY, the SSH private key of
+# an account with the bothy name claimed.
+
+# aur_sources builds on the user's machine, so it needs a source tarball in the
+# release rather than the binary archives.
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}-{{ .Version }}-source"
+
+homebrew_casks:
+  - name: bothy
+    ids: [bothy]
+    repository:
+      owner: bspeelm
+      name: homebrew-bothy
+      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
+    skip_upload: false
+    homepage: https://github.com/bspeelm/bothy
+    description: A turn-key terminal workspace built from tools you already trust
+    # No dependencies declared: bothy fetches what it needs into its own tree,
+    # and installing zellij or yazi system-wide is the opposite of ADR-009.
+    #
+    # The generated cask carries linux URLs too, harmlessly: Homebrew installs
+    # casks on macOS only, so this channel is for Macs and the README says so.
+
+aur_sources:
+  - name: bothy
+    ids: [bothy]
+    homepage: https://github.com/bspeelm/bothy
+    description: A turn-key terminal workspace built from tools you already trust
+    license: MIT
+    maintainers: ['Bryan Speelman <bryspeelm@pm.me>']
+    # Not published yet: AUR registration is paused, so no account exists to
+    # hold the key. Set to false when AUR_KEY is a repository secret.
+    #
+    # A literal rather than a template testing the environment, because that
+    # form cannot be verified without a real release -- and a release that
+    # fails on a missing credential fails after the tag is pushed.
+    skip_upload: true
+    private_key: '{{ envOrDefault "AUR_KEY" "" }}'
+    git_url: ssh://aur@aur.archlinux.org/bothy.git
+    depends: [glibc]
+    makedepends: ['go>=1.24', git]
+    # Matches the build stanza above, version string included: two channels
+    # reporting different versions for one release is the drift this avoids.
+    # Verified by building this shape in an archlinux container first.
+    build: |
+      cd "$pkgname-$pkgver"
+      CGO_ENABLED=0 go build -mod=vendor \
+        -ldflags "-s -w -X main.Version=$pkgver" \
+        -o bothy ./cmd/bothy
+    package: |
+      cd "$pkgname-$pkgver"
+      install -Dm755 bothy "$pkgdir/usr/bin/bothy"
+      install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
 nfpms:
   # A Debian package for the release page, and nothing more. There is no apt
   # source to add and no signing key, because a repository is something you
