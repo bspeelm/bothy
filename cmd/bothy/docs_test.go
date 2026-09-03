@@ -110,6 +110,17 @@ func TestEveryRelativeDocLinkResolves(t *testing.T) {
 		t.Fatal(err)
 	}
 	files = append(files, past...)
+	// packaging/ documents the release channels and was outside this test
+	// entirely, so its links were never checked.
+	pkg, err := filepath.Glob(filepath.Join(root, "packaging", "**", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	top, err := filepath.Glob(filepath.Join(root, "packaging", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, append(pkg, top...)...)
 	files = append(files, filepath.Join(root, "README.md"),
 		filepath.Join(root, "CLAUDE.md"), filepath.Join(root, "NOTICE"),
 		filepath.Join(root, "CONTRIBUTING.md"), filepath.Join(root, "SECURITY.md"))
@@ -122,17 +133,23 @@ func TestEveryRelativeDocLinkResolves(t *testing.T) {
 		}
 		for _, m := range link.FindAllStringSubmatch(string(body), -1) {
 			target := m[1]
-			// External links and pure anchors are somebody else's problem.
-			if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "#") {
+			if strings.HasPrefix(target, "http") {
 				continue
 			}
-			target, _, _ = strings.Cut(target, "#")
-			if target == "" {
-				continue
+			path, frag, hasFrag := strings.Cut(target, "#")
+			// A bare "#anchor" points inside the file it is written in.
+			at := f
+			if path != "" {
+				at = filepath.Join(filepath.Dir(f), path)
+				if _, err := os.Stat(at); err != nil {
+					t.Errorf("%s links to %q, which does not exist",
+						filepath.Base(f), m[1])
+					continue
+				}
 			}
-			if _, err := os.Stat(filepath.Join(filepath.Dir(f), target)); err != nil {
-				t.Errorf("%s links to %q, which does not exist",
-					filepath.Base(f), m[1])
+			if hasFrag && frag != "" && !hasHeading(t, at, frag) {
+				t.Errorf("%s links to %q, and %s has no such heading",
+					filepath.Base(f), m[1], filepath.Base(at))
 			}
 		}
 	}
@@ -262,5 +279,222 @@ func TestNoBrewCommandOffersARemovedFlag(t *testing.T) {
 	}
 	if !seen {
 		t.Error("no brew install line in the README; this test is asserting nothing")
+	}
+}
+
+// The container images live in two places that cannot import each other: the
+// Go list is behind the `container` build tag, and CI reads its own copy to
+// pre-pull and to assert each distro produced a subtest. They drifted once --
+// CI pulled and asserted two while the test ran four, so a silently skipped
+// Debian or Arch subtest passed unnoticed.
+func TestCIAndTheContainerTestAgreeOnImages(t *testing.T) {
+	root := "../.."
+	goSrc, err := os.ReadFile(filepath.Join(root, "cmd", "bothy", "container_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ci, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := regexp.MustCompile(`var images = \[\]string\{([^}]*)\}`).FindSubmatch(goSrc)
+	if m == nil {
+		t.Fatal("no `var images` in container_test.go; this test is asserting nothing")
+	}
+	inGo := map[string]bool{}
+	for _, q := range regexp.MustCompile(`"([^"]+)"`).FindAllStringSubmatch(string(m[1]), -1) {
+		inGo[q[1]] = true
+	}
+
+	c := regexp.MustCompile(`IMAGES:\s*"([^"]*)"`).FindSubmatch(ci)
+	if c == nil {
+		t.Fatal("no IMAGES in ci.yml; this test is asserting nothing")
+	}
+	inCI := map[string]bool{}
+	for _, f := range strings.Fields(string(c[1])) {
+		inCI[f] = true
+	}
+
+	if len(inGo) == 0 {
+		t.Fatal("parsed no images out of container_test.go")
+	}
+	for img := range inGo {
+		if !inCI[img] {
+			t.Errorf("container_test.go runs %q, which ci.yml neither pulls nor asserts", img)
+		}
+	}
+	for img := range inCI {
+		if !inGo[img] {
+			t.Errorf("ci.yml expects %q, which container_test.go never runs", img)
+		}
+	}
+}
+
+// upgradeAdvice maps each install method the README offers to something
+// describeInstall must say to someone who used it. A new row in the table
+// with no entry here fails, which is the point: Homebrew was advertised as
+// the first way in while `bothy upgrade` called it unrecognised.
+var upgradeAdvice = map[string]string{
+	"Script":   "install.sh",
+	"Homebrew": "brew upgrade --cask",
+	"dnf":      "dnf upgrade",
+	"apt":      "apt install",
+	"Go":       "go install",
+	"Source":   "make install-binary",
+}
+
+func TestEveryInstallMethodIsRecognisedByUpgrade(t *testing.T) {
+	root := "../.."
+	readme, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	upgrade, err := os.ReadFile(filepath.Join(root, "cmd", "bothy", "upgradecmd.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Scoped to the install table: "What you need first" above it also has
+	// bold first cells, and lists prerequisites rather than channels.
+	section := string(readme)
+	start := strings.Index(section, "### Getting bothy")
+	if start < 0 {
+		t.Fatal("no '### Getting bothy' heading; the README shape has changed")
+	}
+	section = section[start:]
+	if end := strings.Index(section, "\n### "); end > 0 {
+		section = section[:end]
+	}
+	rows := regexp.MustCompile(`(?m)^\| \*\*([^*]+)\*\* \|`).FindAllStringSubmatch(section, -1)
+	if len(rows) < 5 {
+		t.Fatalf("found %d install rows; the table shape has changed", len(rows))
+	}
+	for _, r := range rows {
+		method := r[1]
+		want, known := upgradeAdvice[method]
+		if !known {
+			t.Errorf("the README offers %q and this test does not know what "+
+				"`bothy upgrade` should say about it", method)
+			continue
+		}
+		if !strings.Contains(string(upgrade), want) {
+			t.Errorf("the README offers %q but upgradecmd.go never says %q", method, want)
+		}
+	}
+
+	// "Six ways in" is prose next to a table; it drifts the moment a row moves.
+	counts := map[int]string{5: "Five", 6: "Six", 7: "Seven", 8: "Eight"}
+	if word, ok := counts[len(rows)]; ok &&
+		!strings.Contains(section, word+" ways in") {
+		t.Errorf("the table has %d rows; the README does not say %q ways in", len(rows), word)
+	}
+}
+
+// hasHeading reports whether the markdown file has a heading whose GitHub
+// anchor is frag. Anchors are derived from heading text, so renaming a
+// heading breaks every deep link to it and nothing says so.
+func hasHeading(t *testing.T, path, frag string) bool {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return true // unreadable is the other assertion's problem
+	}
+	drop := regexp.MustCompile("[^a-z0-9 -]")
+	for _, line := range strings.Split(string(body), "\n") {
+		if !strings.HasPrefix(line, "#") {
+			continue
+		}
+		text := strings.TrimLeft(line, "# ")
+		slug := strings.ReplaceAll(drop.ReplaceAllString(strings.ToLower(text), ""), " ", "-")
+		if slug == frag {
+			return true
+		}
+	}
+	return false
+}
+
+// "No telemetry" is a claim in the README's not-list and in PLAN.md, and
+// nothing checked it. These are the only hosts bothy is allowed to name:
+// releases and their checksums, and the install script. Anything else in
+// shipping code is either a new dependency on someone's availability or the
+// thing the not-list says bothy does not do.
+var allowedHosts = map[string]bool{
+	"github.com":                true,
+	"api.github.com":            true,
+	"raw.githubusercontent.com": true,
+}
+
+func TestShippingCodeNamesNoHostButGitHub(t *testing.T) {
+	root := "../.."
+	host := regexp.MustCompile(`https?://([a-zA-Z0-9.-]+)`)
+	found := 0
+	for _, dir := range []string{"internal", "cmd"} {
+		err := filepath.Walk(filepath.Join(root, dir), func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") ||
+				strings.HasSuffix(path, "_test.go") {
+				return err
+			}
+			body, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			for _, m := range host.FindAllStringSubmatch(string(body), -1) {
+				found++
+				if !allowedHosts[m[1]] {
+					rel, _ := filepath.Rel(root, path)
+					t.Errorf("%s reaches %q; bothy talks to GitHub and nothing else", rel, m[1])
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if found == 0 {
+		t.Fatal("no host literals found at all; this test is asserting nothing")
+	}
+}
+
+// What uninstall leaves is stated in seven prose sites and enforced by one
+// function, and the two have disagreed five times: #142 fixed two comments,
+// #143 the help text, #176 docs/PLAN.md, and the README twice. The true
+// shape is in internal/install/uninstall.go -- the tree and the binary go,
+// three things are named on the way out.
+//
+// This is a regression guard, not a proof: it bans the phrasings that have
+// actually shipped rather than deriving the claim from the code.
+var retiredUninstallClaims = []string{
+	"removes two directories",
+	"remove two directories",
+	"one folder goes and nothing else does",
+	"uninstall leaves nothing",
+	"removes everything it wrote",
+}
+
+func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
+	root := "../.."
+	files, err := filepath.Glob(filepath.Join(root, "docs", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files = append(files, filepath.Join(root, "README.md"),
+		filepath.Join(root, "CONTRIBUTING.md"), filepath.Join(root, "SECURITY.md"))
+	// The help text carried this one too, so the source is in scope.
+	files = append(files, filepath.Join(root, "cmd", "bothy", "main.go"))
+
+	for _, f := range files {
+		body, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		lower := strings.ToLower(string(body))
+		for _, claim := range retiredUninstallClaims {
+			if strings.Contains(lower, claim) {
+				t.Errorf("%s says %q; uninstall removes the tree and the binary "+
+					"and names three leftovers", filepath.Base(f), claim)
+			}
+		}
 	}
 }
