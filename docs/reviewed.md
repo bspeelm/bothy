@@ -52,6 +52,14 @@ the rest.
 | `internal/mux`, `cmd/bothy/dev.go`, `cmd/bothy/terminal.go` | launch what the config names. **The weakest exclusion here** — #146 was a shell-splitting bug in `mux/zellij_render.go`, which is argv construction by another name. Promote it if a second defect lands there (§7.4). |
 | `internal/tools`, `internal/slots`, `internal/theme`, `internal/layout` | data and decisions; the dangerous half is `internal/fetch`, which is included |
 
+## Staleness
+
+An entry is stale the moment its surface changes, and a surface stale beyond
+**30 days** is a framework failure rather than a code one — the vouching has
+stopped being real. Measured in time rather than releases: this project shipped
+three times in two days, and a threshold that fires constantly is one that gets
+ignored.
+
 ## Status
 
 Run `make ledger`.

@@ -15,7 +15,15 @@ MAX_BINARY_BYTES  := 10485760
 MAX_CODE_LINES    := 6000
 MAX_COMMENT_RATIO := 22
 
+# Live documentation, capped as a share of code for the same reason comments
+# are: an agent produces prose the way a fire produces smoke, and uncapped the
+# writing about the project becomes the project. history/ and review/ are
+# append-only by design and excluded. Over budget means retiring a doc, not
+# raising the cap.
+MAX_DOC_RATIO     := 75
+
 SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
+LIVE_DOCS := $(shell find docs -name '*.md' -not -path 'docs/history/*' -not -path 'docs/review/*')
 
 .PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr ledger packet
 
@@ -51,7 +59,11 @@ budgets: build
 	echo "code:     $$code lines (budget $(MAX_CODE_LINES))"; \
 	echo "comments: $$comments lines, $$ratio% of code (budget $(MAX_COMMENT_RATIO)%)"; \
 	if [ $$code -gt $(MAX_CODE_LINES) ]; then echo "over the code budget"; exit 1; fi; \
-	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi
+	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi; \
+	docs=$$(cat $(LIVE_DOCS) | wc -l); \
+	dratio=$$(( docs * 100 / code )); \
+	echo "docs:     $$docs lines, $$dratio% of code (budget $(MAX_DOC_RATIO)%)"; \
+	if [ $$dratio -gt $(MAX_DOC_RATIO) ]; then echo "over the docs budget"; exit 1; fi
 
 # The platforms .goreleaser.yaml ships, plus windows -- which bothy does not
 # support and does compile for today, with no build tags anywhere. Keeping it
