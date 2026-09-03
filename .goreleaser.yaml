@@ -54,13 +54,14 @@ homebrew_casks:
       owner: bspeelm
       name: homebrew-bothy
       token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
-    # Set to false when the tap repository exists and HOMEBREW_TAP_TOKEN is a
-    # repository secret.
-    skip_upload: true
+    skip_upload: false
     homepage: https://github.com/bspeelm/bothy
     description: A turn-key terminal workspace built from tools you already trust
     # No dependencies declared: bothy fetches what it needs into its own tree,
     # and installing zellij or yazi system-wide is the opposite of ADR-009.
+    #
+    # The generated cask carries linux URLs too, harmlessly: Homebrew installs
+    # casks on macOS only, so this channel is for Macs and the README says so.
 
 aur_sources:
   - name: bothy
