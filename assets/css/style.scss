@@ -50,9 +50,13 @@ figcaption {
   color: #888;
 }
 
+/* max-width, not width alone: below 960px the theme drops the fixed sidebar
+   and the header spans the page, which stretched the artwork to twice its
+   intended size. */
 header img[alt="Logo"] {
   display: block;
   width: 100%;
+  max-width: 270px;
   height: auto;
   margin: 0 0 18px;
 }
