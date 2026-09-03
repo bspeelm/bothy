@@ -2,7 +2,7 @@
 
 Five milestones and a contract.
 
-What bothy is aiming at is [`north-star.md`](north-star.md); this is the order
+What bothy is aiming at is [`north-star.md`](../north-star.md); this is the order
 it gets there in.
 
 ## What bothy is

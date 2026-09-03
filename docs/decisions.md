@@ -1130,3 +1130,35 @@ says so; it never silently runs unconfined.
 and its edges differ. ADR-018's pattern applies — an untested platform is
 labelled, not refused. Someone who wants it supported adds a CI job and the
 label comes off.
+
+## ADR-035 — `docs/` holds what is read; `docs/history/` holds what was
+
+**Status:** accepted
+
+ADR-024 moved the shipped plans to `docs/history/` and made one exception:
+`plan-1.0.md` stays "because it is the road right up until it has been
+travelled." It has been travelled. Its five milestones — 0.2.0 through 0.6.0 —
+are tags, and its `0.6.0` section describes `bothy plan`, which is not what
+0.6.0 became. The 1.0.0 milestone is closed with no issues behind it: 1.0 is a
+decision to be taken once strangers have used this, not a backlog.
+
+So the exception expires on the condition ADR-024 named, and `plan-1.0.md`
+joins the others.
+
+`origin-cheatsheet.md` moves with it. At 913 lines it was the largest file in
+`docs/`, and its own opening says it is "reproduced as the historical record of
+the setup bothy was built from". Every trap in it became a `doctor` check;
+reading it teaches you where bothy came from, not how to use it.
+
+What is left in `docs/` is what someone arriving would want:
+[`what-happens.md`](what-happens.md) for the run,
+[`decisions.md`](decisions.md) for the why, [`PLAN.md`](PLAN.md) for the
+architecture, [`north-star.md`](north-star.md) for the aim,
+[`adding-a-provider.md`](adding-a-provider.md) for extending it, and
+[`watermark.md`](watermark.md) for the one feature with a setup worth its own
+page. [`README.md`](README.md) says which is which, because a directory
+listing does not.
+
+**The link test now covers `docs/history/` too.** It globbed `docs/*.md`, so
+moving a file into `history/` silently removed it from checking — the reorganisation
+would have been the thing that stopped verifying itself.

@@ -1,7 +1,7 @@
 // Package layout turns a profile into a Zellij layout.
 //
 // Users write profiles; bothy writes KDL, because Zellij's layout language has
-// two traps (docs/origin-cheatsheet.md §3):
+// two traps (docs/history/origin-cheatsheet.md §3):
 //
 //  1. split_direction="vertical" produces *columns*, not rows — the opposite of
 //     what the word suggests. A profile says "columns" and means columns.
