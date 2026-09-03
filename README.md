@@ -486,9 +486,9 @@ taking risks on. The rest is verified by process: the test suite, the code and
 comment budgets enforced in the [`Makefile`](Makefile), and audits by AI systems
 other than the one that wrote the code.
 
-So just to say it up front, this is a small project where the rigor was half the
-point. Learning how to use these tools can still produce something useful though
-and that is where we find ourselves.
+So just to say it up front, this is a small project where keeping the iterations fast and loose
+while manufacturing the rigor was half the point. Learning how to use these tools can still 
+produce something useful though and that is where we find ourselves.
 
 A longer account of how this was built is
 [here](https://bspeelm.github.io/bothy/how-it-was-built.html).
