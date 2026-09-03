@@ -535,27 +535,15 @@ project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
 the project better than most plans do, which is to say partially.
 
 ## Authorship
+I wanted an easy way to make my development setup portable — all of the things I use and nothing I don't. It started as a cheatsheet I'd hand to an agent to set up the configuration; that's still in the docs if you're curious, and it's probably where this should have stopped. But while working on another project I felt the pull to go through every step of shipping something with a fully open AI workflow, and this was about as low-stakes a candidate as it gets.
 
-I wanted an easy way to make my development setup portable. All of the things
-that I use and nothing I don't. So I started working on it with Claude and this
-is the result. I designed the architecture, the constraints and made the
-decisions all while having Claude plan and execute on and within them. Those
-decisions are recorded here: [`docs/decisions.md`](docs/decisions.md)
+I designed the architecture and the constraints and made the decisions, while Claude planned and executed within them. The decisions are recorded in docs/decisions.md, and the rules Claude worked under are in CLAUDE.md.
 
-For the rules that Claude followed you can see them here:
-[`CLAUDE.md`](CLAUDE.md)
+Claude wrote most of this code. I've since reviewed the load-bearing paths and the tests, with particular attention to the sensitive bits: the install script, the uninstall path, and the container invocation. The rest is verified by process — the test suite, the code and comment budgets enforced in the Makefile, and audits by AI systems other than the one that wrote the code.
 
-I have not read most of the code. I did verify the sensitive bits: the install
-script, the uninstall path, and the container invocation. Maybe I
-over-engineered the installation security but that is important and not worth
-taking risks on. The rest is verified by process: the test suite, the code and
-comment budgets enforced in the [`Makefile`](Makefile), and audits by AI systems
-other than the one that wrote the code.
+To say it plainly: this is a small, zero-stakes project where keeping iterations fast while manufacturing the rigor was the point. Learning to use these tools can still produce something useful, and that is where we find ourselves.
 
-So just to say it up front, this is a small project where keeping the iterations fast and loose
-while manufacturing the rigor was half the point. Learning how to use these tools can still 
-produce something useful though and that is where we find ourselves.
-
+A longer account of how this was built is here.
 A longer account of how this was built is
 [here](https://bspeelm.github.io/bothy/how-it-was-built.html).
 
