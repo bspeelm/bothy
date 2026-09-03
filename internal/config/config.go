@@ -21,8 +21,13 @@ import (
 	"github.com/bspeelm/bothy/internal/theme"
 )
 
+// Schema is the config.toml shape version. A file without the key is schema 1:
+// every config written before the key existed already had that shape.
+const Schema = 1
+
 // Config is ~/.config/bothy/config.toml.
 type Config struct {
+	Schema    int       `toml:"schema" bothy:"managed"` // first, so it heads the file
 	Profile   string    `toml:"profile"`
 	Slots     Slots     `toml:"slots"`
 	Theme     Theme     `toml:"theme"`
@@ -121,6 +126,7 @@ var DefaultExtras = []string{"lazygit", "fzf", "ripgrep", "fd", "zoxide", "jq"}
 // machine-specific value left blank for detection to fill in.
 func Default() Config {
 	return Config{
+		Schema:  Schema,
 		Profile: "cockpit",
 		Slots: Slots{
 			Terminal: "ghostty",

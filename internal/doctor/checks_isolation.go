@@ -49,6 +49,19 @@ func checkConfigAge(env Env) Result {
 
 // checkConfigKeys reports unrecognised keys. Unmarshal accepts any key, so a
 // typo such as `slots.borwser` loads cleanly and silently does nothing.
+// Warns where state.Manifest refuses (ADR-027): the keys this bothy knows still
+// work, and refusing would break the upgrade that fixes it.
+func checkConfigSchema(env Env) Result {
+	if env.Config.Schema > config.Schema {
+		return warn(
+			fmt.Sprintf("config.toml is schema %d; this bothy understands %d",
+				env.Config.Schema, config.Schema),
+			"it was written by a newer bothy, and keys may have changed meaning",
+			"bothy upgrade, or accept that unrecognised keys are ignored")
+	}
+	return pass(fmt.Sprintf("config.toml is schema %d", config.Schema))
+}
+
 func checkConfigKeys(env Env) Result {
 	unknown := env.Config.Unknown
 	if len(unknown) == 0 {
