@@ -543,7 +543,6 @@ Claude wrote most of this code. I've since reviewed the load-bearing paths and t
 
 To say it plainly: this is a small, zero-stakes project where keeping iterations fast while manufacturing the rigor was the point. Learning to use these tools can still produce something useful, and that is where we find ourselves.
 
-A longer account of how this was built is here.
 A longer account of how this was built is
 [here](https://bspeelm.github.io/bothy/how-it-was-built.html).
 
