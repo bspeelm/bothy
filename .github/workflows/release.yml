@@ -42,6 +42,12 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The tap and the AUR package publish to other repositories, which
+          # GITHUB_TOKEN cannot reach: it is scoped to this one. An unset
+          # secret arrives as an empty string, which is why .goreleaser.yaml
+          # reads them with envOrDefault and skips on empty.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          AUR_KEY: ${{ secrets.AUR_KEY }}
       # Everything the release page offers, not just the archives. Attesting
       # the tarballs alone would leave the .deb unsigned and checksums.txt --
       # the file the default install trusts -- swappable by whoever could swap
