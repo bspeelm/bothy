@@ -1245,3 +1245,57 @@ checks, with 1 September 2026 named as the date. That policy governs the
 official `homebrew/cask` repository; bothy publishes to its own tap, which is
 why this still works. If it is ever enforced tap-wide, the Homebrew channel
 goes rather than the money.
+
+## ADR-038 — The agent writes; the decisions are the maintainer's
+
+**Status:** accepted
+
+Every other decision here has a record. The one that produced all of them did
+not, which left the most-asked question about this project answerable only from
+the README.
+
+**The division.** The maintainer advised on every decision and made the call.
+Claude wrote most of the code, and wrote these records of what was decided. The
+maintainer reviewed them; he did not draft them. Saying that plainly matters
+more than it flatters, because the alternative reading — that the agent decided
+and then wrote up its own reasoning — is the strongest objection available and
+evasion would confirm it.
+
+**So the record has a known weakness: it is written by the thing it describes.**
+Three things stand against that, and none of them is the prose.
+
+The decisions preceded the write-up. Where an ADR says something was measured
+and rejected, the measurement exists: ADR-033 built a tmux backend, found it
+cost +178 lines against an estimate of +50 to +100, and did not merge it;
+ADR-009 built the dotfile backup-and-restore design, passed a round-trip test
+with it, and deleted it; ADR-014 declined a small pure-Go xz dependency "not on
+its merits". An agent optimising for output does not throw away working code.
+Those are refusals, and refusals are where a human's judgement shows.
+
+The claims are checked by machine rather than by trusting the writing. The
+budgets are failing checks in the `Makefile`, not aspirations. The doctor
+report is compared against an expected table on four Linux distributions and a
+Mac. A test fails if the confined agent's invocation ever mounts `$HOME`, if a
+documented command does not exist, if a link points at a heading that is not
+there, or if any shipping file names a host that is not GitHub.
+
+And the code is small enough to check. Six thousand lines is a cap chosen so a
+skeptical stranger can read the whole thing in an afternoon (ADR-026), which is
+the only review that does not require trusting this document.
+
+**What it costs.** The maintainer did not read most of this line by line as it
+was written; he has since reviewed the load-bearing paths and the tests, with
+the install script, the uninstall path and the container invocation read
+closely. That is a real gap between "reviewed" and "authored" and the README
+states it rather than blurring it.
+
+**What would reverse this.** If the process stopped catching things — if the
+audits by other systems stopped finding real bugs, if a release shipped a
+defect that a line-by-line read would have caught — then the verification is
+not standing in for review and the honest response is to say so here.
+
+**The alternative was to leave it undocumented**, on the grounds that the
+README's authorship section already says what happened in the maintainer's own
+words. That section is his account; this is the decision record, and a project
+whose argument is that its reasoning is written down cannot make an exception
+for the reasoning that produced it.
