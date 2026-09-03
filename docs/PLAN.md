@@ -191,63 +191,33 @@ bothy's tree.
 
 ## 7. Slots, profiles, theming
 
-Unchanged from revision 1 and already built.
+Five slots, each filled by a provider that is one TOML file in `slots/`. Three
+profiles ship. One eleven-token palette drives every tool that can be pointed
+at a config.
 
-**Slots**: terminal (advise-only), mux (zellij), browser (yazi, none), editor
-(vim, nano, helix), agent (claude-code, any command), theme, extras.
+The model and its three tiers are [`north-star.md`](north-star.md) §4; the file
+format is [`adding-a-provider.md`](adding-a-provider.md); what a user does with
+either is [Profiles](https://github.com/bspeelm/bothy/wiki/Profiles) and
+[Swapping parts](https://github.com/bspeelm/bothy/wiki/Swapping-parts-and-theming).
 
-**Profiles**: `cockpit` (default — browser on top, agent + shell below),
-`editor` (three columns), `minimal` (agent + shell). Small TOML describing rows
-and columns, rendered to Zellij KDL by a renderer that owns the two KDL traps:
-`split_direction="vertical"` means columns, and plugin nodes are always emitted
-multi-line. `cockpit` renders byte-identical to the origin `dev.kdl`.
-
-**Theming**: one eleven-token palette drives zellij, yazi, ghostty and a
-generated vim colorscheme. Open Dracula ships; any other palette is a file you
-point `theme.palette` at. `bothy theme example` prints the blank form. See
-ADR-006 — settled, and enforced by a test.
+One thing here that belongs to the code rather than to either: the renderer owns
+the two KDL traps — `split_direction="vertical"` means columns, and plugin nodes
+are always emitted multi-line — because Zellij's spelling should not leak into a
+profile someone writes by hand.
 
 ---
 
 ## 8. Doctor
 
-The check list is largely unchanged, but **what it audits shifts**: bothy's own
-tree, plus the parts of your machine that can still break the workspace.
+Every setup failure that gets fixed ships with a check that detects it, which is
+why the list only grows and why it is the most valuable thing in the project.
 
-Still checks, unchanged in value:
+What each check does, how to read a report, and the five capabilities it groups
+into are [The doctor](https://github.com/bspeelm/bothy/wiki/The-doctor). The IDs themselves are `Checks()` in
+`internal/doctor/doctor.go`, which is the only list that cannot go stale.
 
-- **Yazi silently discarding its whole config** — the highest-value check there is
-- Yazi ≥ 26 when plugins are installed; `[mgr]` not `[manager]`; `url` not `name`
-- Image previews: which side of the version gate this machine is on, and why
-- `zellij setup --check`; generated KDL parses
-- Terminfo for `$TERM` resolvable, especially inside a container
-- Agent on PATH, and not nesting inside an existing agent session
-
-Revised or new:
-
-- **Terminal capability** — can the terminal bothy is about to use draw images?
-  Reports whether it will run in place or spawn Ghostty.
-- **Passthrough** — which slots use your configs, and what that turns off.
-- **Binary provenance** — for each tool, system or bothy-supplied, and its
-  version. Replaces the PATH-shadowing check, which mattered only because
-  revision 1 installed into `~/.local/bin`.
-- **Layout actually built** — compares the profile's pane count against
-  Zellij's resolved `session-layout.kdl`. Guards the far side of the renderer:
-  that Zellij still *interprets* the KDL the way it did when the renderer was
-  written.
-- **Yazi plugins** — bothy's config references four; a missing one costs the
-  feature it names.
-- **Profile renders** — a hand-written profile is the likeliest thing here to
-  be broken, and better caught before launch than at it.
-
-Dropped: `xdg-open` shim guard, `EDITOR` override, vim colorscheme location,
-Ghostty near-miss filename. All four existed because bothy wrote into a shared
-home. The opener still matters inside a container, but bothy now sets it in its
-own session rather than installing a shim on a shared PATH.
-
-Output stays `✓ / ! / ✗`, a one-line fix under every failure, `--json` for CI,
-non-zero exit on any failure. Every failing check carrying a fix is enforced by
-a test.
+Two rules the code enforces rather than documents: a failure without a fix line
+fails a test, and a check naming a capability outside the five fails a test.
 
 ---
 

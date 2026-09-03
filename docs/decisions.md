@@ -1327,6 +1327,20 @@ pointing at `history/`, and PLAN.md drops from 455 lines to 335.
 They keep their numbers because twenty files cite `PLAN.md` by section, and a
 walked roadmap is not worth renumbering the architecture over.
 
+**Four stale claims went with the overlap.** `PLAN.md` §7 listed seven slots,
+two of which — `theme` and `extras` — are config keys and not slots, and its
+provider lists predated neovim, aider and gemini-cli. Its §8 was written as a
+diff against revision 1, describing what "shifts" rather than what is.
+`north-star.md` §4 called the unified provider format future work and said the
+per-slot directories "exist on disk and are empty"; ADR-032 shipped that format
+in 0.5.0 and the directories are gone. Its §5 twice offered `bothy plan`, a
+command ADR-024 cut before it existed.
+
+Both documents now point at the one accurate place rather than paraphrasing
+it: the format at `adding-a-provider.md`, the model at `north-star.md` §4, the
+doctor at the wiki, and the check IDs at `Checks()`, which is the only list that
+cannot go stale.
+
 **The prose budget makes this a real trade rather than a preference.** Every
 markdown file counts against 0.75× the code (ADR-038's framework, §4); adding a
 manual and keeping a roadmap that shipped were not both affordable. Retiring
