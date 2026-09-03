@@ -1,35 +1,59 @@
 # bothy
 
-A turn-key terminal workspace built from tools you already trust. The
-[README](https://github.com/bspeelm/bothy) is the front door — what bothy is,
-how to install it, and what it touches. These pages are everything that needs
-more room than a front page should give it.
+A terminal workspace assembled from tools you already have. One command opens a
+file browser, an agent and a shell in one window, configured and checked.
+
+The [README](https://github.com/bspeelm/bothy) is the front door. These pages
+are the detail. **Start with the words** — bothy uses a handful of terms
+precisely, and nothing below makes sense without them.
+
+## The words
+
+| term | what it means here |
+|---|---|
+| **workspace** | the thing `bothy` opens: three panes in one terminal window. Not a project, not a directory — the room you work in |
+| **pane** | one region of the window. The file browser across the top, the agent and a shell below. Three panes is the invariant: a stack that cannot produce them is not a bothy stack |
+| **session** | a running workspace you can walk away from. Detach with `Ctrl-o d`, come back with `bothy attach`, and it has carried on without you. One per project directory, named after it |
+| **slot** | a job to be filled, not a program. There are five: **terminal**, **mux**, **browser**, **editor**, **agent**. You say which program fills each |
+| **provider** | a program that can fill a slot, described by one TOML file — how to detect it, fetch it, configure it. `zellij` fills the mux slot; `yazi` fills the browser slot |
+| **mux** | short for multiplexer: the thing that splits one terminal into panes and keeps them running after you disconnect. Zellij, today |
+| **profile** | the layout: which panes, what size, which slot goes where. Three ship — `cockpit` (the default three-pane room), `editor`, `minimal` |
+| **capability** | something a stack can or cannot give you: **panes**, **sessions**, **theme**, **isolation**, **images**. `bothy doctor` reports each as available or not, because a terminal that cannot draw images cannot be configured into drawing them |
+| **passthrough** | using your own config for a tool instead of bothy's. Name the slot, not the program |
+| **confine** | running the agent in a container with your project mounted and the rest of `$HOME` not. Opt-in, never automatic |
+| **the lock** | [`bothy.lock`](https://github.com/bspeelm/bothy/blob/main/bothy.lock) — the version and checksum of every tool bothy would fetch. Nothing is downloaded that is not pinned here |
+
+Two directories, and it is worth knowing which is which:
+
+```
+~/.local/share/bothy/   bothy's things — configs it generates, tools it fetched
+~/.config/bothy/        your things — settings, palette, overrides
+```
 
 ## Using it
 
-- **[Commands](Commands)** — all fifteen, with their flags. Three of them are
-  the ones you will actually type.
-- **[The doctor](The-doctor)** — how to read a report, what the severities
-  mean, and why a capability can be reported as unavailable rather than broken.
-- **[Installing and verifying](Installing-and-verifying)** — what macOS does to
-  an unsigned binary, and how to check a download came from this repository.
-- **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
-  confine`, the toolbox case, and removing it.
+- **[Commands](Commands)** — all fifteen, with their flags.
+- **[The doctor](The-doctor)** — how to read a report, and why a capability can
+  come back unavailable rather than broken.
+- **[Installing](Installing)** — every channel, what each one checks, and the
+  two platforms with edges.
+- **[Security](Security)** — what bothy verifies, what it deliberately does
+  not, and where the wall around the agent ends.
 
 ## Fitting it to your machine
 
+- **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
+  confine`, the toolbox case, and removing it.
 - **[Swapping parts, and theming](Swapping-parts-and-theming)** — the five
-  slots, using your own tool config instead of bothy's, and the palette.
+  slots and the palette.
 - **[Where it runs](Where-it-runs)** — which terminals, which stacks, and what
   is advised but untested.
-- **[What you can depend on](What-you-can-depend-on)** — the stability
-  contract, and what it deliberately does not cover.
+- **[What you can depend on](What-you-can-depend-on)** — the stability contract.
 
 ## Why it is like this
 
-Every decision is numbered in
-[`docs/decisions.md`](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md),
-with what was given up and what was refused. The run itself, in order, is
+Every decision is numbered in [`docs/decisions.md`](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md), with
+what was given up and what was refused. The run itself, step by step, is
 [`docs/what-happens.md`](https://github.com/bspeelm/bothy/blob/main/docs/what-happens.md).
 
 ---

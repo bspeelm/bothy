@@ -69,29 +69,21 @@ Six ways in. They all arrive at the same program and the same version.
 | | for | |
 |---|---|---|
 | **Script** | anyone on Linux or macOS, which is most of the people who would want this | `curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh \| sh` |
-| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` — read [macOS and Gatekeeper](#macos-and-gatekeeper) first |
+| **Homebrew** | macOS, and Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` — read [macOS and Gatekeeper](https://github.com/bspeelm/bothy/wiki/Installing#macos-gatekeeper) first |
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | [download the `.deb`](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **Source** | contributors, and those who like to see for themselves | `git clone` then `make install-binary` |
 
-### macOS and Gatekeeper
-
-bothy is not signed with an Apple Developer ID, so macOS may refuse to run a
-copy a browser or Homebrew downloaded. The Homebrew cask clears the flag for
-you as it installs — a Gatekeeper check skipped on your behalf, which you
-should know about. `curl` never attaches the flag, so the script is unaffected.
-
-[What the warning means, and how to clear it by hand](https://github.com/bspeelm/bothy/wiki/Installing-and-verifying#macos-and-gatekeeper).
-
-### Checking what you got
+### Checking what you got, and macOS
 
 Every release artifact is signed by the workflow that built it, in a public
-log — so a swapped download is detectable whether or not anyone checks. dnf and
-`go install` verify automatically; for the rest the signature is one command,
-opt-in because it needs the `gh` CLI.
+log. dnf and `go install` verify automatically; for the rest it is one opt-in
+command. On a Mac, an unsigned binary meets Gatekeeper — the Homebrew cask
+clears the flag for you, and `curl` never attaches it.
 
-[Which channel checks what, and the two commands](https://github.com/bspeelm/bothy/wiki/Installing-and-verifying#checking-what-you-got).
+[Every channel and what checks it](https://github.com/bspeelm/bothy/wiki/Installing) · [what bothy verifies, and
+what it does not](https://github.com/bspeelm/bothy/wiki/Security).
 
 Then, from any directory you happen to be in:
 
