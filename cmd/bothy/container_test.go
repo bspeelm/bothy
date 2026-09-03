@@ -1,7 +1,7 @@
 //go:build container
 
-// A container test, run in CI against Fedora and Ubuntu, for the thing
-// docs/PLAN.md §10 named as remaining before v0.2.0: proof that bothy installs
+// A container test, run in CI against every image in `images` below, for the
+// thing docs/PLAN.md §10 named as remaining before v0.2.0: proof that bothy installs
 // and works on a distribution that is not Fedora.
 //
 // Behind a build tag because it needs a container runtime and a network, and
