@@ -1,0 +1,5 @@
+# This branch shares a working tree with main, whose build artifacts are not
+# ignored here: gh-pages is an orphan and carries no rule from main.
+/bothy
+/dist/
+/.scratch/
