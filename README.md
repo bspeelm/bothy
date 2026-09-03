@@ -9,8 +9,12 @@
 <h1 align="center">bothy</h1>
 
 <p align="center">
-  <em>a room you can trust because it wants nothing. the agent, of course, is another matter.</em>
+  <em>It stands plain as a wardrobe, what we know,<br>
+  Have always known, know that we can’t escape,<br>
+  Yet can’t accept. One side will have to go.</em><br>
+  — Philip Larkin, &ldquo;Aubade&rdquo;
 </p>
+
 
 
 You type one word in a directory and get three panes: your files above, an
