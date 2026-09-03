@@ -1,0 +1,112 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+/* The theme is an 860px wrapper holding a 500px column, sized for prose.
+   A terminal screenshot inside 500px is unreadable, so the column becomes
+   fluid and stops at a width that still reads as a line of text. */
+
+.wrapper {
+  width: auto;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+section {
+  width: auto;
+  float: none;
+  margin-left: 310px;
+  max-width: 820px;
+}
+
+/* Screenshots carry their own dark chrome; the border separates them from
+   the page rather than decorating them. */
+section img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+}
+
+section img[alt=""] {
+  border: 0;
+}
+
+.caption {
+  display: block;
+  margin: -10px 0 20px;
+  font-size: 12px;
+  color: #888;
+}
+
+header img[alt="Logo"] {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 18px;
+}
+
+/* Below 960px the theme unfloats the columns; the offset that made room for
+   a fixed sidebar has to go with it or the content sits off-screen. */
+@media print, screen and (max-width: 960px) {
+  section {
+    margin-left: 0;
+    max-width: none;
+  }
+}
+
+/* The product is a terminal. A page about it that burns white at night is
+   the wrong first impression. Palette is the open Dracula bothy ships. */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #21222c;
+    color: #b6b9c6;
+  }
+
+  h1, h2, h3, h4, h5, h6, strong, dt, th {
+    color: #f8f8f2;
+  }
+
+  a {
+    color: #bd93f9;
+  }
+
+  a:hover, a:focus {
+    color: #d7bbff;
+  }
+
+  a small, small, .caption {
+    color: #7f8496;
+  }
+
+  code, pre {
+    color: #f8f8f2;
+  }
+
+  pre, .highlight {
+    background: #282a36;
+    border-color: #44475a;
+  }
+
+  blockquote {
+    border-left-color: #44475a;
+  }
+
+  hr, th, td, section img {
+    border-color: #44475a;
+  }
+
+  /* The light artwork is dark slate purple and disappears here; the dark
+     variant is the same drawing flooded with the lighter purple. */
+  header img[alt="Logo"] {
+    content: url("{{ '/bothy-dark.png' | relative_url }}");
+  }
+
+  @media print, screen and (max-width: 960px) {
+    section {
+      border-color: #44475a;
+    }
+  }
+}
