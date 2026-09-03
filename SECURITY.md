@@ -17,6 +17,16 @@ so rather than promising a schedule it cannot keep.
 and the signature is public and permanent; `install.sh --verify` checks it.
 A way to get a binary past that check is in scope. See ADR-030.
 
+**The Homebrew cask's quarantine removal.** The published cask runs
+`xattr -dr com.apple.quarantine` on the binary as it installs. Homebrew removed
+`--no-quarantine` in 4.7, so there is no user-side opt-out, and bothy is not
+signed with an Apple Developer ID — the reasoning is ADR-037 and the README says
+plainly that the cask does this. **That it happens at all is a deliberate
+choice, not a finding.** What is in scope is a way to make the hook operate on a
+path it should not, or to get a different binary into the place it operates on.
+Anyone who would rather no Gatekeeper check were skipped has a route: `curl`
+does not attach the flag, so the install script is unaffected.
+
 **The confinement wall.** `bothy confine` runs the agent in a container with
 the project directory and the agent's own credentials mounted, and nothing else
 from `$HOME`. A way for the confined agent to reach the rest of the machine is

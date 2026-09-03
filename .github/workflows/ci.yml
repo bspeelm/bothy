@@ -63,6 +63,10 @@ jobs:
     # rather than podman: it is what the runner has.
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # One list, read by the pull loop and by the assertion that each distro
+    # ran. The Go test keeps its own in container_test.go; a test pairs them.
+    env:
+      IMAGES: "fedora:44 ubuntu:24.04 debian:trixie archlinux:latest"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -78,7 +82,7 @@ jobs:
       - name: pull the base images
         run: |
           set -euo pipefail
-          for image in fedora:44 ubuntu:24.04; do
+          for image in $IMAGES; do
             for attempt in 1 2 3; do
               if docker pull "$image"; then
                 continue 2
@@ -98,8 +102,10 @@ jobs:
           go test ./cmd/bothy/ -tags container -timeout 20m -v \
             -run TestBothyInstallsInAContainer | tee container.log
           # `go test -run` exits 0 when its filter matches nothing; assert
-          # each distro ran.
-          for distro in fedora ubuntu; do
+          # each distro ran. Derived from IMAGES so this list cannot fall
+          # behind the one the test iterates.
+          for image in $IMAGES; do
+            distro="${image%%:*}"
             grep -qE -- "--- PASS: .*/${distro}" container.log || {
               echo "::error::no subtest ran for ${distro} — the -run filter or the build tag has drifted"
               exit 1

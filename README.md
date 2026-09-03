@@ -158,9 +158,9 @@ to be; you will do this once.
 
 ### What gets installed
 
-If you have none of them, eight tools, about 117 MB. That is a fair amount of
-disk for three panes, and it is written here so that you find out from the
-README rather than from `du`.
+If you have none of them, eight tools: about 49 MB to download, roughly 124 MB
+on disk once unpacked. That is a fair amount of disk for three panes, and it is
+written here so that you find out from the README rather than from `du`.
 
 | | | | |
 |---|---|---|---|
@@ -537,7 +537,7 @@ the project better than most plans do, which is to say partially.
 ## Authorship
 I wanted an easy way to make my development setup portable — all of the things I use and nothing I don't. It started as a cheatsheet I'd hand to an agent to set up the configuration; that's still in the docs if you're curious, and it's probably where this should have stopped. But while working on another project I felt the pull to go through every step of shipping something with a fully open AI workflow, and this was about as low-stakes a candidate as it gets.
 
-I designed the architecture and the constraints and made the decisions, while Claude planned and executed within them. The decisions are recorded in docs/decisions.md, and the rules Claude worked under are in CLAUDE.md.
+I designed the architecture and the constraints and made the decisions, while Claude planned and executed within them. The decisions are recorded in [`docs/decisions.md`](docs/decisions.md), and the rules Claude worked under are in [`CLAUDE.md`](CLAUDE.md).
 
 Claude wrote most of this code. I've since reviewed the load-bearing paths and the tests, with particular attention to the sensitive bits: the install script, the uninstall path, and the container invocation. The rest is verified by process — the test suite, the code and comment budgets enforced in the Makefile, and audits by AI systems other than the one that wrote the code.
 

@@ -79,11 +79,12 @@ This is the load-bearing section. Everything else serves it.
 ```
 
 **Nothing else.** No `~/.vimrc`, no `~/.config/yazi`, no `~/.config/ghostty`, no
-`~/.bashrc.d`, no `git config --global`. `bothy uninstall` removes two
-directories.
+`~/.bashrc.d`, no `git config --global`. `bothy uninstall` removes the tree and
+the binary, and names the three things it leaves — the settings, the container
+image, and the desktop entry. See the README for the list it prints.
 
-That second directory is also the answer to portability: clone it onto a new
-machine, run `bothy install`, and you have your workspace. One folder, not a
+The settings directory surviving is the answer to portability: clone it onto a
+new machine, run `bothy install`, and you have your workspace. One folder, not a
 manifest of files scattered across your home.
 
 ---
@@ -103,7 +104,9 @@ manifest of files scattered across your home.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
 6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 6k lines, comments ≤ 22% of
-   code, workspace idle RSS ≤ 200 MB excluding the agent. Asserted in CI.
+   code — all three asserted in CI, as failing checks in the `Makefile`.
+   Workspace idle RSS ≤ 200 MB excluding the agent is a design target and is
+   **not** measured; saying otherwise claimed a check that does not exist.
    The code figure began at 5k and rose once, deliberately (ADR-026); the
    comment figure became a ratio when a total proved to be measuring code and
    prose together (ADR-021), and tightened from 25% to 22% once the headroom
@@ -153,7 +156,10 @@ estimated:
 
 | zellij | yazi | lazygit | jq | ripgrep | fzf | fd | zoxide | total |
 |---|---|---|---|---|---|---|---|---|
-| 17.2 | 13.1 | 6.6 | 2.2 | 1.9 | 1.9 | 1.4 | 0.5 | **44.8 MB** |
+| 18.7 | 14.5 | 6.9 | 2.3 | 2.3 | 2.0 | 1.6 | 0.6 | **48.9 MB** |
+
+Linux x86_64 release assets for the pins in `bothy.lock`, measured 2026-09-03
+against the GitHub release API. Unpacked on disk is larger; see ADR-009.
 
 Static binaries, no dependency trees, shared across every project.
 

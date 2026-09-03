@@ -36,6 +36,10 @@ func TestDescribeInstallNamesTheRightOwner(t *testing.T) {
 			"source build", filepath.Join(home, ".local", "bin", "bothy"),
 			"v0.1.5-3-gabc1234-dirty", "make install-binary",
 		},
+		// Both brew prefixes. The README advertises Homebrew and upgrade did
+		// not recognise it, so a cask install was told it was unrecognised.
+		{"cask, apple silicon", "/opt/homebrew/Caskroom/bothy/0.8.1/bothy", "0.8.1", "brew upgrade --cask"},
+		{"cask, intel", "/usr/local/Caskroom/bothy/0.8.1/bothy", "0.8.1", "brew upgrade --cask"},
 		{"somewhere else", "/opt/weird/bothy", "0.1.5", "releases/latest"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
