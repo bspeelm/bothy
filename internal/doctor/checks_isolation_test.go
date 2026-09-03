@@ -88,3 +88,43 @@ func TestAFutureSchemaWarnsRatherThanRefuses(t *testing.T) {
 		t.Error("a warning with no fix leaves the reader nowhere to go")
 	}
 }
+
+// Gatekeeper is a macOS concern; on Linux the check has nothing to say.
+func TestQuarantineIsSkippedOffMacOS(t *testing.T) {
+	env := Env{Platform: platform.Info{OS: "linux", Home: t.TempDir()}}
+	if res := checkQuarantine(env); res.Severity != Skip {
+		t.Errorf("severity = %v, want Skip", res.Severity)
+	}
+}
+
+// The warning has to carry the command that fixes it: a person reading it has
+// been told by macOS that bothy may be malware, and needs somewhere to go.
+func TestAQuarantinedBinaryNamesTheCommandThatClearsIt(t *testing.T) {
+	oldExe, oldQ := osExecutable, quarantined
+	defer func() { osExecutable, quarantined = oldExe, oldQ }()
+	osExecutable = func() (string, error) { return "/opt/homebrew/bin/bothy", nil }
+	quarantined = func(string) bool { return true }
+
+	res := checkQuarantine(Env{Platform: platform.Info{OS: "darwin", Home: t.TempDir()}})
+	if res.Severity != Warn {
+		t.Fatalf("severity = %v, want Warn", res.Severity)
+	}
+	if !strings.Contains(res.Fix, "xattr -dr com.apple.quarantine") {
+		t.Errorf("fix = %q, want the xattr command", res.Fix)
+	}
+	if !strings.Contains(res.Fix, "/opt/homebrew/bin/bothy") {
+		t.Errorf("fix = %q, want the path it applies to", res.Fix)
+	}
+}
+
+// A clean binary is a pass, not silence.
+func TestAnUnquarantinedBinaryPasses(t *testing.T) {
+	oldExe, oldQ := osExecutable, quarantined
+	defer func() { osExecutable, quarantined = oldExe, oldQ }()
+	osExecutable = func() (string, error) { return "/usr/local/bin/bothy", nil }
+	quarantined = func(string) bool { return false }
+
+	if res := checkQuarantine(Env{Platform: platform.Info{OS: "darwin", Home: t.TempDir()}}); res.Severity != Pass {
+		t.Errorf("severity = %v, want Pass", res.Severity)
+	}
+}

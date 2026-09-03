@@ -3,6 +3,7 @@ package doctor
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -49,6 +50,32 @@ func checkConfigAge(env Env) Result {
 
 // checkConfigKeys reports unrecognised keys. Unmarshal accepts any key, so a
 // typo such as `slots.borwser` loads cleanly and silently does nothing.
+// osExecutable is a variable so a test can say which binary is running.
+var osExecutable = os.Executable
+
+// A variable: the macOS runner compiles the binary, so it is never quarantined.
+var quarantined = func(path string) bool {
+	return exec.Command("xattr", "-p", "com.apple.quarantine", path).Run() == nil
+}
+
+// Gatekeeper refuses an unsigned binary carrying the flag, which Homebrew and
+// browsers attach and curl does not (ADR-037).
+func checkQuarantine(env Env) Result {
+	if env.Platform.OS != "darwin" {
+		return skip("quarantine is a macOS flag")
+	}
+	self, err := osExecutable()
+	if err != nil {
+		return skip("cannot locate this binary: " + err.Error())
+	}
+	if !quarantined(self) {
+		return pass("this binary is not quarantined")
+	}
+	return warn("macOS has quarantined this binary",
+		"Gatekeeper will refuse to run it: bothy is not signed with an Apple Developer ID",
+		"xattr -dr com.apple.quarantine "+self)
+}
+
 // Warns where state.Manifest refuses (ADR-027): the keys this bothy knows still
 // work, and refusing would break the upgrade that fixes it.
 func checkConfigSchema(env Env) Result {

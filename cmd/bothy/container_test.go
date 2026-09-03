@@ -68,6 +68,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"passthrough":           doctor.Skip, // none configured
 	"isolation":             doctor.Pass,
 	"confine":               doctor.Skip, // opt-in; nothing has asked for it here
+	"quarantine":            doctor.Skip,
 	"config-schema":         doctor.Pass,
 	"config-keys":           doctor.Pass, // the only config is the one the test wrote
 	// The test installs and checks in one run with one binary, so the version
