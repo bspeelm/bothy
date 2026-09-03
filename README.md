@@ -45,7 +45,7 @@ This is less a feature than an absence of features, and it was harder than the
 features.
 
 The same thing in order, with the reasons for the order, is
-[`docs/what-happens.md`](docs/what-happens.md).
+[what happens when you type it](https://github.com/bspeelm/bothy/wiki/What-happens-when-you-type-bothy).
 
 ## Install
 

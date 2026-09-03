@@ -4,11 +4,6 @@ Start with the [README](../README.md). These go deeper.
 
 ## If you are using bothy
 
-- [**what-happens.md**](what-happens.md) — what a `bothy` run does, in order,
-  with the reason for the order. The page to read when the question is "why did
-  it do that".
-- [**watermark.md**](watermark.md) — the one feature with a setup worth its own
-  page: an image behind the terminal, off unless you point at one.
 
 ## If you are wondering why it is like this
 

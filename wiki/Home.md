@@ -46,12 +46,16 @@ Two directories, and it is worth knowing which is which:
   not, and where the wall around the agent ends.
 - **[Troubleshooting](Troubleshooting)** — the failures people actually hit,
   by symptom.
+- **[What happens when you type bothy](What-happens-when-you-type-bothy)** —
+  the run in order, with the reason for the order.
 
 ## Fitting it to your machine
 
 - **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
   confine`, the toolbox case, and removing it.
 - **[Profiles](Profiles)** — the three layouts that ship, and writing your own.
+- **[The watermark](The-watermark)** — an image behind the terminal, off unless
+  you point at one.
 - **[Swapping parts, and theming](Swapping-parts-and-theming)** — the five
   slots and the palette.
 - **[Where it runs](Where-it-runs)** — which terminals, which stacks, and what
@@ -61,8 +65,7 @@ Two directories, and it is worth knowing which is which:
 ## Why it is like this
 
 Every decision is numbered in [`docs/decisions.md`](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md), with
-what was given up and what was refused. The run itself, step by step, is
-[`docs/what-happens.md`](https://github.com/bspeelm/bothy/blob/main/docs/what-happens.md).
+what was given up and what was refused.
 
 ---
 
