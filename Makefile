@@ -15,9 +15,20 @@ MAX_BINARY_BYTES  := 10485760
 MAX_CODE_LINES    := 6000
 MAX_COMMENT_RATIO := 22
 
-SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
+# Live prose, capped as a share of code for the same reason comments are: an
+# agent produces prose the way a fire produces smoke, and uncapped the writing
+# about the project becomes the project. Every markdown file counts, not just
+# docs/ -- a cap on one directory is one the prose walks out of, and moving a
+# README section into the wiki would otherwise read as an improvement while
+# nothing was retired. Only history/ and review/ are exempt, being append-only
+# by design. Over budget means retiring a doc, not raising the cap.
+MAX_DOC_RATIO     := 75
 
-.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr
+SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
+LIVE_DOCS := $(shell find . -name '*.md' -not -path './vendor/*' -not -path './.git/*' \
+                     -not -path './docs/history/*' -not -path './docs/review/*')
+
+.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr ledger packet
 
 all: check
 
@@ -51,7 +62,11 @@ budgets: build
 	echo "code:     $$code lines (budget $(MAX_CODE_LINES))"; \
 	echo "comments: $$comments lines, $$ratio% of code (budget $(MAX_COMMENT_RATIO)%)"; \
 	if [ $$code -gt $(MAX_CODE_LINES) ]; then echo "over the code budget"; exit 1; fi; \
-	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi
+	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi; \
+	docs=$$(cat $(LIVE_DOCS) | wc -l); \
+	dratio=$$(( docs * 100 / code )); \
+	echo "prose:    $$docs lines, $$dratio% of code (budget $(MAX_DOC_RATIO)%)"; \
+	if [ $$dratio -gt $(MAX_DOC_RATIO) ]; then echo "over the prose budget"; exit 1; fi
 
 # The platforms .goreleaser.yaml ships, plus windows -- which bothy does not
 # support and does compile for today, with no build tags anywhere. Keeping it
@@ -102,6 +117,15 @@ srpm: vendor
 # at the tagged commit, so a tag whose commit still says the old version
 # publishes an rpm under the wrong number. The bump has to land on main before
 # the tag exists, which is exactly what the PR does.
+# The vouching ledger (framework §7.1). Reports here; the release blocks.
+ledger:
+	@sh scripts/ledger.sh || true
+
+# Fails unless the packet for VERSION exists and is answered (§7.5).
+packet:
+	@test -n "$(VERSION)" || { echo "usage: make packet VERSION=x.y.z"; exit 1; }
+	@sh scripts/review-packet.sh --check "$(VERSION)"
+
 release:
 	@test -n "$(VERSION)" || { echo "usage: make release VERSION=x.y.z"; exit 1; }
 	@echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "VERSION must be x.y.z"; exit 1; }
@@ -137,6 +161,8 @@ release-tag:
 	test -n "$$v" || { echo "no Version: in the spec"; exit 1; }; \
 	if git rev-parse -q --verify "refs/tags/v$$v" >/dev/null; then \
 	    echo "v$$v is already tagged -- did the bump PR get merged?"; exit 1; fi; \
+	sh scripts/review-packet.sh --check "$$v" || \
+	    { echo "the release is blocked until the packet is answered"; exit 1; }; \
 	test -f .copr/Makefile || { echo ".copr/Makefile is missing; Copr would have nothing to run"; exit 1; }; \
 	echo "tagging v$$v at $$(git rev-parse --short HEAD)"; \
 	git tag "v$$v" && git push origin "v$$v" && \
