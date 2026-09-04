@@ -12,6 +12,47 @@ permissions:
   contents: read
 
 jobs:
+  # Which jobs below have anything to look at. A change that is only markdown
+  # cannot alter what bothy installs, so the jobs that build and install it sit
+  # the run out.
+  #
+  # Two jobs never sit it out. `check` runs cmd/bothy/docs_test.go, which reads
+  # the markdown, and no-paid-palette scans it for colour values; both would go
+  # blind on exactly the changes this is meant to speed up.
+  #
+  # The jobs are skipped, not the workflow. A required check whose workflow
+  # never runs leaves the pull request pending forever, while a job skipped by
+  # `if:` reports and satisfies it.
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.probe.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: probe
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          # No base to diff against -- a new branch, or a rewritten history.
+          # Run everything: guessing wrong here skips the build.
+          if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "no base commit; running everything"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE" HEAD)
+          echo "$changed"
+          # An empty list prints one empty line, which is not markdown, so the
+          # unexpected case runs everything too.
+          if printf '%s\n' "$changed" | grep -qv '\.md$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   check:
     runs-on: ubuntu-latest
     steps:
@@ -26,6 +67,8 @@ jobs:
     # ADR-009 as a gate: installing must write nothing outside bothy's own
     # directory. `go test -run` exits 0 when its filter matches nothing, so the
     # filter is asserted to match.
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +104,8 @@ jobs:
     # The assertions are Go, in cmd/bothy/container_test.go, behind a build tag
     # so `make check` needs neither a container runtime nor a network. Docker
     # rather than podman: it is what the runner has.
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     # One list, read by the pull loop and by the assertion that each distro
@@ -122,6 +167,8 @@ jobs:
     # runner and walks that instead. The assertions themselves are shared, in
     # cmd/bothy/harness_test.go, so the two jobs cannot come to demand
     # different things.
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
@@ -148,6 +195,8 @@ jobs:
     # The .deb only exists once a release is published, so without this the
     # first `apt install` of one happens after the tag is irrevocable.
     # --snapshot builds the artifact set and publishes none of it.
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
