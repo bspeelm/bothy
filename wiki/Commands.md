@@ -50,6 +50,20 @@ A stopped session is not junk: attaching brings its layout back as it was. But
 nothing removes them either, so they accumulate. `--prune` deletes the stopped
 ones and refuses anything still running.
 
+### `bothy kill [session]`
+
+Ends a session without attaching to it. With no name, this directory's session.
+
+```
+$ bothy kill bothy-server_setup
+ended bothy-server_setup
+```
+
+Nothing is left behind — the same end state as pressing `Ctrl-q` inside it. It
+refuses the session you are currently in, because that is what `Ctrl-q` is for,
+and refuses one that has already stopped, because that is what
+`bothy ls --prune` is for.
+
 ### `bothy keys`
 
 The bindings worth knowing on a first day. They are Zellij's, not bothy's —
