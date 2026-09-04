@@ -7,7 +7,11 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sync/atomic"
+	"syscall"
+	"time"
 )
 
 // The nesting guard and the agent list used to be two lists that disagreed:
@@ -117,4 +121,75 @@ func claimed(t *testing.T, p platform.Info, session string) bool {
 	t.Helper()
 	_, err := os.Stat(filepath.Join(p.StateDir(), "sessions", session))
 	return err == nil
+}
+
+// The window closing has to end the client, or it holds the session open and
+// the next launch has to clean up after it. A deferred call cannot do this:
+// the default disposition for a hangup is to die.
+func TestTheHangupEndsTheSession(t *testing.T) {
+	// Caught here too, or the re-raise would end the test binary.
+	guard := make(chan os.Signal, 2)
+	signal.Notify(guard, syscall.SIGHUP)
+	defer signal.Stop(guard)
+
+	ran := make(chan struct{})
+	stop := onHangup(func() { close(ran) })
+	defer stop()
+	hangup(t)
+
+	select {
+	case <-ran:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the terminal went away and nothing ended the session")
+	}
+}
+
+// And once the launch is over it stops listening, so a hangup arriving later
+// does not reach into a session this process no longer has anything to do with.
+func TestAFinishedLaunchStopsListening(t *testing.T) {
+	guard := make(chan os.Signal, 2)
+	signal.Notify(guard, syscall.SIGHUP)
+	defer signal.Stop(guard)
+
+	var ran atomic.Bool
+	onHangup(func() { ran.Store(true) })()
+	hangup(t)
+	time.Sleep(300 * time.Millisecond)
+
+	if ran.Load() {
+		t.Error("a hangup after the launch finished still ended a session")
+	}
+}
+
+// Same guard as ownSession, for the same reason: the copy inside the container
+// is not the terminal, and must not act as though the terminal had gone.
+func TestABothyInsideTheContainerEndsNothing(t *testing.T) {
+	cfg := config.Default()
+	inside := sandbox(t, true)
+	inside.Container = platform.Toolbx
+
+	if err := os.MkdirAll(filepath.Join(inside.StateDir(), "sessions"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	record := filepath.Join(inside.StateDir(), "sessions", "bothy-proj")
+	if err := os.WriteFile(record, []byte("1 1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	endTheSession(inside, cfg, "/w/proj")()
+
+	if _, err := os.Stat(record); err != nil {
+		t.Error("a bothy inside the container tore down a session it does not own")
+	}
+}
+
+func hangup(t *testing.T) {
+	t.Helper()
+	self, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := self.Signal(syscall.SIGHUP); err != nil {
+		t.Fatal(err)
+	}
 }

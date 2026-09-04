@@ -22,10 +22,11 @@ missing, asks before downloading, then opens.
 | `--in-place` | always run in the terminal you are already in |
 
 **Closing the window does not strand the project.** Inside a container the
-multiplexer client can outlive the terminal that opened it — `podman exec`
-ignores the hangup — and a session with a client on it is refused, which used
-to mean the project could not be opened again. bothy now ends a client that no
-terminal is watching and says so:
+multiplexer client would otherwise outlive the terminal that opened it —
+`podman exec` ignores the hangup — and a session with a client on it is
+refused, which used to mean the project could not be opened again. bothy ends
+its client when the window closes. If one is left behind anyway, by a crash or
+a version older than this, the next launch ends it and says so:
 
 ```
 bothy: reclaimed bothy-work from a closed window

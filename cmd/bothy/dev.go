@@ -14,6 +14,9 @@ import (
 	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 )
 
 // cmdDev launches the workspace: bare `bothy`, and `bothy` with any flag.
@@ -74,6 +77,7 @@ func cmdDev(args []string) error {
 	// After the spawn: the bothy that opens a window and exits is not the one
 	// watching the session, the one living in the window is.
 	defer ownSession(p, cfg, plan.Dir)()
+	defer onHangup(endTheSession(p, cfg, plan.Dir))()
 
 	if plan.Container != "" {
 		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
@@ -132,6 +136,49 @@ func clientVerdict(n int, counted, owned bool) verdict {
 		return refuse
 	}
 	return reclaim
+}
+
+// onHangup runs cleanup when the terminal goes away, and returns the func that
+// stops listening. A deferred call is no use here: the default disposition for
+// a hangup is to die, and nothing deferred runs on the way.
+//
+// Only the hangup. An interrupt reaches this process too -- it sits in the
+// window's foreground group -- and Ctrl-C in a pane must not end the workspace.
+func onHangup(cleanup func()) func() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGHUP)
+	go func() {
+		if _, ok := <-ch; !ok {
+			return
+		}
+		cleanup()
+		signal.Stop(ch)
+		// Re-raised so the exit looks like what it is, rather than a clean one.
+		// Through os.Process, which every platform has; syscall.Kill is Unix.
+		if self, err := os.FindProcess(os.Getpid()); err == nil {
+			_ = self.Signal(syscall.SIGHUP)
+		}
+	}()
+	return func() { signal.Stop(ch); close(ch) }
+}
+
+// endTheSession ends the multiplexer client this launch is showing.
+//
+// The client runs behind a container, where the terminal closing never reaches
+// it: podman exec ignores the hangup, so it would hold the session open and
+// the next launch would have to clean up after it. The pid namespace is shared
+// with the container, so ending it is a signal from here rather than a round
+// trip back through the container runtime.
+func endTheSession(p platform.Info, cfg config.Config, dir string) func() {
+	backend, _, err := muxPath(p, cfg)
+	if err != nil || p.InContainer() {
+		return func() {}
+	}
+	session := backend.SessionName(dir)
+	return func() {
+		_ = os.Remove(filepath.Join(p.StateDir(), "sessions", session))
+		mux.Reclaim(backend.Name(), session)
+	}
 }
 
 // ownSession records this process as the terminal showing the session, and
