@@ -1394,3 +1394,63 @@ that small does not need bookkeeping to make a re-read possible.
 
 **Nothing is archived to `docs/history/`.** Git holds the files. Keeping a
 process nobody used is the hoarding §13 warns about.
+
+## ADR-041 — The code cap rises to 6,500 and the comment ratio returns to 25%
+
+**Status:** accepted. Amends ADR-026 and reverses ADR-029's threshold, not its
+finding.
+
+ADR-010 set the rule these moves have to answer to: when a measure and the
+thing it measures disagree, fix the measure — and a threshold move is argued,
+never performed. Here is the argument, with the numbers it rests on.
+
+| release | code | comments | ratio |
+|---|---|---|---|
+| v0.5.0 | 5,599 | 1,287 | 22.99% |
+| v0.6.0 | 5,787 | 1,327 | 22.93% |
+| v0.7.0 | 5,836 | 1,341 | 22.98% |
+| v0.8.0 | 5,853 | 1,346 | 22.99% |
+| v0.8.1 | 5,874 | 1,350 | 22.98% |
+| v0.9.0 | 5,950 | 1,368 | 22.99% |
+
+**The comment ratio has had no headroom since it was set.** Six releases
+sitting between 22.93% and 22.99% against a cap of 22 is not a budget with
+slack; it is a ceiling touched by every change. ADR-029 chose 22 because "22 is
+where the codebase sits after an honest pass, so it is a measurement rather
+than a target" — and a cap set at the current measurement has zero room by
+construction. That is the flaw, and it took five releases to become visible.
+
+ADR-029 also named the failure this produces: a ratio that "starts cutting
+reasoning rather than narration, which is the failure the ratio exists to
+prevent in the other direction". It has arrived. Four diffs in one day landed
+at 23.0–23.1% and each was made to fit by compressing or deleting comment
+lines. Two of those deletions were right on their own merits — inline comments
+in `countPanes` restating the function's own doc three lines above — and the
+rest were reasoning squeezed into fewer words to buy room for code.
+
+**ADR-029's finding stands and is not being undone.** The 204 lines of
+retelling it cut were retelling; they are gone and they stay gone. What is
+reversed is only the threshold, back to ADR-021's 25%. The guard against
+narration returning was never the number: it is "comments record intent, never
+history" in `CLAUDE.md`, which is a rule a reader can apply and a ratio cannot.
+
+**The code cap rises to 6,500 for the reason ADR-026 gave for 6,000.** That
+record bought room for three named things — platform code organised
+deliberately (#76), the provider format (#69), the multiplexer seam (#64) — and
+all three shipped. The headroom was spent on exactly what it was allocated to,
+which is a budget working rather than failing. Growth since has run at about 70
+lines a release, and it is bug fixes carrying tests: the session-listing fix
+(#188), the upstream checksum comparison, `bothy lock --tag`, refusing a second
+client (#205). None of it is bulk.
+
+**Why 6,500 and not 6,250.** ADR-026: "a cap that has to be raised again in two
+milestones is not a cap, it is a recurring negotiation." At 70 lines a release
+6,250 is spent in four; 6,500 is spent in eight. The promise the number stands
+for is unchanged either way — a skeptical stranger can read the whole thing in
+an afternoon, which is what ADR-026 bought and what the README claims.
+
+**What keeps this honest.** The binary cap is unmoved at 10 MB, which is the
+limit a user can feel. The prose cap is unmoved at 0.75× code. Both still fail
+the build. And `TestTheDocumentedBudgetsMatchTheMakefile` holds the three
+places these numbers are written down against the one place they are enforced,
+so the next raise cannot be a quiet one.

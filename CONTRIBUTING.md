@@ -18,7 +18,7 @@ carry most of the weight:
 
 - **`make check` before every commit.** Lint, tests, cross-compilation for four
   targets, and the size budgets. The budgets are failing checks: code is capped
-  at 6,000 lines and comments at 22% of it. They bite regularly and that is
+  at 6,500 lines and comments at 25% of it. They bite regularly and that is
   their job.
 - **Comments record intent, never history.** A comment says why the code is
   shaped the way it is, so that changing it badly is harder. Git holds what it
