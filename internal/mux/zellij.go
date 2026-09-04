@@ -89,8 +89,8 @@ func (Zellij) launchArgs(session, layoutFile string, live []string) []string {
 
 // discardDead removes a stopped session. Attaching to an EXITED one
 // resurrects it with commands suspended behind "Waiting to run" and a changed
-// profile ignored. EXITED sessions are invisible to list-sessions. Errors are
-// ignored: usually there is no such session.
+// profile ignored. Errors are ignored: usually there is no such session. No
+// --force, so one somehow still running is refused rather than killed.
 func (Zellij) discardDead(bin string, env []string, session string) {
 	cmd := exec.Command(bin, "delete-session", session)
 	cmd.Env = env
@@ -99,18 +99,31 @@ func (Zellij) discardDead(bin string, env []string, session string) {
 
 func (Zellij) CurrentSession() string { return os.Getenv("ZELLIJ_SESSION_NAME") }
 
+// Live reports the sessions that are running. `--short` is not the flag for
+// that: it prints stopped ones too, minus the marker that tells them apart.
 func (Zellij) Live(bin string, env []string) []string {
-	cmd := exec.Command(bin, "list-sessions", "--short", "--no-formatting")
+	cmd := exec.Command(bin, "list-sessions", "--no-formatting")
 	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
-		return nil
+		return nil // exit 1, "No active zellij sessions found.", is the empty case
 	}
+	return liveSessions(string(out))
+}
+
+// liveSessions reads `<name> [Created ...]` lines, marked EXITED where the
+// session has stopped. The bracket rejects the prose zellij also writes here.
+func liveSessions(out string) []string {
 	var live []string
-	for _, line := range strings.Split(string(out), "\n") {
-		if s := strings.TrimSpace(line); s != "" {
-			live = append(live, s)
+	for _, line := range strings.Split(out, "\n") {
+		f := strings.Fields(line)
+		if len(f) < 2 || !strings.HasPrefix(f[1], "[") {
+			continue
 		}
+		if strings.Contains(line, "EXITED") {
+			continue
+		}
+		live = append(live, f[0])
 	}
 	return live
 }
@@ -168,7 +181,6 @@ func (Zellij) countPanes(kdl string) (int, bool) {
 		line := strings.TrimSpace(raw)
 
 		if !inTab {
-			// Only the first tab; new_tab_template repeats it verbatim.
 			if strings.HasPrefix(line, "tab ") || line == "tab {" {
 				inTab, depth = true, 0
 			} else {
@@ -184,7 +196,6 @@ func (Zellij) countPanes(kdl string) (int, bool) {
 		}
 
 		if floatingDepth < 0 && strings.HasPrefix(line, "pane") {
-			// A plugin pane declares its plugin on the following line.
 			isPlugin := i+1 < len(lines) && strings.Contains(lines[i+1], "plugin location=")
 			hasCommand := strings.Contains(line, "command=")
 			hasName := strings.Contains(line, "name=")
