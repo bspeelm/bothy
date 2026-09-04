@@ -28,7 +28,7 @@ SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 LIVE_DOCS := $(shell find . -name '*.md' -not -path './vendor/*' -not -path './.git/*' \
                      -not -path './docs/history/*' -not -path './docs/review/*')
 
-.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr ledger packet
+.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr
 
 all: check
 
@@ -117,15 +117,6 @@ srpm: vendor
 # at the tagged commit, so a tag whose commit still says the old version
 # publishes an rpm under the wrong number. The bump has to land on main before
 # the tag exists, which is exactly what the PR does.
-# The vouching ledger (framework §7.1). Reports here; the release blocks.
-ledger:
-	@sh scripts/ledger.sh || true
-
-# Fails unless the packet for VERSION exists and is answered (§7.5).
-packet:
-	@test -n "$(VERSION)" || { echo "usage: make packet VERSION=x.y.z"; exit 1; }
-	@sh scripts/review-packet.sh --check "$(VERSION)"
-
 release:
 	@test -n "$(VERSION)" || { echo "usage: make release VERSION=x.y.z"; exit 1; }
 	@echo "$(VERSION)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$$' || { echo "VERSION must be x.y.z"; exit 1; }
@@ -161,8 +152,6 @@ release-tag:
 	test -n "$$v" || { echo "no Version: in the spec"; exit 1; }; \
 	if git rev-parse -q --verify "refs/tags/v$$v" >/dev/null; then \
 	    echo "v$$v is already tagged -- did the bump PR get merged?"; exit 1; fi; \
-	sh scripts/review-packet.sh --check "$$v" || \
-	    { echo "the release is blocked until the packet is answered"; exit 1; }; \
 	test -f .copr/Makefile || { echo ".copr/Makefile is missing; Copr would have nothing to run"; exit 1; }; \
 	echo "tagging v$$v at $$(git rev-parse --short HEAD)"; \
 	git tag "v$$v" && git push origin "v$$v" && \

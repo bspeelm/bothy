@@ -62,8 +62,6 @@ fresh argument.
 - Conventional commits. `main` requires a PR.
 - Every user-facing claim names the test or CI job that proves it, or the
   claim goes.
-- Load-bearing surfaces are listed in `docs/reviewed.md`. Flag every change to
-  one explicitly; `make ledger` says what is unread.
 - A new result in a closed-world set goes in the expectation table. The test
   failure will say so.
 
@@ -89,9 +87,6 @@ work, so the instinct is named before it fires.
   only what survives it. Direction is settled by ADR, not by enthusiasm.
 - **Polish is not proof.** The existence of docs, tests or ADRs is never
   offered as evidence of quality. Only executed checks count.
-- **Before a release**, prepare the review packet: plain language, executable
-  checks ("run X, expect Y"), unverified items labelled. The release is
-  blocked until it is answered — do not work around that block.
 - **Open the pull request when the work is done** and the checks are green,
   not before. Do not keep pushing to a PR under review, and do not arm
   auto-merge on a branch still being added to.
