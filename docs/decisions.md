@@ -1346,3 +1346,51 @@ markdown file counts against 0.75× the code (ADR-038's framework, §4); adding 
 manual and keeping a roadmap that shipped were not both affordable. Retiring
 dead weight is the response the budget asks for — raising the cap instead is
 listed as a framework failure.
+
+## ADR-040 — The release process goes back to change, push, approve, cut
+
+**Status:** accepted. Retires the vouching ledger and the review packet, both
+added earlier in 0.9.0. Amends ADR-039's list of `docs/` contents, which loses
+`reviewed.md`.
+
+Three artifacts shipped and were removed in the same release: `docs/reviewed.md`
+(who had read which load-bearing surface, at which commit), `scripts/ledger.sh`
+(the check that blocked on a stale entry), and `scripts/review-packet.sh` with
+`docs/review/` (a per-release document a human answered before the tag). Between
+them they caught nothing. The ledger gated one thing in its life: itself.
+
+**Why, in the maintainer's words:** *"we are building a rats nest of redundant
+interdependent slop."* Three specifics.
+
+**Redundant.** Zero approving reviews are required and there is no second human,
+so every ledger row was the maintainer vouching to himself for a diff he had
+already read in the pull request that made it. One act, billed twice, and the
+second bill was a pull request of its own.
+
+**Interdependent.** The packet read the ledger to decide which files got a
+review card. The ledger's release gate lived inside the packet's `--check`. The
+packet could not name itself in its own change map and so blocked every release
+until that was fixed. Three artifacts, and every failure was in a seam between
+them.
+
+**Unclear to a contributor.** Someone touching `internal/fetch` inherited a
+release-blocking gate they could not clear, because the signature had to be the
+maintainer's. The fix would have been a conversation rather than a command,
+which is the opposite of what a contribution guide should produce.
+
+**What is left is the flow that was there first:** change, push, pull request,
+green checks, merge, `make release`, `make release-tag`. The gates that stay are
+the ones a machine enforces with no human artifact behind them — `make check`,
+the size budgets, the CI matrix, the doctor tables compared against an expected
+table on four Linux distributions and a Mac. Those fail loudly and nobody has to
+remember they exist.
+
+**What is lost, plainly.** Pull requests read diffs, and nothing now reads whole
+files on a schedule. #146 and #188 were both defects in `internal/mux` that
+arrived through pull requests which were fine as diffs, because each diff *was*
+fine. The standing answer is the size cap: six thousand lines (ADR-026) is a
+number chosen so the whole codebase can be read in an afternoon, and something
+that small does not need bookkeeping to make a re-read possible.
+
+**Nothing is archived to `docs/history/`.** Git holds the files. Keeping a
+process nobody used is the hoarding §13 warns about.
