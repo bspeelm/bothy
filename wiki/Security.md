@@ -14,8 +14,19 @@ is downloaded.
 
 Where a project publishes a checksum of its own, `bothy lock` compares the two
 before recording the pin, and refuses outright if they disagree. Several
-projects publish nothing, and for those the pin is whatever the maintainer
-downloaded on the day they ran `bothy lock`.
+projects publish nothing. **`bothy tools` says which is which**, per tool:
+`pin: upstream` was compared, `pin: download` is the hash of what the
+maintainer downloaded on the day they ran `bothy lock`.
+
+**What that comparison is worth, precisely.** The published file sits in the
+same release as the asset, so whoever can replace one can replace the other. It
+rules out a substitution *after* publication, and a download corrupted or
+intercepted on the way. It does not rule out a compromised release pipeline,
+and no checksum can.
+
+**The limit, stated plainly:** these are other projects' releases. A checksum
+proves you got the bytes bothy expected — it does not prove those bytes are
+good. bothy does not sign what it did not build.
 
 **What that comparison is worth, precisely.** The published file sits in the
 same release as the asset, so whoever can replace one can replace the other. It

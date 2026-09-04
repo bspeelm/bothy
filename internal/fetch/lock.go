@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -47,6 +48,12 @@ type Entry struct {
 
 // SHA returns the checksum for a platform, or "" if this entry has none.
 func (e Entry) SHA(p platform.Info) string { return e.SHA256[p.OS+"_"+p.Arch] }
+
+// CrossChecked reports whether this platform's pin was compared with a
+// checksum the project published, rather than only computed from the download.
+func (e Entry) CrossChecked(p platform.Info) bool {
+	return slices.Contains(e.Verified, p.OS+"_"+p.Arch)
+}
 
 // APIBase is GitHub's API root, as a variable so a test can point it at a
 // local server rather than the internet.
