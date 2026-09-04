@@ -45,8 +45,8 @@ func (t Tool) Asset(p platform.Info, version string) (string, error) {
 }
 
 // ChecksumFile is the release asset carrying this tool's own sha256, or "".
-// Two upstream shapes — a sibling per asset or one manifest — with the same
-// "<sha256>  <filename>" lines inside.
+// Three shapes — a sibling per asset, a sibling with the archive extension
+// swapped, or one manifest — with the same "<sha256>  <name>" lines inside.
 func (t Tool) ChecksumFile(p platform.Info, version string) (string, error) {
 	if t.Checksums == "" {
 		return "", nil
@@ -56,7 +56,20 @@ func (t Tool) ChecksumFile(p platform.Info, version string) (string, error) {
 		return "", err
 	}
 	name := strings.ReplaceAll(t.Checksums, "{asset}", asset)
+	name = strings.ReplaceAll(name, "{asset_stem}", AssetStem(asset))
 	return strings.ReplaceAll(name, "{version}", version), nil
+}
+
+// AssetStem is an asset name without its archive extension, which is how a
+// sibling checksum is usually named. The suffixes are the ones Extract
+// accepts; a format bothy cannot unpack never reaches an install anyway.
+func AssetStem(asset string) string {
+	for _, ext := range []string{".tar.gz", ".tgz", ".tar.xz", ".txz", ".zip"} {
+		if strings.HasSuffix(asset, ext) {
+			return strings.TrimSuffix(asset, ext)
+		}
+	}
+	return asset
 }
 
 // Min parses the minimum version.
@@ -81,6 +94,17 @@ func Load() ([]Tool, error) {
 		}
 		if pr.Fetch.Binary == "" || pr.Fetch.Repo == "" {
 			return nil, fmt.Errorf("tools: %s is missing binary or repo", pr.Name)
+		}
+		// A misspelt value would read as "asset" and stop cross-checking silently.
+		switch pr.Fetch.ChecksumCovers {
+		case "", "asset":
+		case "binary":
+			if pr.Fetch.Checksums == "" {
+				return nil, fmt.Errorf("tools: %s sets checksum_covers but publishes no checksums file", pr.Name)
+			}
+		default:
+			return nil, fmt.Errorf("tools: %s has checksum_covers = %q, want \"asset\" or \"binary\"",
+				pr.Name, pr.Fetch.ChecksumCovers)
 		}
 		out = append(out, Tool{Header: pr.Header, Fetch: *pr.Fetch})
 	}

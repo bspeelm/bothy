@@ -46,6 +46,9 @@ type Fetch struct {
 	Reason     string            `toml:"reason"`
 	Assets     map[string]string `toml:"assets"`
 	Checksums  string            `toml:"checksums"`
+	// ChecksumCovers is what the published checksum hashes: "asset" (the
+	// default) or "binary", the executable inside it. zellij is the second.
+	ChecksumCovers string `toml:"checksum_covers"`
 }
 
 // Advise is a program bothy names a command for and does not install.

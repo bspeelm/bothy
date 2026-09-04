@@ -17,6 +17,10 @@ binary      = "zellij"
 repo        = "zellij-org/zellij"
 min_version = "0.45.1"
 reason      = "image previews need the Kitty graphics protocol, added in 0.45"
+# The sibling file is the asset name with .tar.gz swapped for .sha256sum, and
+# it hashes the binary inside rather than the archive.
+checksums       = "{asset_stem}.sha256sum"
+checksum_covers = "binary"
 
 [fetch.assets]
 linux_x86_64   = "zellij-x86_64-unknown-linux-musl.tar.gz"
