@@ -289,7 +289,7 @@ func planAttach(p platform.Info, cfg config.Config, session string, args []strin
 	}
 	if !p.InContainer() {
 		if container := install.ContainerFor(p, cfg); container != "" {
-			return attachPlan{Container: container, Command: attachCommand(mux, args)}, nil
+			return attachPlan{Container: container, Command: attachCommand(args)}, nil
 		}
 	}
 	bin, err := lookPathIn(p, mux)
@@ -308,9 +308,15 @@ func planAttach(p platform.Info, cfg config.Config, session string, args []strin
 
 // attachCommand builds the shell line for the container hop, quoted because
 // it is interpolated into `bash -lc`.
-func attachCommand(mux string, args []string) string {
+//
+// It runs bothy, not the multiplexer: bothy's bin directory is not on a login
+// shell's PATH inside the container, and the copy in there resolves the
+// binary out of that directory and applies the session environment -- which
+// is what stops the client reading the user's own zellij config instead of
+// bothy's. Same shape as hopIntoContainer, for the same reasons.
+func attachCommand(args []string) string {
 	parts := make([]string, 0, len(args)+2)
-	parts = append(parts, shellQuote(mux), "attach")
+	parts = append(parts, "bothy", "attach")
 	for _, a := range args {
 		parts = append(parts, shellQuote(a))
 	}

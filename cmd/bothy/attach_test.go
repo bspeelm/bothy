@@ -83,17 +83,32 @@ func TestAttachQuotesWhatItPutsInAShell(t *testing.T) {
 		args []string
 		want string
 	}{
-		{"no args", nil, `'zellij' attach`},
-		{"plain name", []string{"work"}, `'zellij' attach 'work'`},
-		{"a space", []string{"my session"}, `'zellij' attach 'my session'`},
-		{"a quote", []string{"it's"}, `'zellij' attach 'it'\''s'`},
-		{"a semicolon", []string{"a; rm -rf /"}, `'zellij' attach 'a; rm -rf /'`},
+		{"no args", nil, `bothy attach`},
+		{"plain name", []string{"work"}, `bothy attach 'work'`},
+		{"a space", []string{"my session"}, `bothy attach 'my session'`},
+		{"a quote", []string{"it's"}, `bothy attach 'it'\''s'`},
+		{"a semicolon", []string{"a; rm -rf /"}, `bothy attach 'a; rm -rf /'`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := attachCommand("zellij", tc.args); got != tc.want {
+			if got := attachCommand(tc.args); got != tc.want {
 				t.Errorf("attachCommand() = %s, want %s", got, tc.want)
 			}
 		})
+	}
+}
+
+// The hop ran the multiplexer directly and died on `zellij: command not
+// found`: bothy's bin directory is not on a login shell's PATH in the
+// container. Running bothy instead is not only what resolves -- the copy in
+// there also passes the session environment, which a raw zellij would skip,
+// leaving the client reading the user's own config.
+func TestTheContainerHopRunsBothyNotTheMultiplexer(t *testing.T) {
+	got := attachCommand([]string{"bothy-work"})
+	if !strings.HasPrefix(got, "bothy attach ") {
+		t.Errorf("the hop runs %q, which is not bothy", got)
+	}
+	if strings.Contains(got, "zellij") {
+		t.Errorf("the hop runs %q; a login shell in the container has no zellij on PATH", got)
 	}
 }
 
