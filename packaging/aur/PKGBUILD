@@ -1,6 +1,6 @@
 # Maintainer: Bryan Speelman <bryspeelm@pm.me>
 pkgname=bothy
-pkgver=0.7.0
+pkgver=0.9.0
 pkgrel=1
 pkgdesc='A turn-key terminal workspace built from tools you already trust'
 arch=('x86_64' 'aarch64')
@@ -9,7 +9,7 @@ license=('MIT')
 depends=('glibc')
 makedepends=('go>=1.24' 'git')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('ebb8467f7ac87d0abbb8d720b20872d13f16328da109e51b8bcb53bc615b577e')
+sha256sums=('6ba1125389529e6ffe9044da6e5a7de4b3f6aabdb7cad92bc6590ddfbcbbaa5b')
 
 build() {
   cd "$pkgname-$pkgver"
