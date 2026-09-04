@@ -56,6 +56,13 @@ func cmdDev(args []string) error {
 		return err
 	}
 
+	// Before the window opens or the container is entered: both hand off to a
+	// second bothy, and a refusal printed inside a window that then closes is
+	// not a refusal anyone reads.
+	if err := refuseIfInUse(p, cfg, plan.Dir); err != nil {
+		return err
+	}
+
 	if plan.Spawn {
 		if err := spawnTerminal(p, plan.Dir, plan.Profile); err != nil {
 			// Not fatal: the workspace still runs here, without image previews.
@@ -68,6 +75,22 @@ func cmdDev(args []string) error {
 		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
 	}
 	return launch(p, cfg, plan.Dir, plan.Profile, "")
+}
+
+// refuseIfInUse stops a launch into a session that already has a client. A
+// backend it cannot resolve is not this function's problem to report: launch
+// says so properly a moment later.
+func refuseIfInUse(p platform.Info, cfg config.Config, dir string) error {
+	backend, bin, err := muxPath(p, cfg)
+	if err != nil {
+		return nil
+	}
+	env := install.SessionEnv(p, cfg)
+	session := backend.SessionName(dir)
+	if n, ok := backend.Clients(bin, env, session, backend.Live(bin, env)); ok && n > 0 {
+		return mux.InUse(session)
+	}
+	return nil
 }
 
 // launch renders the profile and hands off to the multiplexer with the
