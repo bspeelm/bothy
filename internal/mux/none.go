@@ -14,8 +14,10 @@ func (None) Name() string                               { return "none" }
 func (None) Dir(platform.Info) string                   { return "" }
 func (None) SessionEnv(platform.Info) map[string]string { return nil }
 
-// No multiplexer, no session to share.
+// No multiplexer, no sessions of any kind.
 func (None) Clients(string, []string, string, []string) (int, bool) { return 0, true }
+func (None) Stopped(string, []string) []string                      { return nil }
+func (None) Discard(string, []string, string) error                 { return nil }
 func (None) SessionName(string) string                              { return "" }
 func (None) CurrentSession() string                                 { return "" }
 func (None) Live(string, []string) []string                         { return nil }

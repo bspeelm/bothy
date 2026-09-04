@@ -103,9 +103,13 @@ func TestLiveOmitsTheSessionsZellijHasExited(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"bothy-site", "bothy-bothy"}
-	if got := liveSessions(string(out)); !reflect.DeepEqual(got, want) {
-		t.Errorf("liveSessions = %v, want %v", got, want)
+	live, stopped := splitSessions(string(out))
+	if want := []string{"bothy-site", "bothy-bothy"}; !reflect.DeepEqual(live, want) {
+		t.Errorf("live = %v, want %v", live, want)
+	}
+	// The other half of the same read: what `bothy ls --prune` would clear.
+	if want := []string{"polite-galaxy", "bothy-work"}; !reflect.DeepEqual(stopped, want) {
+		t.Errorf("stopped = %v, want %v", stopped, want)
 	}
 }
 
@@ -113,8 +117,9 @@ func TestLiveOmitsTheSessionsZellijHasExited(t *testing.T) {
 // found." -- and a sentence parsed as a session name would put a session
 // called "No" in the list.
 func TestLiveIgnoresProseOnTheSessionList(t *testing.T) {
-	if got := liveSessions("No active zellij sessions found.\n"); len(got) != 0 {
-		t.Errorf("liveSessions read %v out of a sentence", got)
+	live, stopped := splitSessions("No active zellij sessions found.\n")
+	if len(live) != 0 || len(stopped) != 0 {
+		t.Errorf("splitSessions read %v / %v out of a sentence", live, stopped)
 	}
 }
 

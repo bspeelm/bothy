@@ -98,10 +98,8 @@ func (Zellij) launchArgs(session, layoutFile string, live []string) []string {
 // resurrects it with commands suspended behind "Waiting to run" and a changed
 // profile ignored. Errors are ignored: usually there is no such session. No
 // --force, so one somehow still running is refused rather than killed.
-func (Zellij) discardDead(bin string, env []string, session string) {
-	cmd := exec.Command(bin, "delete-session", session)
-	cmd.Env = env
-	_ = cmd.Run()
+func (z Zellij) discardDead(bin string, env []string, session string) {
+	_ = z.Discard(bin, env, session)
 }
 
 func (Zellij) CurrentSession() string { return os.Getenv("ZELLIJ_SESSION_NAME") }
@@ -157,31 +155,56 @@ func countClients(out string) int {
 
 // Live reports the sessions that are running. `--short` is not the flag for
 // that: it prints stopped ones too, minus the marker that tells them apart.
-func (Zellij) Live(bin string, env []string) []string {
+func (z Zellij) Live(bin string, env []string) []string {
+	live, _ := z.sessions(bin, env)
+	return live
+}
+
+// Stopped reports the sessions zellij is keeping so they can be resurrected.
+// They are not debris -- attaching brings the layout back -- but nothing
+// removes them, so they accumulate until someone looks.
+func (z Zellij) Stopped(bin string, env []string) []string {
+	_, stopped := z.sessions(bin, env)
+	return stopped
+}
+
+func (Zellij) sessions(bin string, env []string) (live, stopped []string) {
 	cmd := exec.Command(bin, "list-sessions", "--no-formatting")
 	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
-		return nil // exit 1, "No active zellij sessions found.", is the empty case
+		return nil, nil // exit 1, "No active zellij sessions found.", is empty
 	}
-	return liveSessions(string(out))
+	return splitSessions(string(out))
 }
 
-// liveSessions reads `<name> [Created ...]` lines, marked EXITED where the
+// Discard removes a stopped session. No --force: one still running is refused
+// rather than killed, which makes this safe to point at a list that may have
+// gone out of date between reading it and acting on it.
+func (Zellij) Discard(bin string, env []string, session string) error {
+	cmd := exec.Command(bin, "delete-session", session)
+	cmd.Env = env
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s: %s", session, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// splitSessions reads `<name> [Created ...]` lines, marked EXITED where the
 // session has stopped. The bracket rejects the prose zellij also writes here.
-func liveSessions(out string) []string {
-	var live []string
+func splitSessions(out string) (live, stopped []string) {
 	for _, line := range strings.Split(out, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 2 || !strings.HasPrefix(f[1], "[") {
 			continue
 		}
 		if strings.Contains(line, "EXITED") {
+			stopped = append(stopped, f[0])
 			continue
 		}
 		live = append(live, f[0])
 	}
-	return live
+	return live, stopped
 }
 
 // MinGraphics is the first zellij that renders images correctly: 0.45.0 added

@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -169,4 +170,29 @@ func checkXdgOpenShimGuard(env Env) Result {
 			"run 'bothy install' to rewrite it")
 	}
 	return pass("xdg-open shim is guarded against host recursion")
+}
+
+// checkOneClientPerSession reports a session more than one terminal is looking
+// at. zellij sizes a session to its smallest client, so a second one caps the
+// workspace at the smaller window -- and the symptom is corrupted output,
+// which reads as the agent's bug rather than a geometry one. The launcher
+// refuses to create this (#205); `bothy attach` still can, on purpose.
+func checkOneClientPerSession(env Env) Result {
+	if env.Mux == nil {
+		return skip("no multiplexer backend for the configured slot")
+	}
+	session := env.Mux.CurrentSession()
+	if session == "" {
+		return skip("not inside a multiplexer session")
+	}
+	n, ok := env.Mux.Clients(env.MuxBin, env.ToolEnv, session, env.Mux.Live(env.MuxBin, env.ToolEnv))
+	if !ok {
+		return skip("the multiplexer could not say who is attached")
+	}
+	if n > 1 {
+		return warn(fmt.Sprintf("%s has %d terminals attached", session, n),
+			"the session is sized to the smallest of them, so the workspace is capped at that window",
+			"close the others, or resize them to match this one")
+	}
+	return pass("one terminal attached to " + session)
 }

@@ -37,7 +37,7 @@ const usage = `bothy — a small, unlocked terminal workspace
 Usage:
   bothy                         launch the workspace
   bothy attach [session]        reattach to this project's session
-  bothy ls                      which sessions are running
+  bothy ls [--prune]            which sessions are running, and which stopped
   bothy keys                    the bindings worth knowing
   bothy confine                 run the agent walled off from the rest of $HOME
   bothy install [--dry-run]     write the configs, then check them
