@@ -63,14 +63,14 @@ linux_x86_64 = '33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c
 
 [[tool]]
 name = 'yazi'
-tag = 'v26.8.15'
-version = '26.8.15'
+tag = 'v26.9.1'
+version = '26.9.1'
 
 [tool.sha256]
-darwin_aarch64 = '3f54907ea08abe96506f4b22239340ed8923a6aeaeae78f33d59bce57daca4cd'
-darwin_x86_64 = '70bb2bcf57d8af862a54e2d12f2fddceefb9aa4ba3783e9a4dcbf2a8e64aacb3'
-linux_aarch64 = 'dfaafadd3a80a18ccbd24c32be4888178202ea96f784a9b1021d526c908cab4b'
-linux_x86_64 = 'a6702034790afcdbb546b73b288c9b184a751fa3f2f17f0ad4d26fc302fb8d45'
+darwin_aarch64 = '3921182a21cceb0a505e5dac578e1487d48104caa5f114e9f8adf40b5a7289a9'
+darwin_x86_64 = '36e09036fcc446488d876d139a5e303f2443b82cfb6ac7dfcb43892d6fe6fa20'
+linux_aarch64 = 'dd569daecaae914185f295634109295ccd25c1b42b02eb89a74f651970024f2e'
+linux_x86_64 = '9b9c39decccf8cb0ff53a7d637d38f8a79d93bbd0099f4ea9c619ef6bb392f5d'
 
 [[tool]]
 name = 'zellij'
