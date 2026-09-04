@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -85,5 +86,34 @@ func TestASessionMissingFromTheLiveListIsCreated(t *testing.T) {
 	// and quietly ignore a changed profile.
 	if args[1] != "/tmp/cockpit.kdl" {
 		t.Errorf("the layout passed is %q, want the one just rendered", args[1])
+	}
+}
+
+// A session zellij has stopped stays on the list, and `--short` prints it
+// with the "(EXITED - attach to resurrect)" marker stripped. Reading that as
+// live skips discardDead and drops --layout, so the launch resurrects the
+// saved session instead of creating one: every command pane comes up
+// suspended behind "Waiting to run", and a changed profile is ignored (#188).
+//
+// The fixture is real `list-sessions --no-formatting` output with the project
+// names scrubbed. It carries all three line shapes zellij writes: exited,
+// running, and the running one you are attached to.
+func TestLiveOmitsTheSessionsZellijHasExited(t *testing.T) {
+	out, err := os.ReadFile("testdata/list-sessions.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"bothy-site", "bothy-bothy"}
+	if got := liveSessions(string(out)); !reflect.DeepEqual(got, want) {
+		t.Errorf("liveSessions = %v, want %v", got, want)
+	}
+}
+
+// zellij writes prose to the same stream -- "No active zellij sessions
+// found." -- and a sentence parsed as a session name would put a session
+// called "No" in the list.
+func TestLiveIgnoresProseOnTheSessionList(t *testing.T) {
+	if got := liveSessions("No active zellij sessions found.\n"); len(got) != 0 {
+		t.Errorf("liveSessions read %v out of a sentence", got)
 	}
 }
