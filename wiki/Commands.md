@@ -31,15 +31,24 @@ flags still win for a single run.
 Reattach to this project's session, which has gone on without you. With no
 argument it picks the session for the current directory.
 
-### `bothy ls`
+### `bothy ls [--prune]`
 
-Which sessions are running, marking the one you are in:
+Which sessions are running, marking the one you are in — and which have stopped
+but are still kept:
 
 ```
+  bothy-bothy                  the one you are in
+  bothy-server_setup
+
+2 stopped, kept so they can be resurrected:
   polite-galaxy
   bothy-Workbench
-  bothy-bothy                  the one you are in
+Clear them with 'bothy ls --prune'.
 ```
+
+A stopped session is not junk: attaching brings its layout back as it was. But
+nothing removes them either, so they accumulate. `--prune` deletes the stopped
+ones and refuses anything still running.
 
 ### `bothy keys`
 

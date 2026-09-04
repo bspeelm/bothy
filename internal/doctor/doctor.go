@@ -224,6 +224,7 @@ func Checks() []Check {
 		{ID: "profile-renders", Capability: Panes, Run: checkProfileRenders},
 		{ID: "layout-built", Capability: Panes, Run: checkLayoutBuilt},
 		{ID: "terminal-capability", Capability: Images, Run: checkTerminalCapability},
+		{ID: "one-client", Run: checkOneClientPerSession},
 		{ID: "passthrough", Capability: Isolation, Run: checkPassthrough},
 		{ID: "isolation", Capability: Isolation, Run: checkIsolation},
 		{ID: "confine", Capability: Isolation, Run: checkConfine},

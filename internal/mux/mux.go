@@ -52,6 +52,11 @@ type Backend interface {
 	// the refusal lands where the person typing can read it.
 	Clients(bin string, env []string, session string, live []string) (int, bool)
 
+	// Stopped is the sessions kept for resurrection, and Discard removes one.
+	// Nothing removes them on its own, so they pile up until someone asks.
+	Stopped(bin string, env []string) []string
+	Discard(bin string, env []string, session string) error
+
 	// CurrentSession is the session this shell is inside, "" when it is not.
 	CurrentSession() string
 
