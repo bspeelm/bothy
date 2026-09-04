@@ -57,6 +57,11 @@ type Backend interface {
 	Stopped(bin string, env []string) []string
 	Discard(bin string, env []string, session string) error
 
+	// Kill ends a running session and leaves nothing behind, which is what
+	// quitting from inside does. Discard refuses a live session; this is the
+	// one that means to end it.
+	Kill(bin string, env []string, session string) error
+
 	// CurrentSession is the session this shell is inside, "" when it is not.
 	CurrentSession() string
 

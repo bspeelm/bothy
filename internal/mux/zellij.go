@@ -115,8 +115,8 @@ func (Zellij) Clients(bin string, env []string, session string, live []string) (
 func InUse(session string) error {
 	return fmt.Errorf("%s is already open in another terminal\n"+
 		"      zellij sizes a session to its smallest client, so joining from\n"+
-		"      here would shrink it. Close it there, or run 'bothy attach %s'\n"+
-		"      to join anyway.", session, session)
+		"      here would shrink it. Close it there, 'bothy attach %s' to join\n"+
+		"      anyway, or 'bothy kill %s' to end it.", session, session, session)
 }
 
 // attachedClients counts who is looking at a session -- a header then a row per
@@ -176,6 +176,17 @@ func (Zellij) sessions(bin string, env []string) (live, stopped []string) {
 		return nil, nil // exit 1, "No active zellij sessions found.", is empty
 	}
 	return splitSessions(string(out))
+}
+
+// Kill ends a running session and removes what it would have been resurrected
+// from. --force is the difference from Discard: here ending it is the point.
+func (Zellij) Kill(bin string, env []string, session string) error {
+	cmd := exec.Command(bin, "delete-session", "--force", session)
+	cmd.Env = env
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s: %s", session, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 // Discard removes a stopped session. No --force: one still running is refused

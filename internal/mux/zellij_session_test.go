@@ -161,9 +161,13 @@ func TestLaunchRefusesASessionSomeoneIsLookingAt(t *testing.T) {
 	if err == nil {
 		t.Fatal("launched into a session with two clients attached")
 	}
-	// The refusal has to name the way out, or it is a dead end.
-	if !strings.Contains(err.Error(), "bothy attach bothy-work") {
-		t.Errorf("the refusal is %q, which does not say how to join deliberately", err)
+	// Both ways out, or it is a dead end. Quitting the other terminal is not
+	// always available -- the session that prompted this had a client in a
+	// window its owner could not get back to.
+	for _, want := range []string{"bothy attach bothy-work", "bothy kill bothy-work"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal is %q, which never offers %q", err, want)
+		}
 	}
 }
 
