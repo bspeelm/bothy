@@ -9,6 +9,7 @@ import (
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 	"github.com/bspeelm/bothy/internal/tools"
+	"strings"
 )
 
 // The lockfile is what makes an install reproducible and a tampered release a
@@ -330,5 +331,54 @@ func TestEveryToolThatPublishesChecksumsHasThemRecorded(t *testing.T) {
 			t.Errorf("%s names a checksums file (%q) and no platform was cross-checked; "+
 				"the name is probably wrong for this release", tool.Name, tool.Checksums)
 		}
+	}
+}
+
+// Pinning backwards is the point of naming a tag: the latest release is
+// exactly the thing you are trying not to take. So RelockAt must not ask which
+// release is latest -- an APIBase that fails the test proves it never does.
+func TestRelockAtTakesTheTagAndNeverAsksWhatIsLatest(t *testing.T) {
+	assets := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".sha256") {
+			http.NotFound(w, r)
+			return
+		}
+		if !strings.Contains(r.URL.Path, "/v1.0.0/") {
+			t.Errorf("downloaded from %s, want the tag that was asked for", r.URL.Path)
+		}
+		fmt.Fprint(w, "binary")
+	}))
+	defer assets.Close()
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("asked the releases API for %s; the tag was given", r.URL.Path)
+	}))
+	defer api.Close()
+
+	oldRelease, oldAPI := ReleaseBase, APIBase
+	ReleaseBase, APIBase = assets.URL, api.URL
+	defer func() { ReleaseBase, APIBase = oldRelease, oldAPI }()
+
+	tool := tools.Tool{
+		Header: slots.Header{Name: "thing"},
+		Fetch: slots.Fetch{Binary: "thing", Repo: "acme/thing", Checksums: "{asset}.sha256",
+			Assets: map[string]string{
+				"linux_x86_64": "thing", "linux_aarch64": "thing",
+				"darwin_x86_64": "thing", "darwin_aarch64": "thing",
+			}},
+	}
+	e, err := RelockAt(tool, "v1.0.0", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.Tag != "v1.0.0" || e.Version != "1.0.0" {
+		t.Errorf("recorded tag %q version %q, want v1.0.0 and 1.0.0", e.Tag, e.Version)
+	}
+	if got, want := e.SHA(platform.Info{OS: "linux", Arch: "x86_64"}), Sum([]byte("binary")); got != want {
+		t.Errorf("recorded %q, want the hash of what was served (%q)", got, want)
+	}
+	// The checksum file 404s, so nothing was cross-checked and nothing may
+	// claim to have been.
+	if len(e.Verified) != 0 {
+		t.Errorf("recorded %v as cross-checked with no checksum published", e.Verified)
 	}
 }

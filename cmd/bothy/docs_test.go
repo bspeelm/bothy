@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"github.com/bspeelm/bothy/internal/fetch"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -650,5 +652,73 @@ func TestTheJobsThatReadProseAreNotSkippedForProse(t *testing.T) {
 		} else if !gated[name] {
 			t.Errorf("the %q job is not gated on scope, so prose changes still pay for it", name)
 		}
+	}
+}
+
+// A count of the tools bothy fetches is written in prose in several places and
+// nothing moved them when the eighth was added -- the outdated workflow still
+// said nine. Numbers that describe the current state have to match it.
+//
+// docs/decisions.md and docs/history/ are exempt: an ADR records what was true
+// when the decision was made, and editing that to match today is rewriting the
+// record rather than correcting it.
+func TestEveryToolCountInProseMatchesTheLock(t *testing.T) {
+	lock, err := fetch.LoadLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	words := map[string]int{
+		"two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+		"seven": 7, "eight": 8, "nine": 9, "ten": 10,
+	}
+	count := regexp.MustCompile(`(?i)\b([a-z]+|\d+) tools\b`)
+
+	root := "../.."
+	var checked int
+	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			switch {
+			case d.Name() == "vendor", d.Name() == ".git", d.Name() == "history":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		ext := filepath.Ext(path)
+		if ext != ".md" && ext != ".yml" {
+			return nil
+		}
+		if filepath.Base(path) == "decisions.md" {
+			return nil
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, path)
+		for _, m := range count.FindAllStringSubmatch(string(body), -1) {
+			n, ok := words[strings.ToLower(m[1])]
+			if !ok {
+				if v, err := strconv.Atoi(m[1]); err == nil {
+					n, ok = v, true
+				}
+			}
+			if !ok {
+				continue // "the tools", "these tools" and friends
+			}
+			checked++
+			if n != len(lock.Entries) {
+				t.Errorf("%s says %q; bothy.lock pins %d", rel, m[0], len(lock.Entries))
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if checked == 0 {
+		t.Fatal("no tool count found anywhere; this test is asserting nothing")
 	}
 }
