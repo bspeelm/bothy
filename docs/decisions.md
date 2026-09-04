@@ -1346,3 +1346,65 @@ markdown file counts against 0.75× the code (ADR-038's framework, §4); adding 
 manual and keeping a roadmap that shipped were not both affordable. Retiring
 dead weight is the response the budget asks for — raising the cap instead is
 listed as a framework failure.
+
+## ADR-040 — The ledger records reads, not approvals, and the diff is paid where it is made
+
+**Status:** accepted.
+
+The objection, from the maintainer: *"I think this ledger process is redundant
+to PR review."* It is fair, and in this repository it is mostly right. The
+ruleset requires zero approving reviews, so there is no independent review for
+the ledger to duplicate — the pull request and the ledger row are the same
+person reading the same code. #195 existed only to record a read already done
+in #194. One act, billed twice, with a second pull request as the fee.
+
+**What survives the objection: pull requests read diffs, ledgers read files.**
+`internal/mux/zellij.go` is the standing proof. #146 was a shell-splitting bug
+in it; #188 was a session-listing bug in it. Both arrived through pull requests
+that were fine as diffs, because each diff *was* fine. What nobody had done was
+read the file end to end, and no number of sound diff reviews adds up to that.
+
+**So the per-change ceremony goes and the periodic read stays.** A surface that
+changed since it was read owes the diff since that commit, not the file;
+`make ledger` prints the exact `git diff`. Past thirty days a read expires and
+the whole file is owed again.
+
+**The row is recorded in the next pull request, not one of its own.** Moving it
+in the same pull request that changes the surface was the obvious answer and
+does not work: `main` takes squash merges, so the commit the row would name
+does not exist until after the merge, and the branch commit it could name is
+discarded with the branch — leaving a row that reads `BADREF` in a fresh clone.
+A surface therefore reads `STALE` between the merge and the next pull request,
+which is accurate. Only a release touching that surface blocks.
+
+**The thirty-day rule was written down when the ledger was built and nothing
+measured it**, which is a gate with no machine behind it — §1 of the framework
+calls that [ADV] wearing a costume. `scripts/ledger.sh` now measures it, and
+answers `ok`, `STALE`, `AGED`, `UNREAD`, `BADREF` or `GONE`;
+`TestTheLedgerNamesWhatEachSurfaceOwes` builds a repository arranged to produce
+each one.
+
+**Prior art, because the shape is not new.** Mozilla's `cargo-vet` records who
+audited which dependency at which version and distinguishes a full audit of a
+version from a *delta* audit of the diff between two — the same split adopted
+here, arrived at independently and then found already solved, with a convention
+of delta under 500 lines and a full read above. `cargo-crev` does it with
+signed, shareable proofs. Google's `git-appraise` keeps review state in the
+repository itself under `refs/notes/devtools`. GitHub's per-file *Viewed*
+checkbox tracks which files a reviewer has seen and unticks the ones that
+change underneath them, as GitClear and Google's Critique have long done.
+
+**None of them covers this case.** `cargo-vet` states plainly that first-party
+code is "trusted and therefore non-auditable"; that whole family is aimed at
+other people's dependencies. GitHub's viewed marks are per-pull-request,
+ephemeral, and not in the repository. `git-appraise` records review of commits,
+not reads of files, and nothing in it expires. The gap is narrow and real — a
+durable, in-repository, expiring record that a human read *your own* file,
+wired to a release gate — and it is also small: `scripts/ledger.sh` is sixty
+lines of shell, a construct rather than a library.
+
+**What this does not fix.** The ruleset requires zero approving reviews and
+there is no second human, so both the pull request and the ledger row are the
+maintainer vouching for his own reading. No tool changes that. The framework's
+§10 asks for a named second human at Low stakes; that is still outstanding, and
+it is a larger gap than the redundancy this record closes.

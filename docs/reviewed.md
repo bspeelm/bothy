@@ -1,9 +1,10 @@
 # Vouching ledger
 
-Which load-bearing surfaces a named human has read line by line, and at which
-commit. `scripts/ledger.sh` compares each recorded commit against the file's
-last change: differ and the entry is stale, and it says so. `make check`
-reports; the release blocks.
+Which load-bearing surfaces a named human has read, and at which commit.
+`scripts/ledger.sh` compares each recorded commit against the file's last
+change and against the calendar, then says what is owed: nothing, the diff
+since that commit, or the whole file again. `make check` reports; the release
+blocks. ADR-040 has the reasoning.
 
 **This ledger is allowed to show debt.** An unread surface is listed as unread.
 That is the mechanism — a ledger with nothing outstanding is either finished or
@@ -69,6 +70,17 @@ finding. So is a file too tangled to hold in your head — and the answer to
 that one is to shrink the surface, not to sign harder. Leave the `-` in place
 and say what stopped you.
 
+**After the first read, the debt is usually the diff.** A surface that has
+changed since you read it owes the diff since your recorded commit, not the
+file again, and `make ledger` prints the exact `git diff`.
+
+**Record it in the next pull request you open, not one of its own.** The row
+cannot move in the pull request that changes the surface: `main` takes squash
+merges, so the commit the row would have to name does not exist until after the
+merge, and the branch commit it could name is discarded. So a surface reads
+`STALE` for a while after a merge, which is true and is meant to be visible.
+Nothing blocks on it until a release touches that surface.
+
 ## Excluded, and why
 
 | surface | why it is not here |
@@ -78,13 +90,22 @@ and say what stopped you.
 | `internal/mux`, `cmd/bothy/dev.go`, `cmd/bothy/terminal.go` | launch what the config names. **The weakest exclusion here** — #146 was a shell-splitting bug in `mux/zellij_render.go`, which is argv construction by another name. Promote it if a second defect lands there (§7.4). |
 | `internal/tools`, `internal/slots`, `internal/theme`, `internal/layout` | data and decisions; the dangerous half is `internal/fetch`, which is included |
 
-## Staleness
+## What each answer means
 
-An entry is stale the moment its surface changes, and a surface stale beyond
-**30 days** is a framework failure rather than a code one — the vouching has
-stopped being real. Measured in time rather than releases: this project shipped
-three times in two days, and a threshold that fires constantly is one that gets
-ignored.
+| answer | what it owes |
+|---|---|
+| `ok` | nothing |
+| `STALE` | the diff since your recorded commit; the command is printed |
+| `AGED` | a whole-file read — the last one was over 30 days ago |
+| `UNREAD` | a whole-file read; nobody has read it |
+| `BADREF` | the recorded commit is not in this repository, so it is a typo |
+| `GONE` | the surface is in the ledger and not in the tree |
+
+`AGED` is the one that earns the ledger its place. Everything else here a pull
+request could tell you; a run of small diffs, each fine on its own, is exactly
+how a file nobody has read end to end accumulates. Measured in time rather than
+releases: this project shipped three times in two days, and a threshold that
+fires constantly is one that gets ignored.
 
 ## Status
 

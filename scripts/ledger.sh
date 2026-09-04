@@ -1,8 +1,15 @@
 #!/bin/sh
-# Reports whether each load-bearing surface in docs/reviewed.md has been read
-# at its current commit. Exits 1 if any is stale, unread or missing; callers
-# decide whether that blocks -- the release does, `make check` only reports.
+# Reports what each load-bearing surface in docs/reviewed.md owes: nothing, a
+# read of the diff since it was last read, or a read of the whole file. Exits 1
+# if anything is owed; callers decide whether that blocks -- the release does,
+# `make check` only reports.
 set -eu
+
+# Past this, a read is old enough that the file has to be read whole again. A
+# run of small diffs, each reviewed on its own, is how a file nobody has read
+# end to end accumulates.
+MAX_AGE_DAYS=30
+today=$(date +%s)
 
 ledger=docs/reviewed.md
 test -f "$ledger" || { echo "no $ledger"; exit 1; }
@@ -27,10 +34,23 @@ while IFS="$(printf '\t')" read -r surface who at; do
     fi
     now=$(git log -1 --format=%h -- "$surface")
     if [ "$at" = "-" ] || [ -z "$at" ]; then
-        echo "UNREAD  $surface"
+        echo "UNREAD  $surface -- read it whole, then record the commit"
+        fail=1
+        continue
+    fi
+    if ! at_time=$(git log -1 --format=%ct "$at" 2>/dev/null); then
+        echo "BADREF  $surface -- $at is not a commit in this repository"
+        fail=1
+        continue
+    fi
+    # A read is dated by the commit it was recorded at. Recording an older
+    # commit dates the read older, which is the direction that errs safely.
+    age=$(( (today - at_time) / 86400 ))
+    if [ "$age" -gt "$MAX_AGE_DAYS" ]; then
+        echo "AGED    $surface -- read $age days ago; read it whole again"
         fail=1
     elif [ "$at" != "$now" ]; then
-        echo "STALE   $surface -- read at $at, now $now"
+        echo "STALE   $surface -- git diff $at..$now -- $surface"
         fail=1
     else
         echo "ok      $surface -- $who at $at"

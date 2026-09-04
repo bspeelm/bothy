@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The README drifted from the code during this project's own development: it
@@ -649,6 +651,126 @@ func TestTheJobsThatReadProseAreNotSkippedForProse(t *testing.T) {
 			t.Errorf("ci.yml has no %q job; this test is asserting nothing about it", name)
 		} else if !gated[name] {
 			t.Errorf("the %q job is not gated on scope, so prose changes still pay for it", name)
+		}
+	}
+}
+
+// The ledger is a release gate with six answers and no test, which is the
+// shape of a check that quietly stops checking. This builds a repository whose
+// history is arranged to produce each one.
+func TestTheLedgerNamesWhatEachSurfaceOwes(t *testing.T) {
+	repo := t.TempDir()
+	script, err := filepath.Abs(filepath.Join("../..", "scripts", "ledger.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now().Format(time.RFC3339)
+	// Long enough ago that a read recorded there is past MAX_AGE_DAYS.
+	long := time.Now().AddDate(0, 0, -60).Format(time.RFC3339)
+
+	git := func(date string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		// Both, because %ct is the committer's date.
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_DATE="+date, "GIT_COMMITTER_DATE="+date,
+			"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(repo, name)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	git(now, "init", "-q", "-b", "main")
+	git(now, "config", "user.email", "t@example.com")
+	git(now, "config", "user.name", "T")
+
+	write("aged.txt", "one\n")
+	git(long, "add", "-A")
+	git(long, "commit", "-qm", "old")
+	old := git(long, "log", "-1", "--format=%h")
+
+	for _, f := range []string{"stale.txt", "fresh.txt", "unread.txt", "badref.txt"} {
+		write(f, "one\n")
+	}
+	git(now, "add", "-A")
+	git(now, "commit", "-qm", "new")
+	recent := git(now, "log", "-1", "--format=%h")
+
+	// A later commit to stale.txt only, so its recorded read falls behind
+	// while fresh.txt's does not.
+	write("stale.txt", "one\ntwo\n")
+	git(now, "add", "-A")
+	git(now, "commit", "-qm", "later")
+
+	write("docs/reviewed.md", "| surface | read by | at commit |\n|---|---|---|\n"+
+		"| `aged.txt` | T | "+old+" |\n"+
+		"| `stale.txt` | T | "+recent+" |\n"+
+		"| `fresh.txt` | T | "+recent+" |\n"+
+		"| `unread.txt` | - | - |\n"+
+		"| `badref.txt` | T | deadbee |\n"+
+		"| `gone.txt` | T | "+recent+" |\n")
+
+	cmd := exec.Command("sh", script)
+	cmd.Dir = repo
+	out, err := cmd.CombinedOutput()
+	got := string(out)
+	t.Log("\n" + got)
+	if err == nil {
+		t.Error("ledger.sh exited 0 with debt outstanding; nothing would block")
+	}
+
+	for _, want := range []string{
+		"AGED    aged.txt",
+		"STALE   stale.txt",
+		"ok      fresh.txt",
+		"UNREAD  unread.txt",
+		"BADREF  badref.txt",
+		"GONE    gone.txt",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("ledger.sh never said %q", want)
+		}
+	}
+	// STALE has to carry the command that clears it, or the reader is told
+	// there is a debt and not how to pay it.
+	if !strings.Contains(got, "git diff "+recent+"..") {
+		t.Error("STALE does not name the diff that would clear it")
+	}
+}
+
+// The ledger's answers are the interface a person reads. A state the script
+// can print and the ledger does not explain is a gate whose output means
+// nothing to the only person who can clear it.
+func TestEveryLedgerAnswerIsExplained(t *testing.T) {
+	script, err := os.ReadFile(filepath.Join("../..", "scripts", "ledger.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := os.ReadFile(filepath.Join("../..", "docs", "reviewed.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	answers := regexp.MustCompile(`(?m)^\s*echo "([A-Za-z]+) `).FindAllSubmatch(script, -1)
+	if len(answers) == 0 {
+		t.Fatal("no answers parsed out of ledger.sh; this test is asserting nothing")
+	}
+	for _, m := range answers {
+		if !strings.Contains(string(doc), "| `"+string(m[1])+"` |") {
+			t.Errorf("ledger.sh can answer %q, which docs/reviewed.md does not explain", m[1])
 		}
 	}
 }
