@@ -37,7 +37,7 @@ all: check
 # and carried into another distro's container is linked against this machine's
 # glibc -- which would test glibc compatibility rather than bothy.
 build:
-	CGO_ENABLED=0 go build -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/bothy
+	CGO_ENABLED=0 go build -trimpath -ldflags '$(LDFLAGS)' -o $(BINARY) ./cmd/bothy
 
 test:
 	go test ./...

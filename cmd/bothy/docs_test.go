@@ -757,3 +757,44 @@ func TestTheDocumentedBudgetsMatchTheMakefile(t *testing.T) {
 		}
 	}
 }
+
+// Four files build the binary that ships -- the Makefile, goreleaser's build
+// stanza and its AUR recipe, and the rpm spec -- and each was written on its
+// own. v0.9.0 went out with 69 absolute paths from the CI runner baked into
+// it, because none of them passed -trimpath. Adding it to one and not the
+// rest would make the channels disagree, which is the drift #60 exists to
+// prevent.
+func TestEveryShippingBuildIsTrimmed(t *testing.T) {
+	root := "../.."
+	files := []string{
+		"Makefile",
+		".goreleaser.yaml",
+		filepath.Join("packaging", "aur", "PKGBUILD"),
+		filepath.Join("packaging", "bothy.spec"),
+	}
+	var checked int
+	for _, name := range files {
+		body, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range strings.Split(string(body), "\n") {
+			if !strings.Contains(line, "go build") {
+				continue
+			}
+			// The crossbuild target compiles four platforms to /dev/null to
+			// prove they still compile; nothing ships out of it.
+			if strings.Contains(line, "-o /dev/null") {
+				continue
+			}
+			checked++
+			if !strings.Contains(line, "-trimpath") {
+				t.Errorf("%s builds without -trimpath:\n  %s", name, strings.TrimSpace(line))
+			}
+		}
+	}
+	if checked < len(files) {
+		t.Fatalf("found %d shipping builds across %d files; the recipes have moved",
+			checked, len(files))
+	}
+}
