@@ -1454,3 +1454,68 @@ limit a user can feel. The prose cap is unmoved at 0.75× code. Both still fail
 the build. And `TestTheDocumentedBudgetsMatchTheMakefile` holds the three
 places these numbers are written down against the one place they are enforced,
 so the next raise cannot be a quiet one.
+
+## ADR-042 — bothy ends a client whose terminal is gone, and how it knows
+
+**Status:** accepted.
+
+Closing a bothy window left the multiplexer client running. `podman exec`
+ignores SIGHUP ([containers/toolbox#1400](https://github.com/containers/toolbox/issues/1400),
+[podman#19486](https://github.com/containers/podman/issues/19486)), so when the
+pty hangs up the host-side bothy dies and nothing reaches the processes inside
+the container. The session kept a client, ADR-039's refusal fired, and the
+project could not be opened again — a lockout produced by a correct guard
+meeting an upstream defect.
+
+The old `dev` shell function looked immune only because its layout was unnamed:
+every launch got a random session, so an orphan never collided. bothy's
+deterministic per-directory names are what made the leak visible, and they are
+worth keeping.
+
+**Two measurements decided the design, and both closed doors that looked open.**
+
+`ps` reporting a tty of `?` is a devpts artefact — those same processes have a
+non-zero `tty_nr` in `/proc`, because `ps` cannot name a pts device belonging to
+another devpts instance. "No controlling terminal" is not an orphan signal.
+
+And a live client and an abandoned one have identical ancestry:
+`zellij → bothy → conmon → systemd`, with `podman exec` and `toolbox` not
+ancestors at all, conmon having been reparented. Walking up to find a live
+babysitter cannot work. **The process tree does not record that a window is
+open**, so something has to write it down.
+
+**So the terminal writes it down.** A bothy showing a session records its pid
+and start time under `<state>/sessions/`, and removes the record on the way
+out. A bothy killed by the hangup never gets to, and that is the evidence: a
+record whose process is gone. The start time is what stops a reused pid
+resurrecting a dead claim. Nothing has to be cleaned up — a stale record is not
+a leak, it is the signal — and the directory is inside the tree `bothy
+uninstall` already removes.
+
+**A client is ended only when three things hold**, and only if it worked: the
+session has clients, no live record claims it, and the client is behind a
+container boundary (`/proc/PID/ns/mnt` differs from ours). Then the count is
+read again, and the launch proceeds only if it reached zero. The third
+condition is what makes killing safe: a client on this side of the boundary
+dies with its pty in about eighteen milliseconds, so one still running is one
+somebody is using. Where `/proc` cannot be read — macOS, Windows — every
+condition fails closed and the behaviour is exactly the old refusal.
+
+**The record is never written from inside a container.** That copy of bothy
+outlives the window too, so its record would never go stale and the project
+would be shut permanently — a worse version of the bug being fixed.
+
+**One false positive is accepted.** A workspace launched by `bothy` typed
+*inside* a toolbox shell, still live in one window, will have its client ended
+by a launch for the same project from another. That client has no host-side
+witness by construction. The cost is a detach, not a lost session, and the
+alternative — marking it with the container-side pid — is the permanent
+lockout above.
+
+**What was rejected.** Asking zellij to detach a client: `zellij action detach`
+addressed by environment exits 0 and detaches nobody, and 0.45.1 has no
+per-client command. Tearing down on SIGHUP instead: it does nothing for the
+orphans already on disk, nothing after a SIGKILL or a reboot, and the teardown
+it needs is a fresh `podman exec` round trip fired from a process that is being
+killed. It remains available as an optimisation now that correctness does not
+depend on it.
