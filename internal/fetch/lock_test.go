@@ -286,3 +286,49 @@ func TestAssetStemDropsOnlyTheArchiveExtension(t *testing.T) {
 		}
 	}
 }
+
+// The pin is cross-checked per platform, not per tool: a project can publish a
+// checksum for one target and not another, and reporting the tool as checked
+// everywhere would overstate three of them.
+func TestCrossCheckedIsPerPlatform(t *testing.T) {
+	e := Entry{Verified: []string{"linux_x86_64"}}
+	if !e.CrossChecked(platform.Info{OS: "linux", Arch: "x86_64"}) {
+		t.Error("the platform that was checked reports unchecked")
+	}
+	if e.CrossChecked(platform.Info{OS: "darwin", Arch: "aarch64"}) {
+		t.Error("a platform that was not checked reports checked")
+	}
+	if (Entry{}).CrossChecked(platform.Info{OS: "linux", Arch: "x86_64"}) {
+		t.Error("an entry with no verified list reports checked")
+	}
+}
+
+// A slot names its project's checksum file; if that name is wrong the download
+// 404s, which Relock reports as "no upstream checksum published" and carries
+// on. The pin silently drops to the hash of the download. The lockfile is
+// where that shows: a tool that declares checksums and records none was not
+// compared with anything.
+func TestEveryToolThatPublishesChecksumsHasThemRecorded(t *testing.T) {
+	lock, err := LoadLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := tools.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range all {
+		if tool.Checksums == "" {
+			continue
+		}
+		entry, ok := lock.Get(tool.Name)
+		if !ok {
+			t.Errorf("%s is not in bothy.lock", tool.Name)
+			continue
+		}
+		if len(entry.Verified) == 0 {
+			t.Errorf("%s names a checksums file (%q) and no platform was cross-checked; "+
+				"the name is probably wrong for this release", tool.Name, tool.Checksums)
+		}
+	}
+}

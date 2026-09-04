@@ -56,13 +56,20 @@ the severities and the capability grouping.
 
 ### `bothy tools`
 
-Which tools are in use, which version, and where each came from — bothy's own
-copy or one already on your `PATH`:
+Which tools are in use, which version, where each came from — bothy's own copy
+or one already on your `PATH` — and, for the ones bothy fetched, where the
+pinned checksum came from:
 
 ```
-✓ fd        a faster find        10.5.0    supplied by bothy
-✓ ripgrep   a faster grep        15.2.0    supplied by bothy
+✓ fd        a faster find        10.5.0    supplied by bothy  pin: download
+✓ ripgrep   a faster grep        15.2.0    supplied by bothy  pin: upstream
 ```
+
+`pin: upstream` means the checksum in `bothy.lock` matched one the project
+published, so the release cannot have been changed after publication.
+`pin: download` means the project publishes no checksum, so the pin is the hash
+of what bothy downloaded on the day it was pinned. Neither says the release
+itself is good; see [Security](Security).
 
 ### `bothy outdated [--json]`
 

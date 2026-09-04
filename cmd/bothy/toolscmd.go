@@ -30,6 +30,7 @@ func cmdTools(args []string) error {
 	// installed and at which version.
 	m, mErr := state.Load(p.StateDir())
 	lock, lockErr := fetch.LoadLock()
+	downloadOnly := false
 
 	for _, d := range decisions {
 		if d.Action == tools.UseSystem {
@@ -44,17 +45,33 @@ func cmdTools(args []string) error {
 			fmt.Printf("↓ %-9s %-20s %s\n", d.Tool.Name, d.Tool.What, d.Reason)
 			continue
 		}
-		pinned := ""
+		pinned, pin := "", ""
 		if lockErr == nil {
 			if entry, ok := lock.Get(d.Tool.Name); ok {
 				pinned = entry.Version
+				pin = "download"
+				if entry.CrossChecked(p) {
+					pin = "upstream"
+				}
+				downloadOnly = downloadOnly || pin == "download"
 			}
 		}
 		if pinned != "" && pinned != have {
-			fmt.Printf("↑ %-9s %-20s %-9s supplied by bothy, pinned at %s\n", d.Tool.Name, d.Tool.What, have, pinned)
+			fmt.Printf("↑ %-9s %-20s %-9s supplied by bothy, pinned at %s  pin: %s\n",
+				d.Tool.Name, d.Tool.What, have, pinned, pin)
 			continue
 		}
-		fmt.Printf("✓ %-9s %-20s %-9s supplied by bothy\n", d.Tool.Name, d.Tool.What, have)
+		fmt.Printf("✓ %-9s %-20s %-9s supplied by bothy  pin: %s\n", d.Tool.Name, d.Tool.What, have, pin)
+	}
+
+	// Only when there is something to explain. "upstream" needs no gloss;
+	// "download" is the one a reader should know the shape of.
+	if downloadOnly {
+		fmt.Print("\n" +
+			"pin: upstream — the pinned checksum matched one the project published. That\n" +
+			"  rules out the release changing after publication; not a bad release.\n" +
+			"pin: download — nothing was published to compare with, so the pin is the hash\n" +
+			"  of what bothy downloaded on the day it was pinned.\n")
 	}
 	return nil
 }
