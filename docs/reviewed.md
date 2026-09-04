@@ -37,7 +37,7 @@ decision rather than an oversight.
 | `internal/confine` | - | - |
 | `cmd/bothy/desktop.go` | - | - |
 | `Makefile` | BS | f75b503 |
-| `.github/workflows` | BS | 1223a87 |
+| `.github/workflows` | BS | c9d545f |
 | `scripts` | BS | cb4b840 |
 
 ## How to do the read
