@@ -13,10 +13,13 @@ type None struct{}
 func (None) Name() string                               { return "none" }
 func (None) Dir(platform.Info) string                   { return "" }
 func (None) SessionEnv(platform.Info) map[string]string { return nil }
-func (None) SessionName(string) string                  { return "" }
-func (None) CurrentSession() string                     { return "" }
-func (None) Live(string, []string) []string             { return nil }
-func (None) Panes(string, string, []string) (int, bool) { return 0, false }
+
+// No multiplexer, no session to share.
+func (None) Clients(string, []string, string, []string) (int, bool) { return 0, true }
+func (None) SessionName(string) string                              { return "" }
+func (None) CurrentSession() string                                 { return "" }
+func (None) Live(string, []string) []string                         { return nil }
+func (None) Panes(string, string, []string) (int, bool)             { return 0, false }
 
 // Graphics: nothing is in the way when there is no multiplexer.
 func (None) Graphics(string) (bool, string) { return true, "no multiplexer in the way" }

@@ -47,6 +47,11 @@ type Backend interface {
 	// into the session otherwise.
 	SessionEnv(p platform.Info) map[string]string
 
+	// Clients counts who is looking at a session, false when it could not be
+	// found out. Asked before a window is opened or a container entered, so
+	// the refusal lands where the person typing can read it.
+	Clients(bin string, env []string, session string, live []string) (int, bool)
+
 	// CurrentSession is the session this shell is inside, "" when it is not.
 	CurrentSession() string
 

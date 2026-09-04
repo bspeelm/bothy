@@ -1,12 +1,15 @@
 package mux
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
@@ -56,6 +59,10 @@ func (Zellij) SessionName(dir string) string {
 // Open writes the rendered layout where zellij reads it, then attaches. The
 // file is regenerated every launch; editing it does nothing.
 func (z Zellij) Open(r Request) error {
+	if n, ok := attachedClients(r.Bin, r.Env, r.Session, r.Live); ok && n > 0 {
+		return InUse(r.Session)
+	}
+
 	kdl, err := render(r.Profile, r.Commands)
 	if err != nil {
 		return err
@@ -98,6 +105,55 @@ func (Zellij) discardDead(bin string, env []string, session string) {
 }
 
 func (Zellij) CurrentSession() string { return os.Getenv("ZELLIJ_SESSION_NAME") }
+
+func (Zellij) Clients(bin string, env []string, session string, live []string) (int, bool) {
+	return attachedClients(bin, env, session, live)
+}
+
+// InUse refuses a launch into a session someone is already looking at. Joining
+// makes a second client, and zellij sizes a session to its smallest one -- the
+// workspace shrinks to this window and a fullscreen TUI overprints itself.
+// zellij offers no way to displace a client, so the only cure is not joining.
+func InUse(session string) error {
+	return fmt.Errorf("%s is already open in another terminal\n"+
+		"      zellij sizes a session to its smallest client, so joining from\n"+
+		"      here would shrink it. Close it there, or run 'bothy attach %s'\n"+
+		"      to join anyway.", session, session)
+}
+
+// attachedClients counts who is looking at a session -- a header then a row per
+// client id -- reporting false when it could not find out, since a launch is
+// not worth blocking on a probe. A var so a test can answer without a zellij;
+// only live sessions are asked, as list-clients on a dead one never returns.
+var attachedClients = func(bin string, env []string, session string, live []string) (int, bool) {
+	if !slices.Contains(live, session) {
+		return 0, true
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, "action", "list-clients")
+	// list-clients takes no --session; the name comes from the environment.
+	cmd.Env = append(append([]string{}, env...), "ZELLIJ_SESSION_NAME="+session)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, false
+	}
+	return countClients(string(out)), true
+}
+
+func countClients(out string) int {
+	n := 0
+	for _, line := range strings.Split(out, "\n") {
+		f := strings.Fields(line)
+		if len(f) == 0 {
+			continue
+		}
+		if _, err := strconv.Atoi(f[0]); err == nil {
+			n++
+		}
+	}
+	return n
+}
 
 // Live reports the sessions that are running. `--short` is not the flag for
 // that: it prints stopped ones too, minus the marker that tells them apart.

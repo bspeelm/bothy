@@ -117,3 +117,72 @@ func TestLiveIgnoresProseOnTheSessionList(t *testing.T) {
 		t.Errorf("liveSessions read %v out of a sentence", got)
 	}
 }
+
+// The output of `zellij action list-clients`, captured from a real session
+// that had been re-entered. Two clients on one pane is the bug: zellij sizes
+// the session to the smaller terminal, and a fullscreen TUI renders its wrap
+// math against geometry that is not the window it is drawing into.
+const twoClients = `CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND
+1         terminal_1     claude         
+2         terminal_1     claude         
+`
+
+// A live session with nobody looking at it prints the header and no rows, and
+// that is the case a launch must go through -- it is what "detached" is.
+const noClients = "CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND\n"
+
+func TestCountClientsReadsRealOutput(t *testing.T) {
+	if got := countClients(twoClients); got != 2 {
+		t.Errorf("countClients on a re-entered session = %d, want 2", got)
+	}
+	if got := countClients(noClients); got != 0 {
+		t.Errorf("countClients on a detached session = %d, want 0", got)
+	}
+	if got := countClients(""); got != 0 {
+		t.Errorf("countClients on nothing = %d, want 0", got)
+	}
+}
+
+// Re-running the launcher on a session already on someone's screen must stop
+// before it attaches. There is no fixing this afterwards: zellij exposes no
+// way to displace a client, and `action detach` addressed by environment exits
+// 0 without detaching anyone.
+func TestLaunchRefusesASessionSomeoneIsLookingAt(t *testing.T) {
+	restore := attachedClients
+	defer func() { attachedClients = restore }()
+	attachedClients = func(string, []string, string, []string) (int, bool) { return 2, true }
+
+	err := z.Open(Request{Session: "bothy-work", Live: []string{"bothy-work"}})
+	if err == nil {
+		t.Fatal("launched into a session with two clients attached")
+	}
+	// The refusal has to name the way out, or it is a dead end.
+	if !strings.Contains(err.Error(), "bothy attach bothy-work") {
+		t.Errorf("the refusal is %q, which does not say how to join deliberately", err)
+	}
+}
+
+// Detached is the ordinary case -- you closed the terminal and came back -- and
+// it must not be refused. Open goes on to render a layout it has not been
+// given, so the assertion is that whatever fails, it is not this.
+func TestLaunchReturnsToADetachedSession(t *testing.T) {
+	restore := attachedClients
+	defer func() { attachedClients = restore }()
+
+	for _, tc := range []struct {
+		name string
+		n    int
+		ok   bool
+	}{
+		{"nobody attached", 0, true},
+		{"the probe could not say", 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			attachedClients = func(string, []string, string, []string) (int, bool) { return tc.n, tc.ok }
+			err := z.Open(Request{Session: "bothy-work", Live: []string{"bothy-work"}})
+			if err != nil && strings.Contains(err.Error(), "already open in another terminal") {
+				t.Error("refused a session nobody is looking at")
+			}
+		})
+	}
+}
