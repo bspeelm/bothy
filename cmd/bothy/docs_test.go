@@ -615,3 +615,40 @@ func TestHomeIndexesEveryWikiPage(t *testing.T) {
 		}
 	}
 }
+
+// ci.yml lets a markdown-only change skip the jobs that build and install
+// bothy. Two jobs must never be in that set: `check` runs the tests in this
+// file, which read the markdown, and `no-paid-palette` scans it for colour
+// values. Gating either of them would mean prose stopped being checked on
+// exactly the changes that are only prose.
+func TestTheJobsThatReadProseAreNotSkippedForProse(t *testing.T) {
+	ci, err := os.ReadFile(filepath.Join("../..", ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Each job is a two-space key; its body is everything up to the next one.
+	job := regexp.MustCompile(`(?m)^  ([a-z][a-z-]*):\n((?:(?:    .*)?\n)*)`)
+	gated := map[string]bool{}
+	for _, m := range job.FindAllStringSubmatch(string(ci), -1) {
+		gated[m[1]] = strings.Contains(m[2], "needs: scope")
+	}
+	if len(gated) == 0 {
+		t.Fatal("parsed no jobs out of ci.yml; this test is asserting nothing")
+	}
+
+	for _, name := range []string{"check", "no-paid-palette"} {
+		if _, ok := gated[name]; !ok {
+			t.Errorf("ci.yml has no %q job; this test is asserting nothing about it", name)
+		} else if gated[name] {
+			t.Errorf("the %q job is gated on scope, so a prose-only change would not run it", name)
+		}
+	}
+	for _, name := range []string{"isolation", "container", "macos", "deb"} {
+		if _, ok := gated[name]; !ok {
+			t.Errorf("ci.yml has no %q job; this test is asserting nothing about it", name)
+		} else if !gated[name] {
+			t.Errorf("the %q job is not gated on scope, so prose changes still pay for it", name)
+		}
+	}
+}
