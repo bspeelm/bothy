@@ -10,6 +10,12 @@ set -eu
 
 UNANSWERED='_Unanswered._'
 
+# The packets are the review, not a thing under review. Without this a packet
+# is in the diff it maps and cannot name itself, because the map is written
+# before the file exists -- and every release is blocked instead of an
+# unreviewed one.
+mapped() { git diff --name-only "$1" | grep -v '^docs/review/' || true; }
+
 check=0
 if [ "${1:-}" = "--check" ]; then check=1; shift; fi
 ver=${1:-}
@@ -31,7 +37,7 @@ if [ "$check" = 1 ]; then
     base=$(sed -n 's/^Base: `\([^`]*\)`.*/\1/p' "$packet" | head -1)
     case "$base" in "(none)"|"") range=HEAD ;; *) range="$base..HEAD" ;; esac
     missing=0
-    for f in $(git diff --name-only $range); do
+    for f in $(mapped "$range"); do
         grep -qF "\`$f\`" "$packet" || {
             echo "$packet omits $f, which the diff since $base contains"
             missing=1
@@ -45,7 +51,7 @@ if [ "$check" = 1 ]; then
     stale=0
     for s in $(sed -n 's/^| *`\([^`]*\)` *|.*|.*|$/\1/p' docs/reviewed.md); do
         touched=0
-        for f in $(git diff --name-only $range); do
+        for f in $(mapped "$range"); do
             case "$f" in "$s"|"$s"/*) touched=1; break ;; esac
         done
         test "$touched" = 1 || continue
@@ -66,7 +72,7 @@ fi
 
 base=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 range=${base:+$base..}HEAD
-changed=$(git diff --name-only $range)
+changed=$(mapped "$range")
 test -n "$changed" || { echo "nothing changed since ${base:-the beginning}"; exit 1; }
 
 # The load-bearing list is the ledger's, so the two cannot disagree.
@@ -96,8 +102,9 @@ mkdir -p docs/review
     echo
     echo "## Change map"
     echo
-    echo "Generated from \`git diff --name-only $range\`. \`--check\` recomputes"
-    echo "it: a file this packet does not name anywhere fails the release."
+    echo "Generated from \`git diff --name-only $range\`, less \`docs/review/\`."
+    echo "\`--check\` recomputes it: a file this packet does not name anywhere"
+    echo "fails the release."
     echo
     echo "### Load-bearing"
     echo
