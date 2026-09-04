@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -118,10 +119,10 @@ func (l *Lockfile) Save(path string) error {
 }
 
 // upstreamSum reads the sha256 a project published for one asset, or "" when
-// it published none. The file is "<sha256>  <filename>" lines whether it
-// covers one asset or all of them, so both are read by matching the filename.
-// Not every published checksum is of the asset: zellij hashes the binary
-// *inside* the archive, hence its empty checksums field.
+// it published none. The file is "<sha256>  <filename>" lines either way, so
+// both shapes are read by matching the filename -- or, where
+// checksum_covers = "binary", its basename: zellij names the line by the
+// binary's build path, which matches no asset.
 func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (string, error) {
 	name, err := t.ChecksumFile(p, version)
 	if err != nil || name == "" {
@@ -133,7 +134,11 @@ func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (str
 	}
 	for _, line := range strings.Split(string(body), "\n") {
 		f := strings.Fields(line)
-		if len(f) == 2 && strings.TrimPrefix(f[1], "*") == asset {
+		if len(f) != 2 {
+			continue
+		}
+		listed := strings.TrimPrefix(f[1], "*")
+		if listed == asset || (t.ChecksumCovers == "binary" && path.Base(listed) == t.Binary) {
 			return strings.ToLower(f[0]), nil
 		}
 	}
@@ -263,10 +268,23 @@ func Relock(t tools.Tool, progress func(string)) (Entry, error) {
 		sum := Sum(body)
 		e.SHA256[p.OS+"_"+p.Arch] = sum
 
+		// The pin is always the asset's hash: that is what Install checks
+		// before unpacking. The cross-check may be against the binary inside.
+		mine := sum
+		if t.ChecksumCovers == "binary" {
+			found, err := Extract(body, asset, []string{t.Binary})
+			if err != nil || found[t.Binary] == nil {
+				return Entry{}, fmt.Errorf(
+					"fetch: %s %s %s_%s: cannot read %s out of %s to compare with the "+
+						"published checksum: %v", t.Name, version, p.OS, p.Arch, t.Binary, asset, err)
+			}
+			mine = Sum(found[t.Binary])
+		}
+
 		// Cross-check against what the project published, where it publishes
-		// anything. A checksum computed from the bytes GitHub served is
-		// trust-on-first-use: it catches tampering after locking and pins
-		// tampering before. This is the only place that gap can be closed.
+		// anything. A hash of the bytes GitHub served is trust-on-first-use;
+		// a match with the release's own file rules out substitution after
+		// publication, and nothing before it.
 		switch upstream, err := upstreamSum(t, p, tag, version, asset); {
 		case err != nil:
 			if progress != nil {
@@ -276,13 +294,13 @@ func Relock(t tools.Tool, progress func(string)) (Entry, error) {
 			if progress != nil {
 				progress("    no upstream checksum published")
 			}
-		case upstream != sum:
+		case upstream != mine:
 			// Hard failure: this is the case reading the upstream value exists
 			// to catch.
 			return Entry{}, fmt.Errorf(
 				"fetch: %s %s %s_%s: upstream checksum does not match what was downloaded\n"+
 					"      upstream %s\n      download %s",
-				t.Name, version, p.OS, p.Arch, upstream, sum)
+				t.Name, version, p.OS, p.Arch, upstream, mine)
 		default:
 			e.Verified = append(e.Verified, p.OS+"_"+p.Arch)
 			if progress != nil {

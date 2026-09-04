@@ -98,10 +98,11 @@ func TestPinnedVersionsSatisfyTheirOwnMinimums(t *testing.T) {
 	}
 }
 
-// The two shapes projects publish in, and one field covers both: a sibling
-// beside each asset, or one manifest for the whole release. What is inside is
-// the same either way, so the parser does not need to know which it got.
-func TestChecksumFileRendersBothShapes(t *testing.T) {
+// The shapes projects publish in, and one field covers them all: a sibling
+// beside each asset, a sibling named for the asset with its archive extension
+// swapped, or one manifest for the whole release. What is inside is the same
+// either way, so the parser does not need to know which it got.
+func TestChecksumFileRendersEveryShape(t *testing.T) {
 	p := platform.Info{OS: "linux", Arch: "x86_64"}
 	for _, tc := range []struct {
 		name      string
@@ -109,6 +110,7 @@ func TestChecksumFileRendersBothShapes(t *testing.T) {
 		want      string
 	}{
 		{"sibling", "{asset}.sha256", "thing-1.2.3-linux.tar.gz.sha256"},
+		{"sibling, extension swapped", "{asset_stem}.sha256sum", "thing-1.2.3-linux.sha256sum"},
 		{"manifest", "checksums.txt", "checksums.txt"},
 		{"manifest with a version", "t_{version}_checksums.txt", "t_1.2.3_checksums.txt"},
 		{"publishes none", "", ""},
@@ -207,5 +209,80 @@ func TestIsSourceBuildKnowsWhichVersionsAreAhead(t *testing.T) {
 				t.Errorf("IsSourceBuild(%q) = %v, want %v", tc.version, got, tc.want)
 			}
 		})
+	}
+}
+
+// zellij publishes a checksum of the binary inside the archive, named by the
+// path it was built at, so nothing in the file matches the asset. Matching on
+// the basename is what makes that release cross-checkable at all; without it
+// zellij's four platforms stay trust-on-first-use.
+func TestUpstreamSumMatchesTheBinaryInsideTheArchive(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "d006c521  target/x86_64-unknown-linux-musl/release/zellij\n")
+	}))
+	defer srv.Close()
+	old := ReleaseBase
+	ReleaseBase = srv.URL
+	defer func() { ReleaseBase = old }()
+
+	tool := tools.Tool{
+		Header: slots.Header{Name: "zellij"},
+		Fetch: slots.Fetch{
+			Binary:         "zellij",
+			Checksums:      "{asset_stem}.sha256sum",
+			ChecksumCovers: "binary",
+			Assets:         map[string]string{"linux_x86_64": "zellij-x86_64-unknown-linux-musl.tar.gz"},
+		},
+	}
+	got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"},
+		"v0.45.1", "0.45.1", "zellij-x86_64-unknown-linux-musl.tar.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "d006c521" {
+		t.Errorf("upstreamSum = %q, want the line naming the binary", got)
+	}
+}
+
+// And a tool that has not opted in must not match on a basename: a manifest
+// listing "bin/thing" alongside the asset would otherwise be read as the
+// asset's checksum and compared against the wrong bytes.
+func TestUpstreamSumWillNotMatchABasenameUnasked(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "aaaa  bin/thing\n")
+	}))
+	defer srv.Close()
+	old := ReleaseBase
+	ReleaseBase = srv.URL
+	defer func() { ReleaseBase = old }()
+
+	tool := tools.Tool{
+		Header: slots.Header{Name: "thing"},
+		Fetch: slots.Fetch{
+			Binary:    "thing",
+			Checksums: "sums.txt",
+			Assets:    map[string]string{"linux_x86_64": "thing-linux.tar.gz"},
+		},
+	}
+	if got, err := upstreamSum(tool, platform.Info{OS: "linux", Arch: "x86_64"},
+		"v1", "1", "thing-linux.tar.gz"); err == nil {
+		t.Errorf("upstreamSum = %q, want a refusal: nothing in the file names the asset", got)
+	}
+}
+
+// The stem is how a sibling checksum is named for an archive. Getting it wrong
+// yields a 404, which reads as "no upstream checksum published" -- a silent
+// downgrade to trust-on-first-use rather than an error.
+func TestAssetStemDropsOnlyTheArchiveExtension(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"zellij-x86_64-unknown-linux-musl.tar.gz", "zellij-x86_64-unknown-linux-musl"},
+		{"yazi-x86_64-unknown-linux-musl.zip", "yazi-x86_64-unknown-linux-musl"},
+		{"thing.tar.xz", "thing"},
+		{"jq-linux-amd64", "jq-linux-amd64"},
+		{"tool-1.2.3-linux", "tool-1.2.3-linux"},
+	} {
+		if got := tools.AssetStem(tc.in); got != tc.want {
+			t.Errorf("AssetStem(%q) = %q, want %q", tc.in, got, tc.want)
+		}
 	}
 }

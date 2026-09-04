@@ -177,3 +177,24 @@ func TestPlatformsMatchTheAssetKeys(t *testing.T) {
 		}
 	}
 }
+
+// A misspelt checksum_covers would read as "asset" and stop the cross-check
+// without saying so, which is the failure the field exists to prevent. It has
+// to fail at load, where every command hits it.
+func TestEveryShippedSlotDeclaresAKnownChecksumCovers(t *testing.T) {
+	all, err := Load()
+	if err != nil {
+		t.Fatalf("the shipped slots do not load: %v", err)
+	}
+	for _, tool := range all {
+		switch tool.ChecksumCovers {
+		case "", "asset":
+		case "binary":
+			if tool.Checksums == "" {
+				t.Errorf("%s covers a binary with a checksum file it does not name", tool.Name)
+			}
+		default:
+			t.Errorf("%s has checksum_covers = %q", tool.Name, tool.ChecksumCovers)
+		}
+	}
+}

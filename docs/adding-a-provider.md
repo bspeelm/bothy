@@ -41,6 +41,24 @@ Then `bothy lock` downloads each asset and records its checksum, committed
 alongside the definition. `platforms` restates the OS prefixes of
 `[fetch.assets]`, and a test holds them together.
 
+**If the project publishes checksums of its own, say so** — `bothy lock` then
+compares the two and refuses if they disagree, which is the difference between
+a pin that records what the maintainer downloaded and one that records what the
+project released.
+
+```toml
+checksums       = "checksums.txt"        # one manifest for the release
+checksums       = "{asset}.sha256"       # a sibling beside each asset
+checksums       = "{asset_stem}.sha256sum"   # the asset name, extension swapped
+checksum_covers = "binary"               # it hashes what is inside the archive
+```
+
+`checksum_covers` defaults to the asset. Set it to `"binary"` only when the
+published file hashes the executable rather than the archive — zellij does,
+naming it by its build path — and `bothy lock` will unpack the asset to
+compare. A value that is neither fails at load rather than silently skipping
+the comparison.
+
 Two rules that matter more than they look:
 
 **`min_version` is the oldest that actually works, not the newest available.**

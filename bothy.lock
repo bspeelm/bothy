@@ -76,6 +76,7 @@ linux_x86_64 = 'a6702034790afcdbb546b73b288c9b184a751fa3f2f17f0ad4d26fc302fb8d45
 name = 'zellij'
 tag = 'v0.45.1'
 version = '0.45.1'
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
 darwin_aarch64 = 'c029ba4fe1927b79ad9f0cdd59155c4dff80777863c85857d4d09b88b56f9891'
