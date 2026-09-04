@@ -242,15 +242,20 @@ var Platforms = []platform.Info{
 	{OS: "darwin", Arch: "aarch64"},
 }
 
-// Relock refreshes one tool's entry: resolve the latest tag, then download
-// every platform's asset and record its checksum. Downloading real assets is
-// slow and deliberate -- a checksum copied from a metadata endpoint rather
-// than computed from the bytes bothy will run verifies nothing.
+// Relock refreshes one tool's entry at the latest release.
 func Relock(t tools.Tool, progress func(string)) (Entry, error) {
 	tag, err := LatestRelease(t.Repo)
 	if err != nil {
 		return Entry{}, err
 	}
+	return RelockAt(t, tag, progress)
+}
+
+// RelockAt refreshes one tool's entry at a given tag: download every
+// platform's asset and record its checksum. Downloading real assets is slow
+// and deliberate -- a checksum copied from a metadata endpoint rather than
+// computed from the bytes bothy will run verifies nothing.
+func RelockAt(t tools.Tool, tag string, progress func(string)) (Entry, error) {
 	version := VersionFromTag(tag)
 
 	e := Entry{Name: t.Name, Tag: tag, Version: version, SHA256: map[string]string{}}

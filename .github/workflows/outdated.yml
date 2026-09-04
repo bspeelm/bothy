@@ -1,6 +1,6 @@
 name: outdated
 
-# bothy.lock pins nine tools by version and checksum, and nothing noticed when
+# bothy.lock pins every tool by version and checksum, and nothing noticed when
 # one of them moved. The pins are only correct on the day they are written.
 #
 # This opens or updates one tracking issue. Not a pull request, and never an
@@ -64,7 +64,7 @@ jobs:
 
           if [ "$stale" -eq 0 ] && [ "$unknown" -eq 0 ]; then
             if [ -n "$existing" ]; then
-              gh issue comment "$existing" --body "All nine tools are at their latest release. Closing."
+              gh issue comment "$existing" --body "Every pinned tool is at its latest release. Closing."
               gh issue close "$existing"
             fi
             echo "nothing to report"

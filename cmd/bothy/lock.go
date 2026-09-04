@@ -16,8 +16,14 @@ func cmdLock(args []string) error {
 	fs := flag.NewFlagSet("lock", flag.ExitOnError)
 	path := fs.String("out", fetch.LockPath, "lockfile to write")
 	only := fs.String("tool", "", "refresh a single tool")
+	// Pinning backwards is why this exists: when the latest release turns out
+	// to be broken, the alternative is editing four checksums by hand.
+	tag := fs.String("tag", "", "pin to this upstream tag instead of the latest release (needs -tool)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *tag != "" && *only == "" {
+		return fmt.Errorf("-tag names one project's release, so it needs -tool")
 	}
 
 	all, err := tools.Load()
@@ -37,7 +43,12 @@ func cmdLock(args []string) error {
 		if *only != "" && t.Name != *only {
 			continue
 		}
-		entry, err := fetch.Relock(t, progress)
+		var entry fetch.Entry
+		if *tag != "" {
+			entry, err = fetch.RelockAt(t, *tag, progress)
+		} else {
+			entry, err = fetch.Relock(t, progress)
+		}
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "  %s: %v\n", t.Name, err)
 			failed++
