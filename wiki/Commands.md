@@ -21,6 +21,20 @@ missing, asks before downloading, then opens.
 | `--window` | always open a new Ghostty window |
 | `--in-place` | always run in the terminal you are already in |
 
+**Closing the window does not strand the project.** Inside a container the
+multiplexer client can outlive the terminal that opened it — `podman exec`
+ignores the hangup — and a session with a client on it is refused, which used
+to mean the project could not be opened again. bothy now ends a client that no
+terminal is watching and says so:
+
+```
+bothy: reclaimed bothy-work from a closed window
+```
+
+A session someone is actually looking at is still refused; see [ADR-042]
+(https://github.com/bspeelm/bothy/blob/main/docs/decisions.md) for how it tells
+the two apart.
+
 `--window` and `--in-place` override bothy's own judgement for one run. It
 normally decides by asking whether your terminal can draw images. To make the
 override permanent, `bothy config set workspace.launch here` (or `window`); the

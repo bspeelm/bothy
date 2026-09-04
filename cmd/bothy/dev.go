@@ -71,6 +71,10 @@ func cmdDev(args []string) error {
 			return nil
 		}
 	}
+	// After the spawn: the bothy that opens a window and exits is not the one
+	// watching the session, the one living in the window is.
+	defer ownSession(p, cfg, plan.Dir)()
+
 	if plan.Container != "" {
 		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
 	}
@@ -87,10 +91,64 @@ func refuseIfInUse(p platform.Info, cfg config.Config, dir string) error {
 	}
 	env := install.SessionEnv(p, cfg)
 	session := backend.SessionName(dir)
+	n, counted := backend.Clients(bin, env, session, backend.Live(bin, env))
+
+	switch clientVerdict(n, counted, mux.Owned(p.StateDir(), session)) {
+	case proceed:
+		return nil
+	case refuse:
+		return mux.InUse(session)
+	}
+
+	// Reclaiming is only worth anything if it worked, and the count says so
+	// rather than the kill: something else may have attached in between.
+	if mux.Reclaim(backend.Name(), session) == 0 {
+		return mux.InUse(session)
+	}
 	if n, ok := backend.Clients(bin, env, session, backend.Live(bin, env)); ok && n > 0 {
 		return mux.InUse(session)
 	}
+	fmt.Fprintf(os.Stderr, "bothy: reclaimed %s from a closed window\n", session)
 	return nil
+}
+
+type verdict int
+
+const (
+	proceed verdict = iota
+	refuse
+	reclaim
+)
+
+// clientVerdict decides what a client count means. A probe that could not
+// answer proceeds: a launch is not worth blocking on a diagnostic. A session
+// somebody is watching is refused, which is the whole point of counting. What
+// is left is a client with no terminal behind it.
+func clientVerdict(n int, counted, owned bool) verdict {
+	switch {
+	case !counted, n == 0:
+		return proceed
+	case owned:
+		return refuse
+	}
+	return reclaim
+}
+
+// ownSession records this process as the terminal showing the session, and
+// returns the func that forgets it.
+//
+// Never from inside a container: that copy outlives the window too, so its
+// record would never go stale and the project would be shut for good -- which
+// is the failure this whole path exists to undo.
+func ownSession(p platform.Info, cfg config.Config, dir string) func() {
+	if p.InContainer() {
+		return func() {}
+	}
+	backend, _, err := muxPath(p, cfg)
+	if err != nil {
+		return func() {}
+	}
+	return mux.Own(p.StateDir(), backend.SessionName(dir))
 }
 
 // launch renders the profile and hands off to the multiplexer with the
@@ -214,6 +272,11 @@ func cmdAttach(args []string) error {
 	if err != nil {
 		return err
 	}
+	// Same reason ownSession refuses inside a container: the copy in there
+	// outlives the window, so its record would never go stale.
+	if plan.Session != "" && !p.InContainer() {
+		defer mux.Own(p.StateDir(), plan.Session)()
+	}
 	if plan.Container != "" {
 		return containerHop(plan.Container, plan.Command)
 	}
@@ -278,6 +341,10 @@ type attachPlan struct {
 	Bin  string
 	Args []string
 	Env  []string
+	// Session is what is being joined, which is what gets claimed. The
+	// refusal names `bothy attach` as the way in, so a client it creates has
+	// to be marked or the next launch would reclaim it.
+	Session string
 }
 
 func planAttach(p platform.Info, cfg config.Config, session string, args []string) (attachPlan, error) {
@@ -287,9 +354,13 @@ func planAttach(p platform.Info, cfg config.Config, session string, args []strin
 	if len(args) == 0 && session != "" {
 		args = []string{session}
 	}
+	joined := ""
+	if len(args) > 0 {
+		joined = args[0]
+	}
 	if !p.InContainer() {
 		if container := install.ContainerFor(p, cfg); container != "" {
-			return attachPlan{Container: container, Command: attachCommand(args)}, nil
+			return attachPlan{Container: container, Command: attachCommand(args), Session: joined}, nil
 		}
 	}
 	bin, err := lookPathIn(p, mux)
@@ -297,8 +368,9 @@ func planAttach(p platform.Info, cfg config.Config, session string, args []strin
 		return attachPlan{}, fmt.Errorf("%s is not installed", mux)
 	}
 	return attachPlan{
-		Bin:  bin,
-		Args: append([]string{"attach"}, args...),
+		Bin:     bin,
+		Session: joined,
+		Args:    append([]string{"attach"}, args...),
 		// The client reads config too -- keybindings in particular -- so
 		// without this an attach reads your zellij config while the session
 		// it joins was launched with bothy's.
