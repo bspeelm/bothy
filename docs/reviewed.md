@@ -36,9 +36,9 @@ decision rather than an oversight.
 | `internal/install/plugins.go` | - | - |
 | `internal/confine` | - | - |
 | `cmd/bothy/desktop.go` | - | - |
-| `Makefile` | - | - |
-| `.github/workflows` | - | - |
-| `scripts` | - | - |
+| `Makefile` | BS | f75b503 |
+| `.github/workflows` | BS | 1223a87 |
+| `scripts` | BS | cb4b840 |
 
 ## How to do the read
 
