@@ -722,3 +722,38 @@ func TestEveryToolCountInProseMatchesTheLock(t *testing.T) {
 		t.Fatal("no tool count found anywhere; this test is asserting nothing")
 	}
 }
+
+// The budgets are written down in three places and enforced in one. A raise
+// that updated the Makefile and not the prose would leave CONTRIBUTING.md
+// telling a contributor a limit that is not the limit.
+func TestTheDocumentedBudgetsMatchTheMakefile(t *testing.T) {
+	root := "../.."
+	mk, err := os.ReadFile(filepath.Join(root, "Makefile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := func(name string) string {
+		m := regexp.MustCompile(name + `\s*:=\s*(\d+)`).FindSubmatch(mk)
+		if m == nil {
+			t.Fatalf("no %s in the Makefile; this test is asserting nothing", name)
+		}
+		return string(m[1])
+	}
+	code, ratio := value("MAX_CODE_LINES"), value("MAX_COMMENT_RATIO")
+	// 6500 is written "6,500" in prose.
+	pretty := code[:len(code)-3] + "," + code[len(code)-3:]
+
+	for _, f := range []string{"CONTRIBUTING.md", filepath.Join("docs", "PLAN.md")} {
+		body, err := os.ReadFile(filepath.Join(root, f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := string(body)
+		if !strings.Contains(s, pretty) && !strings.Contains(s, code) {
+			t.Errorf("%s never states the code cap of %s", f, pretty)
+		}
+		if !strings.Contains(s, ratio+"%") {
+			t.Errorf("%s never states the comment ratio of %s%%", f, ratio)
+		}
+	}
+}
