@@ -1519,3 +1519,54 @@ orphans already on disk, nothing after a SIGKILL or a reboot, and the teardown
 it needs is a fresh `podman exec` round trip fired from a process that is being
 killed. It remains available as an optimisation now that correctness does not
 depend on it.
+
+## ADR-043 — The window closing ends the client, and the search for a signal stops here
+
+**Status:** accepted. Reverses one rejection in ADR-042 and closes one question.
+
+ADR-042 turned down tearing the client down on a hangup because "the teardown
+it needs is a fresh `podman exec` round trip fired from a process that is being
+killed". **That premise is wrong.** The pid namespace is shared with a toolbox
+container — a container process's pid *is* a host pid, and it is owned by the
+invoking user. Ending the client is a signal sent from the host, not a round
+trip through the container runtime, and it is the same call `Reclaim` already
+makes and that was demonstrated ending a real container-side client.
+
+So the host-side bothy now handles a hangup: it forgets its record and ends the
+session's client. The orphan is prevented rather than tidied up, and the
+reclaim in ADR-042 becomes what it should have been from the start — the net
+for a crash, a `SIGKILL`, or a session that predates this code.
+
+**Only the hangup.** An interrupt reaches this process too, because it sits in
+the window's foreground process group, and Ctrl-C in a pane must never end the
+workspace. A deferred call is no use either: the default disposition for a
+hangup is to die, and nothing deferred runs on the way out.
+
+**The consequence worth naming:** closing the window that launched a workspace
+ends every client of that session, including one joined from elsewhere with
+`bothy attach`. bothy refuses a second launch into a live session, so the only
+way to be in that position is deliberate, and closing the launching window is a
+reasonable way to say the workspace is finished.
+
+**And the question that is now closed.** Whether a client can be recognised as
+abandoned by looking at it was measured on a real window, before and after
+closing it with the mouse:
+
+| | before | after |
+|---|---|---|
+| `state` | S | S |
+| `tty_nr` | 34817 | 34817 |
+| `tpgid` | 253292 | 253292 |
+
+Nothing moves. conmon holds the pty's master, so no hangup ever reaches the
+slave and the client keeps both its controlling terminal and its foreground
+process group after the window is gone. There is no fourth condition to add,
+and no reading of the process table that distinguishes a live client from an
+abandoned one. **Nobody should look again.** The record is the only signal
+there is, which is why it exists.
+
+**One rough edge, deliberately not smoothed.** A session attached before this
+shipped has no record, so its first launch afterwards reclaims the client. If
+that window is still open the cost is a detach, not a lost session, and it
+happens once per session. A guard for it would be state about state, which is
+how this kind of thing stops ever being finished.
