@@ -220,6 +220,15 @@ jobs:
           # From /usr/bin, not from the build tree.
           test "$(command -v bothy)" = /usr/bin/bothy
           bothy version
+          # -trimpath is a claim about the binary that ships, so check the
+          # binary that ships. v0.9.0 went out carrying 69 absolute paths from
+          # this runner's workspace, and only goreleaser's own build would have
+          # shown it -- `make check` builds with the Makefile's flags, not
+          # these.
+          if grep -qa "$GITHUB_WORKSPACE/vendor/" /usr/bin/bothy; then
+            echo "::error::the packaged binary embeds build paths; -trimpath is not taking"
+            exit 1
+          fi
           # No dependencies is a claim (ADR-013), so check it rather than
           # assume it -- an accidental Depends: would pull perl onto the
           # machine of someone who wanted one static binary.

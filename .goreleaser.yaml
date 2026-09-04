@@ -16,6 +16,12 @@ builds:
     binary: bothy
     env:
       - CGO_ENABLED=0
+    # -trimpath, or the vendored dependency's absolute build paths are baked
+    # into the binary: v0.9.0 shipped 69 of "/home/runner/work/bothy/bothy/...".
+    # Nothing secret in a public runner's path, but it makes the build
+    # unreproducible and namcap rejects the AUR package for it.
+    flags:
+      - -trimpath
     # -s -w strips the symbol table and DWARF; the binary is close enough to
     # the 10 MB budget in PLAN.md §3 that this is not optional.
     ldflags:
@@ -99,7 +105,7 @@ aur_sources:
     # Verified by building this shape in an archlinux container first.
     build: |
       cd "$pkgname-$pkgver"
-      CGO_ENABLED=0 go build -mod=vendor \
+      CGO_ENABLED=0 go build -trimpath -mod=vendor \
         -ldflags "-s -w -X main.Version=$pkgver" \
         -o bothy ./cmd/bothy
     package: |

@@ -45,7 +45,7 @@ leaves your dotfiles alone: everything it manages lives under
 export CGO_ENABLED=0
 export GOFLAGS="-mod=vendor"
 export GOPROXY=off
-go build -ldflags "-s -w -X main.Version=%{version}" -o %{name} ./cmd/%{name}
+go build -trimpath -ldflags "-s -w -X main.Version=%{version}" -o %{name} ./cmd/%{name}
 
 %install
 install -Dpm 0755 %{name} %{buildroot}%{_bindir}/%{name}

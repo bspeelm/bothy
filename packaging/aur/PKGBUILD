@@ -16,7 +16,7 @@ build() {
   # Matches .goreleaser.yaml exactly, including the version string: it stamps
   # {{ .Version }}, which has no leading v, and two channels reporting different
   # versions for one release is what #60 exists to prevent.
-  CGO_ENABLED=0 go build -mod=vendor \
+  CGO_ENABLED=0 go build -trimpath -mod=vendor \
     -ldflags "-s -w -X main.Version=$pkgver" \
     -o bothy ./cmd/bothy
 }
