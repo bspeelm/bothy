@@ -225,8 +225,58 @@ func InstalledIn(p platform.Info) string {
 	return m.InstalledIn
 }
 
-// ContainerFor is cfg.ContainerFor with the recorded install container filled
-// in, which is what every caller actually wants.
-func ContainerFor(p platform.Info, cfg config.Config) string {
-	return cfg.ContainerFor(p, InstalledIn(p))
+// Box is which container a project runs in and which rule decided it, so
+// `bothy box` can explain the answer rather than only assert it.
+type Box struct {
+	Name   string
+	Reason string
+}
+
+// Resolve decides which container a project directory runs in, and says which
+// rule decided. In order: an explicit workspace.container, the container bothy
+// is already inside, this project's recorded answer, and finally where the
+// tools were resolved.
+//
+// The recorded answer beats installed_in even when it is "": that entry is
+// someone choosing the host, and falling through would send them back to a box
+// they turned down. installed_in is the floor because it answers a different
+// question -- where the tools are, not where the project lives -- and is only
+// better than having no answer at all.
+func Resolve(p platform.Info, cfg config.Config, dir string) Box {
+	if cfg.Workspace.Container != "" {
+		return Box{cfg.Workspace.Container, "set by workspace.container"}
+	}
+	if p.ContainerName != "" {
+		return Box{p.ContainerName, "the container bothy is running in"}
+	}
+	if name, ok := ProjectBoxes(p)[dir]; ok {
+		return Box{name, "chosen for this project"}
+	}
+	if in := InstalledIn(p); in != "" {
+		return Box{in, "where bothy installed its tools"}
+	}
+	return Box{}
+}
+
+// ContainerFor is Resolve's answer alone, for the callers that only act on it.
+func ContainerFor(p platform.Info, cfg config.Config, dir string) string {
+	return Resolve(p, cfg, dir).Name
+}
+
+// ProjectBoxes is the project-to-box record, empty when it cannot be read: an
+// unreadable record means unanswered, which costs one prompt and repairs
+// itself, where failing the launch would not.
+func ProjectBoxes(p platform.Info) state.Boxes {
+	b, err := state.LoadBoxes(p.StateDir())
+	if err != nil {
+		return state.Boxes{}
+	}
+	return b
+}
+
+// RecordBox remembers which container a project directory belongs in.
+func RecordBox(p platform.Info, dir, name string) error {
+	b := ProjectBoxes(p)
+	b[dir] = name
+	return b.Save(p.StateDir())
 }

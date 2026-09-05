@@ -147,11 +147,23 @@ func alive(pid int) bool {
 // there dies with its terminal in milliseconds, so one still running is one
 // somebody is using.
 func unwatchedClients(tool, session string) []int {
+	var out []int
+	eachProc(func(pid int, argv []string) {
+		if isClientOf(argv, tool, session) && behindAContainer(pid) {
+			out = append(out, pid)
+		}
+	})
+	return out
+}
+
+// eachProc calls fn for every process with a readable argv, this one excluded.
+// A /proc that cannot be read simply yields nothing: every caller here has a
+// safe answer for "no evidence", and none of them should fail a launch over it.
+func eachProc(fn func(pid int, argv []string)) {
 	entries, err := os.ReadDir(procRoot)
 	if err != nil {
-		return nil // no /proc: no answer, and the caller refuses instead
+		return
 	}
-	var out []int
 	for _, e := range entries {
 		pid, err := strconv.Atoi(e.Name())
 		if err != nil || pid == os.Getpid() {
@@ -161,12 +173,8 @@ func unwatchedClients(tool, session string) []int {
 		if err != nil || len(raw) == 0 {
 			continue
 		}
-		argv := strings.Split(strings.TrimRight(string(raw), "\x00"), "\x00")
-		if isClientOf(argv, tool, session) && behindAContainer(pid) {
-			out = append(out, pid)
-		}
+		fn(pid, strings.Split(strings.TrimRight(string(raw), "\x00"), "\x00"))
 	}
-	return out
 }
 
 // isClientOf reads one process's argv. The session has to be an argument of

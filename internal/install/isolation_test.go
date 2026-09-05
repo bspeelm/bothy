@@ -11,6 +11,7 @@ import (
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/render"
+	"github.com/bspeelm/bothy/internal/state"
 )
 
 // sandbox builds a platform.Info rooted entirely in a temporary directory, so
@@ -604,7 +605,7 @@ func TestUninstallIsIdempotentAndFinishes(t *testing.T) {
 func TestLaunchGoesBackToTheContainerItWasInstalledIn(t *testing.T) {
 	p := sandbox(t)
 	p.Container = platform.Toolbx
-	p.ContainerName = "aip"
+	p.ContainerName = "rust"
 
 	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
 		t.Fatal(err)
@@ -612,34 +613,111 @@ func TestLaunchGoesBackToTheContainerItWasInstalledIn(t *testing.T) {
 	if _, err := EnsureTools(p, config.Default(), true, "0.1.5-test", nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := InstalledIn(p); got != "aip" {
-		t.Fatalf("InstalledIn() = %q, want aip — recorded even offline", got)
+	if got := InstalledIn(p); got != "rust" {
+		t.Fatalf("InstalledIn() = %q, want rust — recorded even offline", got)
 	}
 
 	// Now the same tree, seen from the host: no container detected.
 	host := p
 	host.Container = platform.NotContainer
 	host.ContainerName = ""
-	if got := ContainerFor(host, config.Default()); got != "aip" {
-		t.Errorf("from the host, ContainerFor() = %q, want aip", got)
+	if got := ContainerFor(host, config.Default(), "/w"); got != "rust" {
+		t.Errorf("from the host, ContainerFor() = %q, want rust", got)
 	}
 }
 
-// Precedence: an explicit setting beats the current container, which beats
-// where the install happened.
+// Precedence: an explicit setting beats the current container, which beats the
+// project's recorded box, which beats where the install happened.
 func TestContainerPrecedence(t *testing.T) {
-	cfg := config.Default()
-	inContainer := platform.Info{Container: platform.Toolbx, ContainerName: "here"}
+	p := sandbox(t)
+	dir := t.TempDir()
+	if err := RecordBox(p, dir, "recorded"); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := state.Load(p.StateDir())
+	m.InstalledIn = "installed"
+	if err := m.Save(p.StateDir(), "test"); err != nil {
+		t.Fatal(err)
+	}
 
-	if got := cfg.ContainerFor(inContainer, "installed"); got != "here" {
+	cfg := config.Default()
+	if got := Resolve(p, cfg, dir).Name; got != "recorded" {
+		t.Errorf("got %q, want the project's recorded box", got)
+	}
+	if got := Resolve(p, cfg, "/elsewhere").Name; got != "installed" {
+		t.Errorf("got %q, want the install container for an unrecorded project", got)
+	}
+
+	inContainer := p
+	inContainer.Container, inContainer.ContainerName = platform.Toolbx, "here"
+	if got := Resolve(inContainer, cfg, dir).Name; got != "here" {
 		t.Errorf("got %q, want the current container", got)
 	}
 	cfg.Workspace.Container = "chosen"
-	if got := cfg.ContainerFor(inContainer, "installed"); got != "chosen" {
+	if got := Resolve(inContainer, cfg, dir).Name; got != "chosen" {
 		t.Errorf("got %q, want the explicit setting", got)
 	}
-	if got := config.Default().ContainerFor(platform.Info{}, "installed"); got != "installed" {
-		t.Errorf("got %q, want the install container as the fallback", got)
+}
+
+// The bug this record exists to fix: installed_in says where the tools were
+// resolved, and the launcher was reading it as where the project lives. Every
+// project on a machine with several toolboxes went to the one bothy was
+// installed in, including projects whose own box was not even running.
+func TestTheProjectsBoxBeatsWhereTheInstallHappened(t *testing.T) {
+	p := sandbox(t)
+	dir := t.TempDir()
+	m, _ := state.Load(p.StateDir())
+	m.InstalledIn = "dev"
+	if err := m.Save(p.StateDir(), "test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordBox(p, dir, "legacy"); err != nil {
+		t.Fatal(err)
+	}
+	if got := Resolve(p, config.Default(), dir).Name; got != "legacy" {
+		t.Errorf("Resolve() = %q, want legacy", got)
+	}
+}
+
+// "The host" is an answer, and has to be remembered as firmly as a box name:
+// a sentinel-free implementation falls through to installed_in and puts the
+// project back in the box its owner just turned down.
+func TestAnsweringTheHostIsNotTheSameAsNeverAsking(t *testing.T) {
+	p := sandbox(t)
+	dir := t.TempDir()
+	m, _ := state.Load(p.StateDir())
+	m.InstalledIn = "dev"
+	if err := m.Save(p.StateDir(), "test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordBox(p, dir, ""); err != nil {
+		t.Fatal(err)
+	}
+	if got := Resolve(p, config.Default(), dir); got.Name != "" {
+		t.Errorf("Resolve() = %q, want the host", got.Name)
+	}
+	if _, ok := ProjectBoxes(p)[dir]; !ok {
+		t.Error("the answer was not recorded, so bothy would ask again")
+	}
+}
+
+// A project that no longer exists must not keep a claim on a box: stale
+// entries would accumulate and, once box stop can refuse, veto on behalf of a
+// directory thrown away months ago.
+func TestARecordForAVanishedProjectIsDropped(t *testing.T) {
+	p := sandbox(t)
+	dir := t.TempDir()
+	if err := RecordBox(p, dir, "rust"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := RecordBox(p, t.TempDir(), "docs"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := ProjectBoxes(p)[dir]; ok {
+		t.Errorf("%s is gone but still claims a box", dir)
 	}
 }
 

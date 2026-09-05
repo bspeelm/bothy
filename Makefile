@@ -9,10 +9,10 @@ LDFLAGS  := -s -w -X main.Version=$(VERSION)
 #
 # Two source limits: code is capped outright, and comments are capped as a
 # share of it, so prose has to stay proportionate to what it explains rather
-# than compete with it for room. See ADR-010, ADR-015 and ADR-021, and ADR-041
-# for why the code cap is 6,500 and the ratio 25.
+# than compete with it for room. See ADR-010, ADR-015 and ADR-021, and ADR-045
+# for why the code cap is 7,000 and the ratio 25.
 MAX_BINARY_BYTES  := 10485760
-MAX_CODE_LINES    := 6500
+MAX_CODE_LINES    := 7000
 MAX_COMMENT_RATIO := 25
 
 # Live prose, capped as a share of code for the same reason comments are: an

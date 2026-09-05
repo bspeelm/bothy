@@ -140,20 +140,6 @@ func TestExpandResolvesTilde(t *testing.T) {
 	}
 }
 
-// The container the workspace runs in is the one bothy installed into, unless
-// the config overrides it. Getting this backwards sends `dev` to the wrong box.
-func TestContainerForPrefersTheConfiguredName(t *testing.T) {
-	var p platform.Info
-	c := Default()
-	if got := c.ContainerFor(p, "recorded"); got != "recorded" {
-		t.Errorf("ContainerFor() = %q, want the recorded install container", got)
-	}
-	c.Workspace.Container = "configured"
-	if got := c.ContainerFor(p, "recorded"); got != "configured" {
-		t.Errorf("ContainerFor() = %q, want the configured container to win", got)
-	}
-}
-
 // A typo used to cost nothing to make and everything to find: Unmarshal over
 // the defaults accepted any key, so `slots.borwser = "yazi"` loaded cleanly,
 // did nothing, and kept doing nothing on every machine the config was carried

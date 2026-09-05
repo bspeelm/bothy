@@ -33,8 +33,7 @@ type Data struct {
 	ImagePreviews  bool
 	GraphicsReason string
 
-	Container     bool
-	ContainerName string
+	Container bool
 	// Opener is the command Yazi hands a file to, and OpenerDesc is what Yazi
 	// shows for it. A machine fact rather than a provider one, so it is
 	// decided here rather than by conditionals in the template.
@@ -255,7 +254,6 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		Container:        p.InContainer(),
 		Opener:           opener(p),
 		OpenerDesc:       openerDesc(p),
-		ContainerName:    ContainerFor(p, cfg),
 		EditorBin:        EditorBinary(cfg.Slots.Editor),
 		AgentBin:         AgentBinary(cfg.Slots.Agent),
 		BrowserBin:       cfg.Slots.Browser,

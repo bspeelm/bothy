@@ -83,8 +83,31 @@ Three of them matter:
 | `bothy doctor` | what is wrong, and what to type (`--json` for machines) |
 | `bothy config set <key> <value>` | change a setting |
 
-There are fifteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
+There are sixteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
 [how to read a doctor report](https://github.com/bspeelm/bothy/wiki/The-doctor).
+
+## Toolboxes
+
+If you work in toolboxes, bothy knows which one each project belongs in.
+
+Ask it, and it says which rule decided:
+
+```
+$ bothy box
+~/code/legacy runs in legacy — chosen for this project
+```
+
+The first time you open a project on a machine with more than one box, bothy
+asks once and remembers. Pressing Enter takes the answer it would have used
+anyway, and a machine with one box or none is never asked at all. `bothy box
+ls` shows every box and the sessions really in each — read from the process
+table, so a session somewhere unexpected is listed where it is.
+
+bothy does not create boxes, enter them by hand, or install a container
+runtime: `toolbox` makes them and `toolbox` enters them. What bothy adds is the
+thing toolbox has no concept of — which project belongs in which box, and which
+sessions are in each. [The rules, in
+full](https://github.com/bspeelm/bothy/wiki/Toolboxes).
 
 ## What it touches
 

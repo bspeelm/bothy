@@ -54,6 +54,13 @@ func cmdDev(args []string) error {
 		return fmt.Errorf("%s is not a directory", plan.Dir)
 	}
 
+	// Before the install and before the hop: the answer decides where both of
+	// them happen, and this is the last point at which the bothy asking is the
+	// one whose terminal anybody is looking at.
+	if err := askWhichBox(p, cfg, &plan); err != nil {
+		return err
+	}
+
 	// Before the layout is rendered, so a cancelled setup leaves no debris.
 	if err := ensureInstalled(p, cfg); err != nil {
 		return err
@@ -310,12 +317,13 @@ func cmdAttach(args []string) error {
 	if err != nil {
 		return err
 	}
-	dir, _ := os.Getwd()
+	cwd, _ := os.Getwd()
 	backend, _, err := muxPath(p, cfg)
 	if err != nil {
 		return err
 	}
-	plan, err := planAttach(p, cfg, backend.SessionName(dir), args)
+	dir := workspaceDir(p, cfg, cwd)
+	plan, err := planAttach(p, cfg, dir, backend.SessionName(dir), args)
 	if err != nil {
 		return err
 	}
@@ -354,14 +362,10 @@ func planLaunch(p platform.Info, cfg config.Config, cwd string, f launchFlags) (
 	if f.Window && f.InPlace {
 		return launchPlan{}, fmt.Errorf("--window and --in-place contradict each other")
 	}
-	plan := launchPlan{Dir: f.Dir, Profile: f.Profile}
-	if plan.Dir == "" {
-		plan.Dir = cfg.Workspace.ProjectDir
+	plan := launchPlan{Dir: workspaceDir(p, cfg, cwd), Profile: f.Profile}
+	if f.Dir != "" {
+		plan.Dir = expandDir(f.Dir, p.Home)
 	}
-	if plan.Dir == "" {
-		plan.Dir = cwd
-	}
-	plan.Dir = expandDir(plan.Dir, p.Home)
 	if plan.Profile == "" {
 		plan.Profile = cfg.Profile
 	}
@@ -372,7 +376,7 @@ func planLaunch(p platform.Info, cfg config.Config, cwd string, f launchFlags) (
 	}
 	// Home is shared, so $PWD means the same thing on both sides.
 	if !p.InContainer() {
-		plan.Container = install.ContainerFor(p, cfg)
+		plan.Container = install.ContainerFor(p, cfg, plan.Dir)
 	}
 	return plan, nil
 }
@@ -394,7 +398,7 @@ type attachPlan struct {
 	Session string
 }
 
-func planAttach(p platform.Info, cfg config.Config, session string, args []string) (attachPlan, error) {
+func planAttach(p platform.Info, cfg config.Config, dir, session string, args []string) (attachPlan, error) {
 	mux := cfg.ProviderOrDefault("mux")
 	// Bare `bothy attach` means this project's session. Naming one explicitly
 	// still works, which is how you reach a session for somewhere else.
@@ -406,7 +410,7 @@ func planAttach(p platform.Info, cfg config.Config, session string, args []strin
 		joined = args[0]
 	}
 	if !p.InContainer() {
-		if container := install.ContainerFor(p, cfg); container != "" {
+		if container := install.ContainerFor(p, cfg, dir); container != "" {
 			return attachPlan{Container: container, Command: attachCommand(args), Session: joined}, nil
 		}
 	}

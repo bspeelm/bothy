@@ -20,6 +20,7 @@ precisely, and nothing below makes sense without them.
 | **profile** | the layout: which panes, what size, which slot goes where. Three ship — `cockpit` (the default three-pane room), `editor`, `minimal` |
 | **capability** | something a stack can or cannot give you: **panes**, **sessions**, **theme**, **isolation**, **images**. `bothy doctor` reports each as available or not, because a terminal that cannot draw images cannot be configured into drawing them |
 | **passthrough** | using your own config for a tool instead of bothy's. Name the slot, not the program |
+| **box** | a toolbox or distrobox container: your home, your files, a different set of installed packages. bothy does not make them — `toolbox` does — but it remembers which box each project belongs in |
 | **confine** | running the agent in a container with your project mounted and the rest of `$HOME` not. Opt-in, never automatic |
 | **the lock** | [`bothy.lock`](https://github.com/bspeelm/bothy/blob/main/bothy.lock) — the version and checksum of every tool bothy would fetch. Nothing is downloaded that is not pinned here |
 
@@ -37,7 +38,7 @@ Two directories, and it is worth knowing which is which:
 
 ## Using it
 
-- **[Commands](Commands)** — all fifteen, with their flags.
+- **[Commands](Commands)** — all sixteen, with their flags.
 - **[The doctor](The-doctor)** — how to read a report, and why a capability can
   come back unavailable rather than broken.
 - **[Installing](Installing)** — every channel, what each one checks, and the
@@ -51,6 +52,8 @@ Two directories, and it is worth knowing which is which:
 
 ## Fitting it to your machine
 
+- **[Toolboxes](Toolboxes)** — which box a project opens in, how bothy decides,
+  and the commands for the boxes you already have.
 - **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
   confine`, the toolbox case, and removing it.
 - **[Profiles](Profiles)** — the three layouts that ship, and writing your own.

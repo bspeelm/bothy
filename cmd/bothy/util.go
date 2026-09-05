@@ -41,9 +41,19 @@ func fileExists(path string) bool {
 
 // hopTarget is the container the workspace will run in, or "" when it runs
 // here. Only meaningful from outside a container: inside one, this is it.
-func hopTarget(p platform.Info, cfg config.Config) string {
+func hopTarget(p platform.Info, cfg config.Config, dir string) string {
 	if p.InContainer() {
 		return ""
 	}
-	return install.ContainerFor(p, cfg)
+	return install.ContainerFor(p, cfg, dir)
+}
+
+// workspaceDir is the project directory a bare command acts on. The box record
+// is keyed by it, so every command has to resolve it the same way or `bothy`
+// and `bothy attach` would hop into different containers.
+func workspaceDir(p platform.Info, cfg config.Config, cwd string) string {
+	if cfg.Workspace.ProjectDir != "" {
+		return expandDir(cfg.Workspace.ProjectDir, p.Home)
+	}
+	return expandDir(cwd, p.Home)
 }

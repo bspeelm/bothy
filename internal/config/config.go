@@ -374,21 +374,6 @@ func (c Config) PalettePath(p platform.Info) string {
 	return Expand(c.Theme.Palette, p.Home)
 }
 
-// ContainerFor returns the container to enter, preferring an explicit setting,
-// then the current one, then wherever the install happened. That last fallback
-// is the one that matters: home is shared between host and container but PATH
-// is not, so an install run inside a toolbox resolves tools to paths the host
-// does not have, and a pane dies with "command not found".
-func (c Config) ContainerFor(p platform.Info, installedIn string) string {
-	if c.Workspace.Container != "" {
-		return c.Workspace.Container
-	}
-	if p.ContainerName != "" {
-		return p.ContainerName
-	}
-	return installedIn
-}
-
 // Set applies a dotted key assignment, as used by `bothy config set`. The walk
 // mirrors Keys(), so a new field is listable and settable at once.
 //

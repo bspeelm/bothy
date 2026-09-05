@@ -65,23 +65,28 @@ func Load(stateDir string) (*Manifest, error) {
 	return &m, nil
 }
 
-// Save writes the manifest atomically: a half-written manifest would leave
-// uninstall unable to account for installed binaries. bothyVer is stamped
-// here rather than left to the caller, so it is never missing.
+// Save writes the manifest. bothyVer is stamped here rather than left to the
+// caller, so it is never missing.
 func (m *Manifest) Save(stateDir, bothyVer string) error {
 	m.Version = ManifestVersion
 	m.BothyVer = bothyVer
 	m.UpdatedAt = time.Now().UTC()
 	sort.Slice(m.Binaries, func(i, j int) bool { return m.Binaries[i].Name < m.Binaries[j].Name })
 
-	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+	return writeJSON(ManifestPath(stateDir), m)
+}
+
+// writeJSON writes v atomically. Half a file here is worse than none: an
+// uninstall could not account for installed binaries, and a truncated box
+// record would send projects somewhere they were never sent.
+func writeJSON(path string, v any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("state: %w", err)
 	}
-	out, err := json.MarshalIndent(m, "", "  ")
+	out, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return fmt.Errorf("state: %w", err)
 	}
-	path := ManifestPath(stateDir)
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, append(out, '\n'), 0o644); err != nil {
 		return fmt.Errorf("state: %w", err)

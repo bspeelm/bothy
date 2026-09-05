@@ -1,0 +1,128 @@
+package main
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/state"
+)
+
+// Trimmed from real `podman ps -a --format json` output, box names replaced.
+// Names is an array and not a string, which is the shape a decode
+// written from memory gets wrong; the last entry has no toolbox label, because
+// podman lists every container and only some of them are boxes.
+const podmanListing = `[
+  {"Names": ["rust"], "State": "exited", "Status": "Exited (143) 58 minutes ago",
+   "Labels": {"com.github.containers.toolbox": "true", "io.buildah.version": "1.43.2"}},
+  {"Names": ["dev"], "State": "running", "Status": "Up 3 hours",
+   "Labels": {"com.github.containers.toolbox": "true"}},
+  {"Names": ["some-service"], "State": "running", "Status": "Up 3 hours",
+   "Labels": {"io.buildah.version": "1.43.2"}}
+]`
+
+func TestBoxesAreReadFromPodmansJSON(t *testing.T) {
+	boxes, err := parseBoxes([]byte(podmanListing))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(boxes) != 2 {
+		t.Fatalf("parseBoxes() found %d boxes, want 2 — a container with no box label is not a box", len(boxes))
+	}
+	if boxes[0].Name != "dev" || boxes[0].State != "running" {
+		t.Errorf("first box = %+v, want dev/running", boxes[0])
+	}
+	if boxes[1].Name != "rust" || boxes[1].State != "exited" {
+		t.Errorf("second box = %+v, want rust/exited", boxes[1])
+	}
+}
+
+// `box ls` reports where sessions are, read from the process table, and not
+// where any record says they belong -- so a session in an unexpected box shows
+// up in the box it is in.
+func TestBoxLsNamesTheSessionsInEachBox(t *testing.T) {
+	boxes := []toolbox{{"rust", "exited"}, {"dev", "running"}}
+	where := map[string]string{
+		"bothy-api":    "dev",
+		"bothy-legacy": "dev",
+		"bothy-notes":  "",
+	}
+	out := renderBoxes(boxes, where, "dev")
+
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("renderBoxes() wrote %d lines, want 3 — the host needs one too:\n%s", len(lines), out)
+	}
+	if !strings.HasPrefix(lines[1], "* dev") {
+		t.Errorf("this project's box is not marked: %q", lines[1])
+	}
+	if !strings.Contains(lines[1], "bothy-api, bothy-legacy") {
+		t.Errorf("sessions missing from their box: %q", lines[1])
+	}
+	if strings.Contains(lines[0], "bothy-") {
+		t.Errorf("rust is empty but claims sessions: %q", lines[0])
+	}
+	if !strings.Contains(lines[2], "bothy-notes") {
+		t.Errorf("a session outside every box is not reported: %q", lines[2])
+	}
+}
+
+// Every reason the prompt stays quiet. One toolbox or none is not a choice,
+// and a machine like that has to behave exactly as it did before the prompt
+// existed -- including recording nothing.
+func TestTheFirstRunPromptStaysQuiet(t *testing.T) {
+	const dir = "/w"
+	inBox := platform.Info{Container: platform.Toolbx, ContainerName: "rust"}
+	pinned := config.Default()
+	pinned.Workspace.Container = "rust"
+	answered := state.Boxes{dir: ""}
+
+	cases := []struct {
+		why     string
+		p       platform.Info
+		cfg     config.Config
+		boxes   state.Boxes
+		choices int
+		tty     bool
+		want    bool
+	}{
+		{"a fresh project with boxes to choose from", platform.Info{}, config.Default(), state.Boxes{}, 5, true, true},
+		{"bothy is already inside a box", inBox, config.Default(), state.Boxes{}, 5, true, false},
+		{"workspace.container settles it", platform.Info{}, pinned, state.Boxes{}, 5, true, false},
+		{"this project answered before", platform.Info{}, config.Default(), answered, 5, true, false},
+		{"nothing can read the reply", platform.Info{}, config.Default(), state.Boxes{}, 5, false, false},
+		{"one box is not a choice", platform.Info{}, config.Default(), state.Boxes{}, 1, true, false},
+		{"no boxes at all", platform.Info{}, config.Default(), state.Boxes{}, 0, true, false},
+	}
+	for _, tc := range cases {
+		if got := shouldAsk(tc.p, tc.cfg, tc.boxes, dir, tc.choices, tc.tty); got != tc.want {
+			t.Errorf("shouldAsk(%s) = %v, want %v", tc.why, got, tc.want)
+		}
+	}
+}
+
+// Enter is today's behaviour, and an answer nobody can read is not recorded as
+// one: a bad reply leaves the project unanswered so the next launch asks again.
+func TestTheReplyIsReadAsANumberOrAName(t *testing.T) {
+	names := []string{"", "rust", "dev"}
+	cases := []struct {
+		line, want string
+		ok         bool
+	}{
+		{"\n", "dev", true},
+		{"  \n", "dev", true},
+		{"0\n", "", true},
+		{"1\n", "rust", true},
+		{"rust\n", "rust", true},
+		{"3\n", "", false},
+		{"-1\n", "", false},
+		{"docs\n", "", false},
+	}
+	for _, tc := range cases {
+		got, ok := pickBox(tc.line, names, "dev")
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("pickBox(%q) = %q, %v; want %q, %v", tc.line, got, ok, tc.want, tc.ok)
+		}
+	}
+}
