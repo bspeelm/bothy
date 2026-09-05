@@ -2,10 +2,11 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"slices"
+	"syscall"
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
@@ -86,15 +87,11 @@ func whereSessionsAre(p platform.Info, cfg config.Config) map[string]string {
 // the multiplexer server runs inside the container, so there is no carrying a
 // running session across. Hence the confirmation, and hence --yes.
 func boxUse(p platform.Info, cfg config.Config, dir string, args []string) error {
-	fs := flag.NewFlagSet("box use", flag.ExitOnError)
-	yes := fs.Bool("yes", false, "end a running session without asking")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	if fs.NArg() != 1 {
+	args, yes := takeYes(args)
+	if len(args) != 1 {
 		return fmt.Errorf("usage: bothy box use [--yes] <box>  (use 'host' for no box)")
 	}
-	name := fs.Arg(0)
+	name := args[0]
 	if name == "host" {
 		name = ""
 	}
@@ -112,17 +109,16 @@ func boxUse(p platform.Info, cfg config.Config, dir string, args []string) error
 	}
 	env := install.SessionEnv(p, cfg)
 	session := backend.SessionName(dir)
-	if slices.Contains(backend.Live(bin, env), session) {
-		if !confirmEnd(session, name, *yes) {
-			fmt.Println("left alone")
-			return nil
-		}
-		if err := backend.Kill(bin, env, session); err != nil {
-			return err
-		}
-		fmt.Printf("ended %s\n", session)
+	live := slices.Contains(backend.Live(bin, env), session)
+	if live && !confirmEnd(session, name, yes) {
+		fmt.Println("left alone")
+		return nil
 	}
 
+	// Recorded before anything is ended. Run from a pane of the session being
+	// moved, this process does not outlive the kill below by default, and a
+	// move that is lost halfway leaves the session gone and the project where
+	// it started.
 	if err := install.RecordBox(p, dir, name); err != nil {
 		return err
 	}
@@ -133,12 +129,53 @@ func boxUse(p platform.Info, cfg config.Config, dir string, args []string) error
 		fmt.Printf("bothy resolved its tools in %s, so some may not exist in %s.\n"+
 			"      run 'bothy doctor' there to find out\n", labelFor(in), labelFor(name))
 	}
+
+	inside := live && session == backend.CurrentSession()
+	if live {
+		if inside {
+			// zellij hangs up this pane as it tears the session down, and the
+			// default answer to a hangup is to die -- measured: the statement
+			// after the kill never ran, so neither the record nor the reopen
+			// happened. Nothing below is printed anywhere anyone can read it.
+			signal.Ignore(syscall.SIGHUP)
+		}
+		fmt.Printf("ending %s and opening it again\n", session)
+		if err := backend.Kill(bin, env, session); err != nil {
+			return err
+		}
+	}
 	// The move has happened. A workspace that cannot reopen right now is worth
 	// saying, but it is not a failure of the thing that was asked for.
-	if err := cmdDev(nil); err != nil {
+	if err := cmdDev(reopenArgs(inside)); err != nil {
 		fmt.Printf("not reopened: %v\n      run 'bothy' when you are ready\n", err)
 	}
 	return nil
+}
+
+// reopenArgs says how to open the workspace again after a move. From inside
+// the session being moved, the environment still says bothy already has a
+// terminal open -- true of the one now closing -- so decideLaunch would run
+// the new workspace in place, in a pane that is being torn down. A window has
+// to be asked for.
+func reopenArgs(insideTheSession bool) []string {
+	if insideTheSession {
+		return []string{"--window"}
+	}
+	return nil
+}
+
+// takeYes pulls --yes out wherever it appears. A flag.FlagSet stops parsing at
+// the first operand, so `box use <box> --yes` -- the order people type -- would
+// read as two operands and fail.
+func takeYes(args []string) (rest []string, yes bool) {
+	for _, a := range args {
+		if a == "--yes" || a == "-yes" {
+			yes = true
+			continue
+		}
+		rest = append(rest, a)
+	}
+	return rest, yes
 }
 
 // confirmEnd asks before ending a session. Nothing is lost that reopening does

@@ -99,9 +99,13 @@ The session has to end because the multiplexer server runs **inside** the
 container. There is no carrying a running session across; reopening brings the
 layout back, but not the scrollback.
 
-`--yes` answers for you. Without a terminal and without `--yes` it refuses —
-the opposite of every other prompt in bothy, and deliberate: refusing a
-download costs a download, refusing this costs a running session.
+`--yes` answers for you, before or after the box name. Without a terminal and
+without `--yes` it refuses — the opposite of every other prompt in bothy, and
+deliberate: refusing a download costs a download, refusing this costs a running
+session.
+
+Run from a pane of the session it is moving, the workspace comes back in a new
+window: the one you typed it in is torn down with the session.
 
 `bothy box use host` moves a project out of every box. That is a real answer
 and is remembered as one.

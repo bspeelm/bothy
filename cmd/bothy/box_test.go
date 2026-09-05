@@ -200,3 +200,38 @@ func TestBoxCreateDelegatesRatherThanReimplementing(t *testing.T) {
 		}
 	}
 }
+
+// `bothy box use <box> --yes` is the order people type, and a flag.FlagSet
+// stops parsing at the first operand, so it read as two operands and failed.
+func TestTheYesFlagIsFoundWhereverItIsTyped(t *testing.T) {
+	cases := []struct {
+		args []string
+		box  string
+		yes  bool
+	}{
+		{[]string{"rust"}, "rust", false},
+		{[]string{"rust", "--yes"}, "rust", true},
+		{[]string{"--yes", "rust"}, "rust", true},
+		{[]string{"-yes", "rust"}, "rust", true},
+		{[]string{"host"}, "host", false},
+	}
+	for _, tc := range cases {
+		rest, yes := takeYes(tc.args)
+		if len(rest) != 1 || rest[0] != tc.box || yes != tc.yes {
+			t.Errorf("takeYes(%q) = %q, %v; want [%s], %v", tc.args, rest, yes, tc.box, tc.yes)
+		}
+	}
+}
+
+// Run from a pane of the session it is moving, `box use` inherits an
+// environment saying bothy already has a terminal open -- true of the one now
+// being torn down. Left to the usual decision the new workspace would open in
+// place, in a dying pane, which is why nothing appeared to happen.
+func TestMovingFromInsideTheSessionAsksForAWindow(t *testing.T) {
+	if got := reopenArgs(true); len(got) != 1 || got[0] != "--window" {
+		t.Errorf("reopenArgs(inside) = %q, want [--window]", got)
+	}
+	if got := reopenArgs(false); got != nil {
+		t.Errorf("reopenArgs(outside) = %q, want the usual decision", got)
+	}
+}
