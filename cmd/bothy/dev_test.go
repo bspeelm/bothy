@@ -123,15 +123,41 @@ func claimed(t *testing.T, p platform.Info, session string) bool {
 	return err == nil
 }
 
+// hangups catches SIGHUP for the whole test binary.
+//
+// These tests raise a hangup at themselves, and onHangup re-raises it so a
+// real exit looks like what it is. That re-raise is asynchronous, and two
+// things went wrong with it. With no handler registered when it lands, Go
+// restores the default disposition -- which is to die, and it killed the test
+// binary. And landing inside a later test, it looks to that test like a
+// hangup nobody sent.
+//
+// One registration for the binary fixes the first. Each test that causes a
+// hangup waits for it here before returning, which fixes the second.
+var hangups = make(chan os.Signal, 8)
+
+func TestMain(m *testing.M) {
+	signal.Notify(hangups, syscall.SIGHUP)
+	os.Exit(m.Run())
+}
+
+// awaitHangups takes n hangups off the binary's handler, so none is still in
+// flight when the next test starts.
+func awaitHangups(t *testing.T, n int) {
+	t.Helper()
+	for i := 0; i < n; i++ {
+		select {
+		case <-hangups:
+		case <-time.After(3 * time.Second):
+			t.Fatalf("%d of %d hangups arrived", i, n)
+		}
+	}
+}
+
 // The window closing has to end the client, or it holds the session open and
 // the next launch has to clean up after it. A deferred call cannot do this:
 // the default disposition for a hangup is to die.
 func TestTheHangupEndsTheSession(t *testing.T) {
-	// Caught here too, or the re-raise would end the test binary.
-	guard := make(chan os.Signal, 2)
-	signal.Notify(guard, syscall.SIGHUP)
-	defer signal.Stop(guard)
-
 	ran := make(chan struct{})
 	stop := onHangup(func() { close(ran) })
 	defer stop()
@@ -142,19 +168,18 @@ func TestTheHangupEndsTheSession(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("the terminal went away and nothing ended the session")
 	}
+	// The one sent above and the one onHangup re-raises.
+	awaitHangups(t, 2)
 }
 
 // And once the launch is over it stops listening, so a hangup arriving later
 // does not reach into a session this process no longer has anything to do with.
 func TestAFinishedLaunchStopsListening(t *testing.T) {
-	guard := make(chan os.Signal, 2)
-	signal.Notify(guard, syscall.SIGHUP)
-	defer signal.Stop(guard)
-
 	var ran atomic.Bool
 	onHangup(func() { ran.Store(true) })()
 	hangup(t)
-	time.Sleep(300 * time.Millisecond)
+	// Only the one sent here: a stopped listener re-raises nothing.
+	awaitHangups(t, 1)
 
 	if ran.Load() {
 		t.Error("a hangup after the launch finished still ended a session")
