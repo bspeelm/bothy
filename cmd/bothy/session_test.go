@@ -13,7 +13,7 @@ import (
 func TestAttachDefaultsToThisProjectsSession(t *testing.T) {
 	p := sandbox(t, true)
 
-	plan, err := planAttach(p, config.Default(), "bothy-work", nil)
+	plan, err := planAttach(p, config.Default(), "/w", "bothy-work", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,7 +21,7 @@ func TestAttachDefaultsToThisProjectsSession(t *testing.T) {
 		t.Errorf("bare attach = %v, want %v", plan.Args, want)
 	}
 
-	plan, err = planAttach(p, config.Default(), "bothy-work", []string{"bothy-elsewhere"})
+	plan, err = planAttach(p, config.Default(), "/w", "bothy-work", []string{"bothy-elsewhere"})
 	if err != nil {
 		t.Fatal(err)
 	}

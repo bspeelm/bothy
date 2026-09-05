@@ -52,12 +52,12 @@ Which sessions are running, marking the one you are in — and which have stoppe
 but are still kept:
 
 ```
-  bothy-bothy                  the one you are in
+  bothy-api                  the one you are in
   bothy-server_setup
 
 2 stopped, kept so they can be resurrected:
   polite-galaxy
-  bothy-Workbench
+  bothy-notes
 Clear them with 'bothy ls --prune'.
 ```
 
@@ -78,6 +78,31 @@ Nothing is left behind — the same end state as pressing `Ctrl-q` inside it. It
 refuses the session you are currently in, because that is what `Ctrl-q` is for,
 and refuses one that has already stopped, because that is what
 `bothy ls --prune` is for.
+
+### `bothy box [ls]`
+
+Which toolbox this project opens in, and why:
+
+```
+$ bothy box
+~/code/api runs in dev — chosen for this project
+```
+
+The reason matters as much as the name: four rules can decide it, and the one
+that answered is the one to change. `bothy box ls` shows every box on the
+machine and the sessions really in each, marking this project's:
+
+```
+* dev                      running   bothy-api
+  docs                     exited
+  legacy                   running   bothy-legacy
+  rust                     exited
+```
+
+Sessions are read from the process table, not from bothy's record, so a session
+somewhere unexpected is listed where it actually is. [Toolboxes](Toolboxes) has
+the rules, the first-run prompt, and what happens on a machine with no
+toolboxes.
 
 ### `bothy keys`
 

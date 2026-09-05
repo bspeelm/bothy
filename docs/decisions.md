@@ -1570,3 +1570,97 @@ shipped has no record, so its first launch afterwards reclaims the client. If
 that window is still open the cost is a detach, not a lost session, and it
 happens once per session. A guard for it would be state about state, which is
 how this kind of thing stops ever being finished.
+
+## ADR-044 — bothy manages toolboxes; toolbox still makes them
+
+**Status:** accepted. Implements #218 and #219.
+
+`installed_in` records where bothy resolved its tools. The launcher read it as
+where a project lives. Two questions, one field, and on a machine with five
+toolboxes every project opened in the one bothy happened to be installed in —
+including projects whose own box was not running. That is the bug; the rest of
+this is the smallest surface that makes the fix legible.
+
+**toolbox is a requirement, not a competitor.** Boxes are made by `toolbox
+create`, entered by `toolbox run`, and everything inside them is toolbox's
+doing: the image, the uid and gid mapping, some thirty bind mounts, the
+`init-container` step that runs at every start, the user with passwordless
+sudo, `--distro`/`--release`, migration across toolbox versions. bothy writes
+none of that and reimplementing any of it is the drift trap. Without toolbox or
+distrobox installed there are no boxes, no prompt and no hop, and a machine
+behaves exactly as it did before.
+
+What bothy adds is the thing toolbox has no concept of: which *project* a box
+belongs to, and which sessions are in which box.
+
+**Entry stays with toolbox. Inspection and lifecycle go to podman.** The
+`podman exec` toolbox builds carries about twenty environment variables,
+`--user`, `--workdir` and a `capsh --caps=` wrapper; rebuilding that on raw
+podman is a second implementation free to drift, which is the argument that
+deleted the old `dev` shell function. `containerHop` keeps delegating. The
+other direction is forced rather than chosen: `toolbox list` has no `--format`,
+there is no `toolbox stop`, and **`toolbox run` implicitly starts the
+container**, so inspecting a box with it would start the box being described.
+
+That split is also what buys portability. distrobox containers are podman
+containers, so a podman-level listing sees them too; they differ only by label,
+and the filter is a list with one verified entry rather than a hard-coded
+string.
+
+**bothy does not ship podman.** Rootless podman needs setuid
+`newuidmap`/`newgidmap`, root-owned `/etc/subuid`, `conmon`, a network helper
+and a storage driver — on an immutable distro that is `rpm-ostree` and a
+reboot, which ADR-002 forbids in as many words. It is also unnecessary: podman
+is already on the host, and `confine.Runtime` already reaches it from either
+side of the boundary.
+
+**The record.** `<state>/boxes.json`, absolute project directory to box name.
+Keyed by directory because a session name is the directory's base, so `~/a/web`
+and `~/b/web` would share one entry and send one project into another's box.
+One map rather than a file per project because presence is the answer: an entry
+of `""` is someone choosing the host, and it has to be distinguishable from
+never having been asked or "don't ask again" cannot be honoured. State and not
+config, because a box name is meaningless on another laptop and `config.toml`
+travels under ADR-036.
+
+**Precedence:** `workspace.container`, then the container bothy is already in,
+then the project's record, then `installed_in`. The explicit setting stays on
+top because two existing error messages tell people to reach for it, and
+demoting it would make that advice a lie. `installed_in` stays as the floor: it
+answers a different question, but it is better than no answer.
+
+**Reporting, never probing.** `box ls` reads where sessions actually are from
+the process table — a toolbox shares the pid namespace with its host, so the
+server's own `/run/.containerenv` is legible through `/proc/<pid>/root`. It
+never asks a box anything, because asking means entering, and entering starts.
+Where a record and the process table disagree, the process table wins.
+
+**The stale-record objection.** A record will outlive its directory. It is
+never a veto on its own: `box stop` refuses only on the intersection of
+*recorded for this box* and *a live session*, and the live half comes from
+`/proc`. Entries whose directory is gone are dropped when the record is next
+written.
+
+## ADR-045 — The code cap rises to 7,000, and what it buys
+
+**Status:** accepted. Amends ADR-041, which amended ADR-026.
+
+ADR-010's rule: when a measure and the thing it measures disagree, fix the
+measure, and argue a threshold move rather than perform it. They do not
+disagree. The cap counts code and code is what grew, by roughly 320 lines for
+the record, the four precedence rules, the first-run prompt, `bothy box` and
+`bothy box ls`, and by roughly 200 more for `use`, `stop` and `create`.
+
+**Why 7,000 and not 6,700.** ADR-026 chose 6,000 by naming the three things
+already decided that would need the room, so the cap would be argued once
+rather than every milestone. The same method applies: 6,500 is spent, ADR-044's
+surface is decided in full, and #219 is the other half of one capability rather
+than a separate ambition. A cap that has to move again when the second half
+lands is not a cap. 7,000 covers both with about a hundred lines left, which is
+a budget rather than a ceiling.
+
+**What keeps it honest.** The comment ratio bounds prose independently, so the
+code cap is not doing two jobs. The prose ratio rises with the code and has
+never been the binding constraint. And the binary cap is unmoved at 10 MB,
+which is the only budget a user can feel.
+

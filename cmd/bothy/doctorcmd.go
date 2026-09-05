@@ -35,7 +35,7 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 		MuxBin:      install.ToolPath(p, cfg.Slots.Mux),
 		SessionName: sessionNameHere(p, cfg),
 		Mux:         muxBackend(p, cfg),
-		RunsIn:      hopTarget(p, cfg),
+		RunsIn:      hopTarget(p, cfg, hereDir(p, cfg)),
 		Version:     version(),
 		// Check the tools the way bothy will actually run them.
 		ToolEnv: install.SessionEnv(p, cfg),
@@ -120,15 +120,17 @@ func printCapabilities(rep doctor.Report, cfg config.Config) {
 // sessionNameHere is what bothy would call this directory's session, for the
 // check that asks whether the running one matches.
 func sessionNameHere(p platform.Info, cfg config.Config) string {
-	dir, err := os.Getwd()
-	if err != nil {
-		return ""
-	}
 	b, _, err := muxPath(p, cfg)
 	if err != nil {
 		return ""
 	}
-	return b.SessionName(dir)
+	return b.SessionName(hereDir(p, cfg))
+}
+
+// hereDir is the project the doctor is reporting on.
+func hereDir(p platform.Info, cfg config.Config) string {
+	cwd, _ := os.Getwd()
+	return workspaceDir(p, cfg, cwd)
 }
 
 // muxBackend is the backend the doctor asks, or nil when the configured name
