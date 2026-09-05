@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/fetch"
@@ -244,18 +245,18 @@ type Box struct {
 // better than having no answer at all.
 func Resolve(p platform.Info, cfg config.Config, dir string) Box {
 	if cfg.Workspace.Container != "" {
-		return Box{cfg.Workspace.Container, "set by workspace.container"}
+		return Box{cfg.Workspace.Container, "workspace.container is set to it"}
 	}
 	if p.ContainerName != "" {
-		return Box{p.ContainerName, "the container bothy is running in"}
+		return Box{p.ContainerName, "bothy is already running in that box"}
 	}
 	if name, ok := ProjectBoxes(p)[dir]; ok {
-		return Box{name, "chosen for this project"}
+		return Box{name, "this project is recorded for it"}
 	}
 	if in := InstalledIn(p); in != "" {
-		return Box{in, "where bothy installed its tools"}
+		return Box{in, "bothy installed its tools there"}
 	}
-	return Box{}
+	return Box{Reason: "nothing has chosen one"}
 }
 
 // ContainerFor is Resolve's answer alone, for the callers that only act on it.
@@ -272,6 +273,25 @@ func ProjectBoxes(p platform.Info) state.Boxes {
 		return state.Boxes{}
 	}
 	return b
+}
+
+// ForgetBox drops every project's claim on a box, for when the box is gone.
+// It returns the directories that had one: they fall back to the next rule,
+// and being told is the difference between a move and a surprise.
+func ForgetBox(p platform.Info, name string) ([]string, error) {
+	boxes := ProjectBoxes(p)
+	var freed []string
+	for dir, in := range boxes {
+		if in == name {
+			freed = append(freed, dir)
+			delete(boxes, dir)
+		}
+	}
+	if len(freed) == 0 {
+		return nil, nil
+	}
+	slices.Sort(freed)
+	return freed, boxes.Save(p.StateDir())
 }
 
 // RecordBox remembers which container a project directory belongs in.

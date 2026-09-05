@@ -20,7 +20,7 @@ precisely, and nothing below makes sense without them.
 | **profile** | the layout: which panes, what size, which slot goes where. Three ship — `cockpit` (the default three-pane room), `editor`, `minimal` |
 | **capability** | something a stack can or cannot give you: **panes**, **sessions**, **theme**, **isolation**, **images**. `bothy doctor` reports each as available or not, because a terminal that cannot draw images cannot be configured into drawing them |
 | **passthrough** | using your own config for a tool instead of bothy's. Name the slot, not the program |
-| **box** | a toolbox or distrobox container: your home, your files, a different set of installed packages. bothy does not make them — `toolbox` does — but it remembers which box each project belongs in |
+| **box** | a toolbox or distrobox container. It shares your home directory but keeps its own installed packages. `toolbox` creates them; bothy remembers which box each project belongs in |
 | **confine** | running the agent in a container with your project mounted and the rest of `$HOME` not. Opt-in, never automatic |
 | **the lock** | [`bothy.lock`](https://github.com/bspeelm/bothy/blob/main/bothy.lock) — the version and checksum of every tool bothy would fetch. Nothing is downloaded that is not pinned here |
 

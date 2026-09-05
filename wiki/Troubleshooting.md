@@ -1,6 +1,6 @@
 # Troubleshooting
 
-**Run `bothy doctor` first.** Twenty-eight checks, each carrying the command
+**Run `bothy doctor` first.** Twenty-nine checks, each carrying the command
 that fixes it — a test fails if any check reports a failure without one. This
 page is the handful people actually hit, by symptom.
 
@@ -66,6 +66,29 @@ Usually an old Yazi from a distro package — they are often years behind, and
 bothy's config uses current key names. `bothy doctor` checks the version and
 the key names separately, and `bothy install` fetches a pinned one into bothy's
 own tree without touching the system copy.
+
+## My project opened in the wrong toolbox
+
+`bothy box` says which box it used and why:
+
+```
+$ bothy box
+~/code/api
+  box       dev
+  because   bothy installed its tools there
+```
+
+That reason is the last resort — it means nothing else had an answer, so bothy
+fell back to wherever it installed its own tools. `bothy box use <name>` sets
+the right one for this project and remembers it.
+
+If the reason is *bothy is already running in that box*, you launched from
+inside a box, and that always wins. Open the project from a terminal outside
+any box and it will use its own.
+
+If a pane dies with "command not found" after moving, run `bothy doctor` inside
+the new box: tools bothy reused from the system exist in some boxes and not
+others. [Toolboxes](Toolboxes) explains all of it.
 
 ## `bothy confine` fails
 

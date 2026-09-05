@@ -44,6 +44,14 @@ bothy opens a window that can — before any container hop, so the window opens
 once and on the host. `workspace.launch` settles this standing; `--window` and
 `--in-place` settle it for one run.
 
+**Which toolbox.** Four rules decide, in order: `workspace.container`, the box
+bothy is already running in, the box recorded for this project, and finally the
+box bothy installed its tools in. If you have more than one box and this
+project has never been opened before, bothy asks you here — while the terminal
+you typed in is still the one you are looking at — and remembers the answer.
+[Toolboxes](Toolboxes) has the detail; `bothy box` tells you which rule
+answered.
+
 ## 4. First run only: it fills the gaps
 
 If bothy has no directory yet, it sets one up.

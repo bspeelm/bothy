@@ -40,12 +40,36 @@ var images = []string{"fedora:44", "ubuntu:24.04", "debian:trixie", "archlinux:l
 // fails. ncurses because infocmp lives there on Fedora and checkTerminfo
 // shells out to it.
 var prep = map[string]string{
-	"fedora": "dnf -y install git ncurses",
-	"ubuntu": "apt-get update && apt-get install -y --no-install-recommends git ca-certificates ncurses-bin",
+	"fedora": keepTrying("dnf -y install git ncurses"),
+	"ubuntu": oneMirror + " && " + keepTrying("apt-get update && apt-get install -y --no-install-recommends git ca-certificates ncurses-bin"),
 	// Debian ships infocmp and neither git nor TLS roots.
-	"debian": "apt-get update && apt-get install -y --no-install-recommends git ca-certificates",
+	"debian": keepTrying("apt-get update && apt-get install -y --no-install-recommends git ca-certificates"),
 	// Arch ships ncurses and TLS roots in its base image; only git is missing.
-	"archlinux": "pacman -Sy --noconfirm git",
+	"archlinux": keepTrying("pacman -Sy --noconfirm git"),
+}
+
+// oneMirror points apt at a single mirror instead of a pool.
+//
+// archive.ubuntu.com is many mirrors behind one name, and apt checks every
+// index against a signed manifest. A mirror caught mid-sync serves an index
+// that does not match the manifest a different mirror served, and apt refuses
+// it -- correctly, since that check is what makes the signature worth
+// anything. Measured during one such window: archive.ubuntu.com served
+// Packages.gz at 1,561,627 bytes while the manifest said 1,561,628, and it
+// stayed that way for over forty minutes, failing the job every time.
+//
+// Azure's mirror is a single machine and is what GitHub's own runners use. In
+// that same window it served the byte-exact file the manifest asked for.
+// security.ubuntu.com is a separate entry and is left alone.
+const oneMirror = `sed -i 's|//archive.ubuntu.com|//azure.archive.ubuntu.com|' /etc/apt/sources.list.d/ubuntu.sources`
+
+// keepTrying retries fetching packages. Distro mirrors are third-party
+// infrastructure and a mirror caught mid-sync fails the whole job with "File
+// has unexpected size ... Mirror sync in progress?", which has blocked a
+// release. Nothing the tests assert is retried or relaxed -- this is getting
+// the packages onto the machine, before any of it runs.
+func keepTrying(cmd string) string {
+	return "n=0; until " + cmd + "; do n=$((n+1)); [ $n -ge 5 ] && exit 1; sleep 30; done"
 }
 
 // What the doctor must report inside a headless container after a full

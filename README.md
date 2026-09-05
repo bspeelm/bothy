@@ -35,7 +35,7 @@ making sure it did nothing else, and it still occasionally has to be reminded.
 ## What happens when you type it
 
 bothy looks at what you already have. If the tools are there, it uses them and
-tells you so. If some are missing, it lists them and guides you trough obtaining them
+tells you so. If some are missing, it lists them and guides you through getting them.
 Then it writes its configs into a folder of its own, points each tool
 there for exactly as long as the session lasts, arranges the panes, and opens
 the window. Afterwards it tells you what is broken, if anything is, and what
@@ -69,7 +69,7 @@ The first run lists what you are missing, asks before downloading anything,
 then opens the window. It is not fast. It does not need to be; you will do this
 once.
 
-There are six ways in — dnf, apt, Homebrew, Go, source — and each verifies
+There are six ways in — the script, dnf, apt, Homebrew, Go and source — each verifying
 what it fetched differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
 [What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security).
 
@@ -88,26 +88,45 @@ There are sixteen. [All of them, with their flags](https://github.com/bspeelm/bo
 
 ## Toolboxes
 
-If you work in toolboxes, bothy knows which one each project belongs in.
+A toolbox is a container that shares your home directory but keeps its own
+installed packages. On Fedora Silverblue they are the normal place to install
+things, and it is easy to end up with several — one per kind of work.
 
-Ask it, and it says which rule decided:
+Toolboxes are great. Managing them is not. `toolbox list` prints a table no
+script can read, there is no `toolbox stop` at all, and stopping one means a
+`podman` command that isn't even available from inside a toolbox.
+
+bothy makes them easy to manage from a session, and it remembers which toolbox
+each project belongs in:
 
 ```
 $ bothy box
-~/code/legacy runs in legacy — chosen for this project
+~/code/legacy
+  box       legacy
+  because   this project is recorded for it
+
+$ bothy box ls
+* dev                      running   bothy-api
+  docs                     exited
+  legacy                   running   bothy-legacy
 ```
 
-The first time you open a project on a machine with more than one box, bothy
-asks once and remembers. Pressing Enter takes the answer it would have used
-anyway, and a machine with one box or none is never asked at all. `bothy box
-ls` shows every box and the sessions really in each — read from the process
-table, so a session somewhere unexpected is listed where it is.
+| | |
+|---|---|
+| `bothy box` | which toolbox this project uses, and why |
+| `bothy box ls` | every toolbox, whether it is running, and the sessions in it |
+| `bothy box use <name>` | move this project to a different toolbox |
+| `bothy box stop <name>` | stop a toolbox nothing is using |
+| `bothy box create <name>` | make one, and use it for this project |
+| `bothy box rm <name>` | delete one |
 
-bothy does not create boxes, enter them by hand, or install a container
-runtime: `toolbox` makes them and `toolbox` enters them. What bothy adds is the
-thing toolbox has no concept of — which project belongs in which box, and which
-sessions are in each. [The rules, in
-full](https://github.com/bspeelm/bothy/wiki/Toolboxes).
+The first time you open a project, bothy asks which toolbox to use, then
+remembers your answer. If you have one toolbox, or none, it never asks.
+
+bothy does not replace `toolbox`. Toolbox still makes the containers and still
+enters them; bothy keeps track of which project goes where, which is the part
+toolbox knows nothing about.
+[The full rules](https://github.com/bspeelm/bothy/wiki/Toolboxes).
 
 ## What it touches
 

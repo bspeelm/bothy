@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -123,6 +124,148 @@ func TestTheReplyIsReadAsANumberOrAName(t *testing.T) {
 		got, ok := pickBox(tc.line, names, "dev")
 		if got != tc.want || ok != tc.ok {
 			t.Errorf("pickBox(%q) = %q, %v; want %q, %v", tc.line, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+// A box holding a live session is not free to stop: the session dies with it.
+func TestBoxStopRefusesABoxSomethingIsUsing(t *testing.T) {
+	boxes := []toolbox{{"rust", "running"}}
+	stop, err := stopVerdict(boxes, "rust", []string{"bothy-notes"})
+	if stop || err == nil {
+		t.Fatalf("stopVerdict() = %v, %v; want a refusal", stop, err)
+	}
+	if !strings.Contains(err.Error(), "bothy-notes") {
+		t.Errorf("the refusal does not name what is using it: %v", err)
+	}
+}
+
+// The veto comes from the process table, never from the record. A project
+// recorded for a box and then deleted has no session, and must not keep
+// vetoing on behalf of a directory that is gone.
+func TestBoxStopIgnoresAProjectThatIsGone(t *testing.T) {
+	stop, err := stopVerdict([]toolbox{{"rust", "running"}}, "rust", nil)
+	if err != nil || !stop {
+		t.Fatalf("stopVerdict() = %v, %v; want a stop", stop, err)
+	}
+}
+
+// Stopping a stopped box is not an error and not a podman call.
+func TestBoxStopDoesNotShootAStoppedBox(t *testing.T) {
+	stop, err := stopVerdict([]toolbox{{"rust", "exited"}}, "rust", nil)
+	if err != nil || stop {
+		t.Fatalf("stopVerdict() = %v, %v; want a quiet no-op", stop, err)
+	}
+	if _, err := stopVerdict([]toolbox{{"rust", "exited"}}, "docs", nil); err == nil {
+		t.Error("stopVerdict() accepted a box that does not exist")
+	}
+}
+
+// This inverts the house convention on purpose: confirmDownloads defaults to
+// yes because refusing costs a download, and here proceeding costs a running
+// session. So silence, an unreadable reply and no terminal all mean no.
+func TestBoxUseWillNotEndASessionUnasked(t *testing.T) {
+	cases := []struct {
+		why      string
+		yes, tty bool
+		reply    string
+		want     bool
+	}{
+		{"an explicit y", false, true, "y\n", true},
+		{"yes spelt out", false, true, "YES\n", true},
+		{"just Enter", false, true, "\n", false},
+		{"anything else", false, true, "maybe\n", false},
+		{"no terminal to ask on", false, false, "", false},
+		{"--yes", true, false, "", true},
+	}
+	for _, tc := range cases {
+		if got := confirmed(tc.yes, tc.tty, tc.reply); got != tc.want {
+			t.Errorf("confirmed(%s) = %v, want %v", tc.why, got, tc.want)
+		}
+	}
+}
+
+// The drift fence. toolbox owns creation -- the image, the uid and gid
+// mapping, the thirty-odd bind mounts, the init-container step -- and the day
+// someone "improves" this into a podman invocation, this fails. The name is
+// positional because `toolbox create` has no --container flag.
+func TestBoxCreateDelegatesRatherThanReimplementing(t *testing.T) {
+	got := createArgs("scratch")
+	if len(got) != 2 || got[0] != "create" || got[1] != "scratch" {
+		t.Fatalf("createArgs() = %q, want [create scratch]", got)
+	}
+	for _, banned := range []string{"-v", "--userns", "--user", "run", "fedora-toolbox", "--security-opt"} {
+		if slices.Contains(got, banned) {
+			t.Errorf("createArgs() contains %q — that is podman's job, and toolbox's to keep", banned)
+		}
+	}
+}
+
+// `bothy box use <box> --yes` is the order people type, and a flag.FlagSet
+// stops parsing at the first operand, so it read as two operands and failed.
+func TestTheYesFlagIsFoundWhereverItIsTyped(t *testing.T) {
+	cases := []struct {
+		args []string
+		box  string
+		yes  bool
+	}{
+		{[]string{"rust"}, "rust", false},
+		{[]string{"rust", "--yes"}, "rust", true},
+		{[]string{"--yes", "rust"}, "rust", true},
+		{[]string{"-yes", "rust"}, "rust", true},
+		{[]string{"host"}, "host", false},
+	}
+	for _, tc := range cases {
+		rest, yes := takeYes(tc.args)
+		if len(rest) != 1 || rest[0] != tc.box || yes != tc.yes {
+			t.Errorf("takeYes(%q) = %q, %v; want [%s], %v", tc.args, rest, yes, tc.box, tc.yes)
+		}
+	}
+}
+
+// Run from a pane of the session it is moving, `box use` inherits an
+// environment saying bothy already has a terminal open -- true of the one now
+// being torn down. Left to the usual decision the new workspace would open in
+// place, in a dying pane, which is why nothing appeared to happen.
+func TestMovingFromInsideTheSessionAsksForAWindow(t *testing.T) {
+	if got := reopenArgs(true); len(got) != 1 || got[0] != "--window" {
+		t.Errorf("reopenArgs(inside) = %q, want [--window]", got)
+	}
+	if got := reopenArgs(false); got != nil {
+		t.Errorf("reopenArgs(outside) = %q, want the usual decision", got)
+	}
+}
+
+// Stopping is reversible and removing is not, so rm refuses a box that stop
+// would simply have stopped.
+func TestBoxRmRefusesARunningBoxRatherThanStoppingIt(t *testing.T) {
+	boxes := []toolbox{{"dev", "running"}, {"rust", "exited"}}
+	if err := removeVerdict(boxes, "dev", nil); err == nil {
+		t.Error("removeVerdict() accepted a running box")
+	} else if !strings.Contains(err.Error(), "box stop") {
+		t.Errorf("the refusal does not name the way out: %v", err)
+	}
+	if err := removeVerdict(boxes, "rust", nil); err != nil {
+		t.Errorf("removeVerdict() refused a stopped box: %v", err)
+	}
+	if err := removeVerdict(boxes, "rust", []string{"bothy-api"}); err == nil {
+		t.Error("removeVerdict() accepted a box with a session in it")
+	}
+	if err := removeVerdict(boxes, "nosuch", nil); err == nil {
+		t.Error("removeVerdict() accepted a box that does not exist")
+	}
+}
+
+// The other half of the drift fence: toolbox unmakes what toolbox made, and
+// --force is not passed, because forcing deletes a box with work in it.
+func TestBoxRmDelegatesAndNeverForces(t *testing.T) {
+	got := removeArgs("scratch")
+	if len(got) != 2 || got[0] != "rm" || got[1] != "scratch" {
+		t.Fatalf("removeArgs() = %q, want [rm scratch]", got)
+	}
+	for _, banned := range []string{"--force", "-f", "--all", "-a"} {
+		if slices.Contains(got, banned) {
+			t.Errorf("removeArgs() contains %q", banned)
 		}
 	}
 }
