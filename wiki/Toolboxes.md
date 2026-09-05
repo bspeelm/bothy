@@ -25,11 +25,15 @@ Four rules, in order. The first that answers wins:
 | 3 | this project's recorded box | what you answered the first time you opened it |
 | 4 | where bothy installed its tools | the fallback, and the reason this page exists |
 
-`bothy box` tells you which one answered:
+`bothy box` tells you which one answered, and names the project's own record
+when a rule above it is the one answering — otherwise a recorded box looks
+ignored rather than waiting its turn:
 
 ```
 $ bothy box
-~/code/api runs in dev — chosen for this project
+~/code/api
+  box       dev
+  because   this project is recorded for it
 ```
 
 Rule 4 is a guess, and a bad one. It records where bothy *resolved its tools*,

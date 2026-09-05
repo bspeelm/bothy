@@ -85,7 +85,9 @@ Which toolbox this project opens in, and why:
 
 ```
 $ bothy box
-~/code/api runs in dev — chosen for this project
+~/code/api
+  box       dev
+  because   this project is recorded for it
 ```
 
 The reason matters as much as the name: four rules can decide it, and the one

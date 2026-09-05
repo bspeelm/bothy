@@ -245,18 +245,18 @@ type Box struct {
 // better than having no answer at all.
 func Resolve(p platform.Info, cfg config.Config, dir string) Box {
 	if cfg.Workspace.Container != "" {
-		return Box{cfg.Workspace.Container, "set by workspace.container"}
+		return Box{cfg.Workspace.Container, "workspace.container is set to it"}
 	}
 	if p.ContainerName != "" {
-		return Box{p.ContainerName, "the container bothy is running in"}
+		return Box{p.ContainerName, "bothy is already running in that box"}
 	}
 	if name, ok := ProjectBoxes(p)[dir]; ok {
-		return Box{name, "chosen for this project"}
+		return Box{name, "this project is recorded for it"}
 	}
 	if in := InstalledIn(p); in != "" {
-		return Box{in, "where bothy installed its tools"}
+		return Box{in, "bothy installed its tools there"}
 	}
-	return Box{}
+	return Box{Reason: "nothing has chosen one"}
 }
 
 // ContainerFor is Resolve's answer alone, for the callers that only act on it.

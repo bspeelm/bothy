@@ -94,7 +94,9 @@ Ask it, and it says which rule decided:
 
 ```
 $ bothy box
-~/code/legacy runs in legacy — chosen for this project
+~/code/legacy
+  box       legacy
+  because   this project is recorded for it
 ```
 
 The first time you open a project on a machine with more than one box, bothy

@@ -48,11 +48,14 @@ func cmdBox(args []string) error {
 // picks a container silently is the thing being fixed, so the reason is part
 // of the answer. It asks podman nothing, which is why it works everywhere.
 func boxHere(p platform.Info, cfg config.Config, dir string) error {
-	switch b := install.Resolve(p, cfg, dir); b.Name {
-	case "":
-		fmt.Printf("%s runs on the host\n", dir)
-	default:
-		fmt.Printf("%s runs in %s — %s\n", dir, b.Name, b.Reason)
+	b := install.Resolve(p, cfg, dir)
+	fmt.Println(shortHome(dir, p.Home))
+	fmt.Printf("  box       %s\n", labelFor(b.Name))
+	fmt.Printf("  because   %s\n", b.Reason)
+	// A higher rule shadows the project's own answer without saying so, and
+	// then the record looks ignored rather than waiting its turn.
+	if rec, ok := install.ProjectBoxes(p)[dir]; ok && rec != b.Name {
+		fmt.Printf("  recorded  %s — where it opens once that rule stops applying\n", labelFor(rec))
 	}
 	return nil
 }

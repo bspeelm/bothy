@@ -253,3 +253,12 @@ func saidYesByDefault(reply string) bool {
 	}
 	return false
 }
+
+// shortHome writes a path the way people say it, so a line naming a project
+// and a box fits a pane rather than wrapping in the middle of the answer.
+func shortHome(path, home string) string {
+	if home != "" && strings.HasPrefix(path, home+"/") {
+		return "~" + path[len(home):]
+	}
+	return path
+}
