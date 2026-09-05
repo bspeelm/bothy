@@ -83,6 +83,74 @@ and not from bothy's record, so this reports where sessions **are** — a sessio
 in a box bothy did not expect is listed in the box it is in, which is how you
 find out the two disagree.
 
+## Moving a project
+
+```
+$ bothy box use rust
+bothy-api is running and has to end before this project can move to rust.
+end it? [y/N] y
+ended bothy-api
+~/code/api now opens in rust
+bothy resolved its tools in dev, so some may not exist in rust.
+      run 'bothy doctor' there to find out
+```
+
+The session has to end because the multiplexer server runs **inside** the
+container. There is no carrying a running session across; reopening brings the
+layout back, but not the scrollback.
+
+`--yes` answers for you. Without a terminal and without `--yes` it refuses —
+the opposite of every other prompt in bothy, and deliberate: refusing a
+download costs a download, refusing this costs a running session.
+
+`bothy box use host` moves a project out of every box. That is a real answer
+and is remembered as one.
+
+The note about tools is reported, never checked: finding out for certain would
+mean entering the box, and entering starts it. `bothy doctor`, run in the box,
+is the thing that actually knows.
+
+## Stopping a box
+
+```
+$ bothy box stop docs
+stopped docs — its packages are still there, 'toolbox run' starts it again
+```
+
+It **stops**; it never removes. Everything installed in the box survives and
+the next `toolbox run` starts it again. Removing a box is `toolbox rm`, and
+bothy does not wrap it: deleting things people have installed is not something
+worth making one keystroke shorter.
+
+A box with a live session in it is refused, and the refusal names the session:
+
+```
+$ bothy box stop dev
+bothy: dev is in use by bothy-api
+      end it with 'bothy kill bothy-api' first
+```
+
+Only a *live session* refuses. A project recorded for the box but not running
+does not — otherwise a directory deleted months ago would go on vetoing on
+behalf of nothing.
+
+## Making a box
+
+```
+$ bothy box create scratch
+...toolbox creates it...
+~/code/api now opens in scratch
+install bothy's tools in it now? [Y/n]
+```
+
+The creation is `toolbox create` and nothing else — bothy passes the name and
+gets out of the way. What it adds is the two steps after: this project now
+belongs in the new box, and the tools can be installed there straight away
+rather than after the first workspace fails.
+
+If toolbox is not installed, this is the one box command that cannot work.
+bothy manages boxes; it does not create them itself.
+
 ## Why bothy talks to podman
 
 Entering a box is `toolbox`'s job and stays that way: the `podman exec` toolbox
@@ -134,5 +202,8 @@ through the same launch as `bothy`.
 |---|---|
 | `bothy box` | which box this project uses, and which rule chose it |
 | `bothy box ls` | every box, its state, and the sessions really in each |
+| `bothy box use <name>` | move this project to another box (`host` for none) |
+| `bothy box stop <name>` | stop a box nothing is using |
+| `bothy box create <name>` | `toolbox create`, then assign it and offer to install |
 
 [All commands](Commands) · [Walling off the agent](Walling-off-the-agent)
