@@ -74,7 +74,7 @@ There is no undo.
 bothy doctor
 ```
 
-Twenty-eight checks, each with the command that fixes it. Start there before
+Twenty-nine checks, each with the command that fixes it. Start there before
 anything else — see [The doctor](The-doctor) for how to read it, and
 [Troubleshooting](Troubleshooting) for the failures people actually hit.
 

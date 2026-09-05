@@ -1,6 +1,6 @@
 # The doctor
 
-`bothy doctor` runs twenty-eight checks against the workspace and says what is
+`bothy doctor` runs twenty-nine checks against the workspace and says what is
 wrong and what to type. It is the command the project is built around: every
 setup failure that has ever been fixed here ships with a check that detects it,
 so the doctor is where the project's accumulated experience lives.
