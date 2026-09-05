@@ -39,7 +39,7 @@ Usage:
   bothy attach [session]        reattach to this project's session
   bothy ls [--prune]            which sessions are running, and which stopped
   bothy kill [session]          end a session without attaching to it
-  bothy box     [ls]            which toolbox this project uses, and what exists
+  bothy box     [ls|use|stop|create]  the toolbox this project uses, and the rest
   bothy keys                    the bindings worth knowing
   bothy confine                 run the agent walled off from the rest of $HOME
   bothy install [--dry-run]     write the configs, then check them

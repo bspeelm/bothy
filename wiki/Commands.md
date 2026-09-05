@@ -79,7 +79,7 @@ refuses the session you are currently in, because that is what `Ctrl-q` is for,
 and refuses one that has already stopped, because that is what
 `bothy ls --prune` is for.
 
-### `bothy box [ls]`
+### `bothy box [ls|use|stop|create]`
 
 Which toolbox this project opens in, and why:
 
@@ -100,9 +100,36 @@ machine and the sessions really in each, marking this project's:
 ```
 
 Sessions are read from the process table, not from bothy's record, so a session
-somewhere unexpected is listed where it actually is. [Toolboxes](Toolboxes) has
-the rules, the first-run prompt, and what happens on a machine with no
-toolboxes.
+somewhere unexpected is listed where it actually is.
+
+`bothy box use <name>` moves this project to another box, and `bothy box use
+host` moves it out of every box. The session has to end first — the multiplexer
+server runs *inside* the container, so there is no carrying a running one
+across — so it says what will end and asks:
+
+```
+$ bothy box use rust
+bothy-api is running and has to end before this project can move to rust.
+end it? [y/N]
+```
+
+`--yes` answers for you; without a terminal and without `--yes` it refuses,
+which is the opposite of every other prompt in bothy and deliberate: refusing a
+download costs a download, and refusing this costs a running session.
+
+`bothy box stop <name>` stops a box nothing is using. It **stops** it — the
+container and everything installed in it are still there, and the next
+`toolbox run` starts it again. It refuses a box with a live session in it and
+names the session. This is a `podman stop` under a nicer name: toolbox has no
+stop of its own, and from inside a box you have no podman either.
+
+`bothy box create <name>` hands the work to `toolbox create` and then does the
+two things toolbox cannot — record that this project belongs in the new box,
+and offer to install bothy's tools inside it, which is where the missing-tool
+trap starts.
+
+[Toolboxes](Toolboxes) has the rules, the first-run prompt, and what happens on
+a machine with no toolboxes.
 
 ### `bothy keys`
 

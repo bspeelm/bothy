@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -123,6 +124,79 @@ func TestTheReplyIsReadAsANumberOrAName(t *testing.T) {
 		got, ok := pickBox(tc.line, names, "dev")
 		if got != tc.want || ok != tc.ok {
 			t.Errorf("pickBox(%q) = %q, %v; want %q, %v", tc.line, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+// A box holding a live session is not free to stop: the session dies with it.
+func TestBoxStopRefusesABoxSomethingIsUsing(t *testing.T) {
+	boxes := []toolbox{{"rust", "running"}}
+	stop, err := stopVerdict(boxes, "rust", []string{"bothy-notes"})
+	if stop || err == nil {
+		t.Fatalf("stopVerdict() = %v, %v; want a refusal", stop, err)
+	}
+	if !strings.Contains(err.Error(), "bothy-notes") {
+		t.Errorf("the refusal does not name what is using it: %v", err)
+	}
+}
+
+// The veto comes from the process table, never from the record. A project
+// recorded for a box and then deleted has no session, and must not keep
+// vetoing on behalf of a directory that is gone.
+func TestBoxStopIgnoresAProjectThatIsGone(t *testing.T) {
+	stop, err := stopVerdict([]toolbox{{"rust", "running"}}, "rust", nil)
+	if err != nil || !stop {
+		t.Fatalf("stopVerdict() = %v, %v; want a stop", stop, err)
+	}
+}
+
+// Stopping a stopped box is not an error and not a podman call.
+func TestBoxStopDoesNotShootAStoppedBox(t *testing.T) {
+	stop, err := stopVerdict([]toolbox{{"rust", "exited"}}, "rust", nil)
+	if err != nil || stop {
+		t.Fatalf("stopVerdict() = %v, %v; want a quiet no-op", stop, err)
+	}
+	if _, err := stopVerdict([]toolbox{{"rust", "exited"}}, "docs", nil); err == nil {
+		t.Error("stopVerdict() accepted a box that does not exist")
+	}
+}
+
+// This inverts the house convention on purpose: confirmDownloads defaults to
+// yes because refusing costs a download, and here proceeding costs a running
+// session. So silence, an unreadable reply and no terminal all mean no.
+func TestBoxUseWillNotEndASessionUnasked(t *testing.T) {
+	cases := []struct {
+		why      string
+		yes, tty bool
+		reply    string
+		want     bool
+	}{
+		{"an explicit y", false, true, "y\n", true},
+		{"yes spelt out", false, true, "YES\n", true},
+		{"just Enter", false, true, "\n", false},
+		{"anything else", false, true, "maybe\n", false},
+		{"no terminal to ask on", false, false, "", false},
+		{"--yes", true, false, "", true},
+	}
+	for _, tc := range cases {
+		if got := mayEnd(tc.yes, tc.tty, tc.reply); got != tc.want {
+			t.Errorf("mayEnd(%s) = %v, want %v", tc.why, got, tc.want)
+		}
+	}
+}
+
+// The drift fence. toolbox owns creation -- the image, the uid and gid
+// mapping, the thirty-odd bind mounts, the init-container step -- and the day
+// someone "improves" this into a podman invocation, this fails. The name is
+// positional because `toolbox create` has no --container flag.
+func TestBoxCreateDelegatesRatherThanReimplementing(t *testing.T) {
+	got := createArgs("scratch")
+	if len(got) != 2 || got[0] != "create" || got[1] != "scratch" {
+		t.Fatalf("createArgs() = %q, want [create scratch]", got)
+	}
+	for _, banned := range []string{"-v", "--userns", "--user", "run", "fedora-toolbox", "--security-opt"} {
+		if slices.Contains(got, banned) {
+			t.Errorf("createArgs() contains %q — that is podman's job, and toolbox's to keep", banned)
 		}
 	}
 }

@@ -103,7 +103,13 @@ anyway, and a machine with one box or none is never asked at all. `bothy box
 ls` shows every box and the sessions really in each — read from the process
 table, so a session somewhere unexpected is listed where it is.
 
-bothy does not create boxes, enter them by hand, or install a container
+`bothy box use <name>` moves a project to another box — it says what will end
+first, because the session lives inside the container. `bothy box stop <name>`
+stops a box nothing is using, which is a `podman stop` you would otherwise have
+to reach through `flatpak-spawn --host`. `bothy box create <name>` hands the
+work to `toolbox` and then assigns the project to the new box.
+
+bothy does not create boxes itself, enter them by hand, or install a container
 runtime: `toolbox` makes them and `toolbox` enters them. What bothy adds is the
 thing toolbox has no concept of — which project belongs in which box, and which
 sessions are in each. [The rules, in
