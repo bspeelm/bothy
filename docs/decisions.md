@@ -1637,6 +1637,17 @@ top because two existing error messages tell people to reach for it, and
 demoting it would make that advice a lie. `installed_in` stays as the floor: it
 answers a different question, but it is better than no answer.
 
+**A launch from inside one box does not hop to another.** Being inside a box is
+something someone did on purpose: `bothy` typed in a pane of a workspace, or in
+a shell after `toolbox enter`, is being asked to work *here*. Overriding that to
+satisfy a record would be bothy deciding it knows better than the person
+typing, so rule 2 stays above the project's record.
+
+The cost is real and accepted: a project opened that way is never asked which
+box it belongs in and never records an answer, so on a machine where every
+launch happens from inside a session the record never fills in. `bothy box`
+names the record it is shadowing, which makes that visible rather than silent.
+
 **Reporting, never probing.** `box ls` reads where sessions actually are from
 the process table — a toolbox shares the pid namespace with its host, so the
 server's own `/run/.containerenv` is legible through `/proc/<pid>/root`. It

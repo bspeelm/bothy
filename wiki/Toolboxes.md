@@ -20,7 +20,7 @@ Four rules, in order. The first that answers wins:
 | | rule | where it comes from |
 |---|---|---|
 | 1 | `workspace.container` | `bothy config set workspace.container <name>` — explicit, and applies everywhere |
-| 2 | the box bothy is running in | if you launched from inside a box, that is the answer |
+| 2 | the box bothy is running in | if you started bothy from inside a box, that is the answer |
 | 3 | this project's recorded box | what you answered the first time you opened it |
 | 4 | where bothy installed its tools | the last resort, when nothing above has an answer |
 
@@ -44,6 +44,12 @@ a box has tools the host cannot see.
 Rule 1 applies to every project at once, so it is a blunt instrument for a
 single one — but when it is set, it wins, and rules 2 to 4 never run. Clear it
 with `bothy config set workspace.container ""`.
+
+Rule 2 beats the project's own record on purpose. If you have already entered a
+box and then run `bothy`, you chose that box, and bothy does not second-guess
+you. The trade-off is that a project opened this way is never asked which box
+it belongs in, and nothing is recorded for it. `bothy box` will tell you when a
+record exists but a rule above it is answering.
 
 ## Being asked, once
 
