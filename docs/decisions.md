@@ -1593,6 +1593,14 @@ behaves exactly as it did before.
 What bothy adds is the thing toolbox has no concept of: which *project* a box
 belongs to, and which sessions are in which box.
 
+**`rm` was refused once and is here anyway.** The first version of this said
+deleting what people had installed was not worth making one keystroke shorter,
+and left `toolbox rm` alone. That was wrong for a reason the record makes
+obvious: bothy holds an entry naming the box, so a removal it does not see
+leaves projects pointing at a container that is not there. `bothy box rm`
+exists to keep the record honest; the deletion itself is still toolbox's, and
+`--force` is never passed.
+
 **Entry stays with toolbox. Inspection and lifecycle go to podman.** The
 `podman exec` toolbox builds carries about twenty environment variables,
 `--user`, `--workdir` and a `capsh --caps=` wrapper; rebuilding that on raw

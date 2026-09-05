@@ -79,7 +79,7 @@ refuses the session you are currently in, because that is what `Ctrl-q` is for,
 and refuses one that has already stopped, because that is what
 `bothy ls --prune` is for.
 
-### `bothy box [ls|use|stop|create]`
+### `bothy box [ls|use|stop|create|rm]`
 
 Which toolbox this project opens in, and why:
 
@@ -126,7 +126,8 @@ stop of its own, and from inside a box you have no podman either.
 `bothy box create <name>` hands the work to `toolbox create` and then does the
 two things toolbox cannot — record that this project belongs in the new box,
 and offer to install bothy's tools inside it, which is where the missing-tool
-trap starts.
+trap starts. `bothy box rm <name>` is the other end of that: `toolbox rm`, and
+then every project that pointed at the box is told where it opens now.
 
 [Toolboxes](Toolboxes) has the rules, the first-run prompt, and what happens on
 a machine with no toolboxes.

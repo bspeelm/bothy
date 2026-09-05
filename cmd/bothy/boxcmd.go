@@ -37,8 +37,10 @@ func cmdBox(args []string) error {
 		return boxStop(p, cfg, args[1:])
 	case "create":
 		return boxCreate(p, cfg, dir, args[1:])
+	case "rm":
+		return boxRemove(p, cfg, args[1:])
 	default:
-		return fmt.Errorf("usage: bothy box [ls|use|stop|create]")
+		return fmt.Errorf("usage: bothy box [ls|use|stop|create|rm]")
 	}
 }
 
@@ -110,7 +112,9 @@ func boxUse(p platform.Info, cfg config.Config, dir string, args []string) error
 	env := install.SessionEnv(p, cfg)
 	session := backend.SessionName(dir)
 	live := slices.Contains(backend.Live(bin, env), session)
-	if live && !confirmEnd(session, name, yes) {
+	stake := fmt.Sprintf("%s is running and has to end before this project can move to %s.",
+		session, labelFor(name))
+	if live && !confirmDestructive(yes, stake, "end it?") {
 		fmt.Println("left alone")
 		return nil
 	}
@@ -178,18 +182,18 @@ func takeYes(args []string) (rest []string, yes bool) {
 	return rest, yes
 }
 
-// confirmEnd asks before ending a session. Nothing is lost that reopening does
-// not bring back, but the panes and their history are, so it asks.
-func confirmEnd(session, name string, yes bool) bool {
+// confirmDestructive asks a question whose default is no, saying what is at
+// stake first. Separate from confirmDownloads, which defaults to yes: the cost
+// of refusing there is a download, and here it is a running session or a box.
+func confirmDestructive(yes bool, stake, question string) bool {
 	tty := isTerminal(os.Stdin)
 	reply := ""
 	if !yes && tty {
-		fmt.Printf("%s is running and has to end before this project can move to %s.\n",
-			session, labelFor(name))
-		fmt.Print("end it? [y/N] ")
+		fmt.Println(stake)
+		fmt.Print(question + " [y/N] ")
 		reply, _ = bufio.NewReader(os.Stdin).ReadString('\n') // an unreadable reply is not a yes
 	}
-	return mayEnd(yes, tty, reply)
+	return confirmed(yes, tty, reply)
 }
 
 // boxStop stops a box nothing is using. podman's job, because toolbox has no
@@ -255,5 +259,46 @@ func boxCreate(p platform.Info, cfg config.Config, dir string, args []string) er
 		}
 	}
 	fmt.Printf("run 'bothy install' inside %s before opening a workspace there\n", name)
+	return nil
+}
+
+// boxRemove deletes a box and forgets it. toolbox does the deletion, as it did
+// the creation; what bothy adds is the record, because a project still
+// pointing at a box that no longer exists would be sent somewhere that is not
+// there.
+func boxRemove(p platform.Info, cfg config.Config, args []string) error {
+	args, yes := takeYes(args)
+	if len(args) != 1 {
+		return fmt.Errorf("usage: bothy box rm [--yes] <box>")
+	}
+	name := args[0]
+	boxes, err := listBoxes(p)
+	if err != nil {
+		return err
+	}
+	if err := removeVerdict(boxes, name, sessionsIn(whereSessionsAre(p, cfg), name)); err != nil {
+		return err
+	}
+	stake := fmt.Sprintf("removing %s deletes the container and everything installed in it.", name)
+	if !confirmDestructive(yes, stake, "remove it?") {
+		fmt.Println("left alone")
+		return nil
+	}
+	bin, err := toolboxBinary()
+	if err != nil {
+		return err
+	}
+	if err := runInteractive(bin, removeArgs(name)...); err != nil {
+		return err
+	}
+	fmt.Printf("removed %s\n", name)
+
+	freed, err := install.ForgetBox(p, name)
+	if err != nil {
+		return err
+	}
+	for _, dir := range freed {
+		fmt.Printf("%s now opens in %s\n", dir, labelFor(install.Resolve(p, cfg, dir).Name))
+	}
 	return nil
 }

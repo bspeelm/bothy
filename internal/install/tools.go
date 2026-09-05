@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/fetch"
@@ -272,6 +273,25 @@ func ProjectBoxes(p platform.Info) state.Boxes {
 		return state.Boxes{}
 	}
 	return b
+}
+
+// ForgetBox drops every project's claim on a box, for when the box is gone.
+// It returns the directories that had one: they fall back to the next rule,
+// and being told is the difference between a move and a surprise.
+func ForgetBox(p platform.Info, name string) ([]string, error) {
+	boxes := ProjectBoxes(p)
+	var freed []string
+	for dir, in := range boxes {
+		if in == name {
+			freed = append(freed, dir)
+			delete(boxes, dir)
+		}
+	}
+	if len(freed) == 0 {
+		return nil, nil
+	}
+	slices.Sort(freed)
+	return freed, boxes.Save(p.StateDir())
 }
 
 // RecordBox remembers which container a project directory belongs in.

@@ -122,9 +122,8 @@ stopped docs — its packages are still there, 'toolbox run' starts it again
 ```
 
 It **stops**; it never removes. Everything installed in the box survives and
-the next `toolbox run` starts it again. Removing a box is `toolbox rm`, and
-bothy does not wrap it: deleting things people have installed is not something
-worth making one keystroke shorter.
+the next `toolbox run` starts it again. Removing is `bothy box rm`, below, and
+the two are deliberately separate words.
 
 A box with a live session in it is refused, and the refusal names the session:
 
@@ -152,8 +151,32 @@ gets out of the way. What it adds is the two steps after: this project now
 belongs in the new box, and the tools can be installed there straight away
 rather than after the first workspace fails.
 
-If toolbox is not installed, this is the one box command that cannot work.
-bothy manages boxes; it does not create them itself.
+If toolbox is not installed, creating and removing are the box commands that
+cannot work. bothy manages boxes; it does not make or unmake them itself.
+
+## Removing a box
+
+```
+$ bothy box rm scratch
+removing scratch deletes the container and everything installed in it.
+remove it? [y/N] y
+removed scratch
+~/code/api now opens in dev — where bothy installed its tools
+```
+
+`toolbox rm` does the deletion. What bothy adds is the last line: every project
+recorded against the box is told where it opens now, because a project still
+pointing at a box that no longer exists would be sent somewhere that is not
+there.
+
+It is stricter than `stop`. A box that is merely **running** is refused rather
+than stopped on the way past — stopping is reversible and this is not — and
+`--force` is never passed to toolbox, so a box with work in it cannot be
+deleted by accident. Stop it first, then remove it.
+
+A box bothy did not create can be removed like any other. bothy is not tracking
+which boxes are its own, and a rule that only let you delete your own would be
+a rule you had to remember.
 
 ## Why bothy talks to podman
 
@@ -209,5 +232,6 @@ through the same launch as `bothy`.
 | `bothy box use <name>` | move this project to another box (`host` for none) |
 | `bothy box stop <name>` | stop a box nothing is using |
 | `bothy box create <name>` | `toolbox create`, then assign it and offer to install |
+| `bothy box rm <name>` | `toolbox rm`, then tell every project where it opens now |
 
 [All commands](Commands) · [Walling off the agent](Walling-off-the-agent)

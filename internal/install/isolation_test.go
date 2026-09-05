@@ -782,3 +782,31 @@ func TestBothyFindsTheSameTreeFromInsideItsOwnSession(t *testing.T) {
 		t.Errorf("ConfigRoot inside = %s, want %s", inside.ConfigRoot(), p.ConfigRoot())
 	}
 }
+
+// A box that has been removed must not go on answering for the projects that
+// used it: they fall back to the next rule, and the caller is told which
+// projects moved so the change is visible rather than discovered later.
+func TestRemovingABoxForgetsTheProjectsThatUsedIt(t *testing.T) {
+	p := sandbox(t)
+	gone, kept := t.TempDir(), t.TempDir()
+	for dir, box := range map[string]string{gone: "scratch", kept: "dev"} {
+		if err := RecordBox(p, dir, box); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	freed, err := ForgetBox(p, "scratch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(freed) != 1 || freed[0] != gone {
+		t.Errorf("ForgetBox() = %q, want [%s]", freed, gone)
+	}
+	boxes := ProjectBoxes(p)
+	if _, ok := boxes[gone]; ok {
+		t.Error("the project still claims a box that no longer exists")
+	}
+	if boxes[kept] != "dev" {
+		t.Errorf("another box's projects were forgotten too: %q", boxes[kept])
+	}
+}

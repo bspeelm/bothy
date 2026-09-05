@@ -102,24 +102,52 @@ func stopBox(p platform.Info, name string) error {
 	return nil
 }
 
-// stopVerdict decides what `bothy box stop` does: true to stop it, false to
-// leave a box that is already down, an error to refuse.
+// untouchable says why a box may not be acted on at all: it does not exist, or
+// a live session is in it. Stop and rm share this and differ only in what they
+// make of a box that is merely running.
 //
-// The record is deliberately not consulted. A project recorded for this box
-// with nothing running in it is not a reason to refuse, or a directory deleted
+// The record is deliberately not consulted. A project recorded for a box with
+// nothing running in it is not a reason to refuse, or a directory deleted
 // months ago would veto on behalf of nothing. Only a live session does.
-func stopVerdict(boxes []toolbox, name string, using []string) (bool, error) {
+func untouchable(boxes []toolbox, name string, using []string) (toolbox, error) {
 	i := slices.IndexFunc(boxes, func(b toolbox) bool { return b.Name == name })
 	switch {
 	case i < 0:
-		return false, fmt.Errorf("no box called %s\n      'bothy box ls' lists them", name)
-	case boxes[i].State != "running":
-		return false, nil
+		return toolbox{}, fmt.Errorf("no box called %s\n      'bothy box ls' lists them", name)
 	case len(using) > 0:
-		return false, fmt.Errorf("%s is in use by %s\n      end it with 'bothy kill %s' first",
+		return toolbox{}, fmt.Errorf("%s is in use by %s\n      end it with 'bothy kill %s' first",
 			name, strings.Join(using, ", "), using[0])
 	}
-	return true, nil
+	return boxes[i], nil
+}
+
+// stopVerdict reports whether there is a box to stop. A box already down is
+// not an error and not a podman call.
+func stopVerdict(boxes []toolbox, name string, using []string) (bool, error) {
+	box, err := untouchable(boxes, name, using)
+	if err != nil {
+		return false, err
+	}
+	return box.State == "running", nil
+}
+
+// removeArgs is the command that unmakes one. toolbox again, and without
+// --force: forcing would delete a box with something working in it, and
+// nothing about removing a box is urgent enough to want that.
+func removeArgs(name string) []string { return []string{"rm", name} }
+
+// removeVerdict is stricter than stop, because stopping is reversible and this
+// is not: a running box is refused outright rather than stopped on the way
+// past.
+func removeVerdict(boxes []toolbox, name string, using []string) error {
+	box, err := untouchable(boxes, name, using)
+	if err != nil {
+		return err
+	}
+	if box.State == "running" {
+		return fmt.Errorf("%s is running\n      stop it with 'bothy box stop %s' first", name, name)
+	}
+	return nil
 }
 
 // createArgs is the command that makes a box, and toolbox is the only thing
@@ -130,10 +158,11 @@ func stopVerdict(boxes []toolbox, name string, using []string) (bool, error) {
 // The name is positional -- `toolbox create` has no --container flag.
 func createArgs(name string) []string { return []string{"create", name} }
 
-// mayEnd reports whether `box use` may end a live session. This inverts the
-// house convention: confirmDownloads defaults to yes because refusing costs a
-// download, and here proceeding costs a running session.
-func mayEnd(yes, tty bool, reply string) bool {
+// confirmed reads a reply where silence means no. This inverts the house
+// convention -- confirmDownloads defaults to yes, because refusing it costs a
+// download -- since what these guard costs a running session or a box's
+// contents. No terminal and no --yes is a no, not a shrug.
+func confirmed(yes, tty bool, reply string) bool {
 	if yes {
 		return true
 	}

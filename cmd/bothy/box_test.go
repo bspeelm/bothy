@@ -179,8 +179,8 @@ func TestBoxUseWillNotEndASessionUnasked(t *testing.T) {
 		{"--yes", true, false, "", true},
 	}
 	for _, tc := range cases {
-		if got := mayEnd(tc.yes, tc.tty, tc.reply); got != tc.want {
-			t.Errorf("mayEnd(%s) = %v, want %v", tc.why, got, tc.want)
+		if got := confirmed(tc.yes, tc.tty, tc.reply); got != tc.want {
+			t.Errorf("confirmed(%s) = %v, want %v", tc.why, got, tc.want)
 		}
 	}
 }
@@ -233,5 +233,39 @@ func TestMovingFromInsideTheSessionAsksForAWindow(t *testing.T) {
 	}
 	if got := reopenArgs(false); got != nil {
 		t.Errorf("reopenArgs(outside) = %q, want the usual decision", got)
+	}
+}
+
+// Stopping is reversible and removing is not, so rm refuses a box that stop
+// would simply have stopped.
+func TestBoxRmRefusesARunningBoxRatherThanStoppingIt(t *testing.T) {
+	boxes := []toolbox{{"dev", "running"}, {"rust", "exited"}}
+	if err := removeVerdict(boxes, "dev", nil); err == nil {
+		t.Error("removeVerdict() accepted a running box")
+	} else if !strings.Contains(err.Error(), "box stop") {
+		t.Errorf("the refusal does not name the way out: %v", err)
+	}
+	if err := removeVerdict(boxes, "rust", nil); err != nil {
+		t.Errorf("removeVerdict() refused a stopped box: %v", err)
+	}
+	if err := removeVerdict(boxes, "rust", []string{"bothy-api"}); err == nil {
+		t.Error("removeVerdict() accepted a box with a session in it")
+	}
+	if err := removeVerdict(boxes, "nosuch", nil); err == nil {
+		t.Error("removeVerdict() accepted a box that does not exist")
+	}
+}
+
+// The other half of the drift fence: toolbox unmakes what toolbox made, and
+// --force is not passed, because forcing deletes a box with work in it.
+func TestBoxRmDelegatesAndNeverForces(t *testing.T) {
+	got := removeArgs("scratch")
+	if len(got) != 2 || got[0] != "rm" || got[1] != "scratch" {
+		t.Fatalf("removeArgs() = %q, want [rm scratch]", got)
+	}
+	for _, banned := range []string{"--force", "-f", "--all", "-a"} {
+		if slices.Contains(got, banned) {
+			t.Errorf("removeArgs() contains %q", banned)
+		}
 	}
 }
