@@ -5,6 +5,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -205,5 +207,34 @@ func TestExtractAcceptsOrdinaryNestedPaths(t *testing.T) {
 	}
 	if string(got["bothy"]) != string(body) {
 		t.Errorf("extracted %q", got["bothy"])
+	}
+}
+
+// A tool shipping several binaries -- yazi ships yazi and ya -- used to have
+// each one renamed into place before the next was written, so a write that
+// failed partway left the earlier ones installed and the manifest recording
+// none of it. Staging has to put nothing in place, or that is still true.
+func TestStagingPutsNothingInPlace(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "yazi")
+
+	tmp, err := stageExecutable(dest, []byte("#!/bin/sh\ntrue\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dest); !os.IsNotExist(err) {
+		t.Errorf("staging landed %s; nothing may be in place before every binary is staged", dest)
+	}
+
+	// Executable before the rename, so nothing ever observes it at 0600.
+	fi, err := os.Stat(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0o755 {
+		t.Errorf("staged mode = %v, want 0755", fi.Mode().Perm())
+	}
+	if filepath.Dir(tmp) != dir {
+		t.Errorf("staged in %s, want %s — the rename has to stay on one filesystem", filepath.Dir(tmp), dir)
 	}
 }

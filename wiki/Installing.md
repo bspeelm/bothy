@@ -123,6 +123,20 @@ your own copies exactly where they were.
 It never calls your package manager, never asks for root, and never adds
 anything to your `PATH`.
 
+### If a download fails partway
+
+Nothing is rolled back, and nothing is left broken. The tools that installed
+stay where they are and are recorded, so running `bothy install` again skips
+them and retries only what failed.
+
+The tool that failed leaves nothing at all. bothy downloads the file, checks it
+against the pin, and unpacks it, all in memory — nothing is written until every
+one of those passes. A bad checksum or a missing release means there is no
+half-written file to clean up.
+
+So a failed run leaves you with a smaller install rather than a broken one, and
+running it again finishes the job.
+
 Two things it will not install for you. Ghostty, because it ships no
 ready-made binaries and every route to it needs root. And the agent, because
 your AI tools and their credentials are your business, and bothy has enough
@@ -142,3 +156,12 @@ would go. Three things are left, and it names each on the way out:
 
 Nothing else needs undoing: bothy never touched your dotfiles, never called
 your package manager, and never added anything to your `PATH`.
+
+This works the same on a half-finished install as on a complete one. Uninstall
+removes the whole directory rather than working through a list of what it
+installed, so it does not matter how far the install got, or whether its record
+of itself is complete.
+
+The binary goes too, but only the copy the install script put in
+`~/.local/bin`. One that came from dnf, apt or Homebrew belongs to them, so
+bothy leaves it and says so.
