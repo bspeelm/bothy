@@ -84,17 +84,34 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return nil, fmt.Errorf("fetch: %w", err)
 	}
-	var installed []string
 	// Iterate the tool's own declared binaries, not the map's keys: the names
 	// here come from slots/ rather than from the archive, so the path
 	// being written is not derived from downloaded data at all.
-	for _, name := range t.Binaries() {
-		content := found[name]
-		dest := filepath.Join(destDir, name)
-		if err := writeExecutable(dest, content); err != nil {
-			return nil, fmt.Errorf("fetch: %s: %w", dest, err)
+	//
+	// All of them are staged before any is renamed, so a tool shipping several
+	// -- yazi ships yazi and ya -- cannot half-land when a write fails partway.
+	// Two renames are not atomic together on any filesystem bothy targets, so
+	// this narrows the window to the gap between them rather than closing it.
+	var installed, staged []string
+	defer func() {
+		for _, tmp := range staged {
+			_ = os.Remove(tmp) // no-op for the ones already renamed
 		}
-		installed = append(installed, dest)
+	}()
+	for _, name := range t.Binaries() {
+		tmp, err := stageExecutable(filepath.Join(destDir, name), found[name])
+		if tmp != "" {
+			staged = append(staged, tmp)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("fetch: %s: %w", filepath.Join(destDir, name), err)
+		}
+		installed = append(installed, filepath.Join(destDir, name))
+	}
+	for i, name := range t.Binaries() {
+		if err := os.Rename(staged[i], filepath.Join(destDir, name)); err != nil {
+			return nil, fmt.Errorf("fetch: %s: %w", filepath.Join(destDir, name), err)
+		}
 	}
 
 	return &Result{Tool: t.Name, Version: lock.Version, Binaries: installed, SHA256: got}, nil
@@ -144,31 +161,27 @@ func Sum(b []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
-// writeExecutable writes a binary atomically. The rename matters: a partially
-// written binary that is already on PATH is a worse failure than no binary.
-func writeExecutable(dest string, content []byte) error {
+// stageExecutable writes a binary beside dest and returns it, ready to be
+// renamed into place. Renaming is the caller's, so a tool shipping several
+// binaries can stage them all before any of them lands.
+func stageExecutable(dest string, content []byte) (string, error) {
 	// A unique temporary name, not dest+".bothy-tmp": two installs running at
 	// once would share that one name, and one could rename the other's
-	// half-written file into place, defeating the atomicity above.
+	// half-written file into place, defeating the atomicity this exists for.
 	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".bothy-*")
 	if err != nil {
-		return err
+		return "", err
 	}
 	tmp := f.Name()
-	defer os.Remove(tmp) // no-op once the rename below succeeds
-
 	if _, err := f.Write(content); err != nil {
 		f.Close()
-		return err
+		return tmp, err
 	}
 	if err := f.Close(); err != nil {
-		return err
+		return tmp, err
 	}
 	// CreateTemp makes the file 0600; the caller's mode is the one that
 	// matters, and it must be set before the rename so nothing observes the
 	// file at the wrong permissions.
-	if err := os.Chmod(tmp, 0o755); err != nil {
-		return err
-	}
-	return os.Rename(tmp, dest)
+	return tmp, os.Chmod(tmp, 0o755)
 }
