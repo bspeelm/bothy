@@ -164,6 +164,24 @@ the first.
 
 Nothing is copied. The key stays where it is; bothy records the path.
 
+**Use a key rather than a password** — not because a password is unsafe, but
+because there is nobody to type it. One workspace opens several SSH
+connections: the mount, the shell pane, and a fresh one for every `on`. A host
+that wants a password asks for it each time, and the agent running `on make
+test` cannot answer, so the pane simply waits.
+
+bothy does not refuse a password. ssh decides how you authenticate and bothy
+does not overrule it — the same reason it never turns password authentication
+on. It just cannot answer the prompt for you.
+
+```sh
+ssh-copy-id abbey
+```
+
+A key with a passphrase has the same problem for the same reason, and the same
+answer ssh already gives: load it into your agent once with `ssh-add`, and
+every connection after that is unattended.
+
 ## Sessions
 
 The session lives on your machine, so it behaves like any other:
