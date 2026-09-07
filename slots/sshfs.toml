@@ -4,6 +4,13 @@
 # ADR-046 records why there is no alternative.
 #
 # It fills no slot. `bothy connect` needs it and nothing else does.
+#
+# macOS goes to FUSE-T rather than macFUSE. macFUSE needs a kernel extension,
+# which on Apple Silicon means booting into reduced security to allow it, and
+# Homebrew core dropped sshfs after macFUSE's licence changed. FUSE-T is
+# kext-free -- it serves FUSE over a local loopback instead -- and its
+# fuse-t-sshfs cask depends on fuse-t, so one command brings both. It installs
+# the binary as `sshfs`, which is what connect looks for.
 
 name      = "sshfs"
 what      = "mounts another machine's files, for 'bothy connect'"
@@ -18,5 +25,5 @@ fedora        = "sudo dnf install -y sshfs"
 ubuntu        = "sudo apt install -y sshfs"
 debian        = "sudo apt install -y sshfs"
 arch          = "sudo pacman -S sshfs"
-darwin        = "sshfs on macOS needs macFUSE, a kernel extension and a reboot — see https://macfuse.github.io"
+darwin        = "brew tap macos-fuse-t/homebrew-cask && brew install --cask fuse-t-sshfs"
 default       = "install sshfs with your package manager"

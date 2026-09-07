@@ -159,7 +159,19 @@ none from the host. The bind would succeed and mount an *empty* directory, so
 the agent would start walled off from the very files you opened it for. A wall
 that hides the project is worse than none.
 
-**macOS is untested.** sshfs there needs macFUSE, a kernel extension and a
-reboot. Nothing about bothy prevents it; nobody has run it.
+**macOS is untested by CI**, though nothing about bothy prevents it. sshfs
+there needs a FUSE layer, and the one to use is **FUSE-T** rather than macFUSE:
+macFUSE needs a kernel extension, which on Apple Silicon means booting into
+reduced security to allow it, and Homebrew core dropped `sshfs` after macFUSE's
+licence changed. FUSE-T avoids all of that by serving FUSE over a local
+loopback instead of a kext.
+
+```sh
+brew tap macos-fuse-t/homebrew-cask
+brew install --cask fuse-t-sshfs
+```
+
+The sshfs cask depends on `fuse-t`, so that one command brings both, and it
+installs the binary as `sshfs` — which is the name `bothy connect` looks for.
 
 [All commands](Commands) · [Where it runs](Where-it-runs)
