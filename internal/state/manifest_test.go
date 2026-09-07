@@ -120,3 +120,36 @@ func TestLoadReportsACorruptManifest(t *testing.T) {
 		t.Errorf("the error does not name the file: %v", err)
 	}
 }
+
+// A remote's Dir is a path on somebody else's machine. Boxes.Save prunes
+// entries whose directory is gone, and doing that here would stat /srv/api
+// locally, not find it, and throw away a perfectly good record.
+func TestARemoteRecordIsNeverPrunedAgainstThisFilesystem(t *testing.T) {
+	dir := t.TempDir()
+	r := Remotes{
+		"abbey":    {Dir: "/srv/api", Identity: "~/.ssh/id_abbey"},
+		"10.0.0.5": {Dir: "/definitely/not/here"},
+	}
+	if err := r.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := LoadRemotes(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("LoadRemotes() kept %d of 2 — a remote path is not this machine's to check", len(got))
+	}
+	if got["abbey"].Dir != "/srv/api" || got["abbey"].Identity != "~/.ssh/id_abbey" {
+		t.Errorf("abbey round-tripped as %+v", got["abbey"])
+	}
+}
+
+// A machine that has connected nowhere is not an error.
+func TestNoRemotesRecordIsAnEmptyOne(t *testing.T) {
+	got, err := LoadRemotes(t.TempDir())
+	if err != nil || len(got) != 0 {
+		t.Errorf("LoadRemotes() = %v, %v; want an empty record and no error", got, err)
+	}
+}

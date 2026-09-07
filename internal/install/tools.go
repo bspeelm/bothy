@@ -275,6 +275,45 @@ func ProjectBoxes(p platform.Info) state.Boxes {
 	return b
 }
 
+// RemoteFor resolves what `bothy connect <name>` should do.
+//
+// A remote declared in config.toml wins over one bothy learned, which is the
+// precedence Resolve already uses for boxes: what you wrote down beats what
+// bothy noticed. found is false for a host typed for the first time, and the
+// caller asks where the work lives rather than guessing at a filesystem this
+// machine cannot see.
+func RemoteFor(p platform.Info, cfg config.Config, name string) (host string, r state.Remote, found bool) {
+	if d, ok := cfg.Remotes[name]; ok {
+		h := d.Host
+		if h == "" {
+			h = name // [remotes.abbey] with no host = the host is the name
+		}
+		return h, state.Remote{Dir: d.Dir, Identity: d.Identity}, true
+	}
+	if r, ok := ProjectRemotes(p)[name]; ok {
+		return name, r, true
+	}
+	return name, state.Remote{}, false
+}
+
+// ProjectRemotes is what bothy has learned about the machines it has connected
+// to, empty when it cannot be read: an unreadable record costs one prompt and
+// repairs itself, where failing the connect would not.
+func ProjectRemotes(p platform.Info) state.Remotes {
+	r, err := state.LoadRemotes(p.StateDir())
+	if err != nil {
+		return state.Remotes{}
+	}
+	return r
+}
+
+// RecordRemote remembers where the work lives on a machine.
+func RecordRemote(p platform.Info, host string, r state.Remote) error {
+	all := ProjectRemotes(p)
+	all[host] = r
+	return all.Save(p.StateDir())
+}
+
 // ForgetBox drops every project's claim on a box, for when the box is gone.
 // It returns the directories that had one: they fall back to the next rule,
 // and being told is the difference between a move and a surprise.

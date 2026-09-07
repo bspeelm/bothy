@@ -83,7 +83,7 @@ Three of them matter:
 | `bothy doctor` | what is wrong, and what to type (`--json` for machines) |
 | `bothy config set <key> <value>` | change a setting |
 
-There are sixteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
+There are seventeen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
 [how to read a doctor report](https://github.com/bspeelm/bothy/wiki/The-doctor).
 
 ## Toolboxes
@@ -127,6 +127,31 @@ bothy does not replace `toolbox`. Toolbox still makes the containers and still
 enters them; bothy keeps track of which project goes where, which is the part
 toolbox knows nothing about.
 [The full rules](https://github.com/bspeelm/bothy/wiki/Toolboxes).
+
+## Another machine
+
+`bothy connect abbey` opens the workspace against a different machine. The file
+browser shows its files, the shell pane is a real login session on it, and the
+agent works on its files.
+
+```
+$ bothy connect abbey
+abbey mounted at ~/.local/share/bothy/cache/remotes/abbey
+```
+
+**bothy puts nothing on the machine you connect to** — not itself, not a tool,
+not a credential, not a temporary file. The only thing it uses over there is
+the SSH server already running. If you can `ssh abbey` today, you can
+`bothy connect abbey`.
+
+The workspace itself still runs on your machine, which is why sessions,
+`bothy ls` and `bothy attach` all keep working normally, and why a dropped
+connection costs you the mount and not the session. Inside the workspace,
+`on make test` runs something on that machine in the right directory.
+
+It needs sshfs installed **on your own machine**, and bothy tells you the
+command if it is missing. [How it works, in
+full](https://github.com/bspeelm/bothy/wiki/Connecting).
 
 ## What it touches
 

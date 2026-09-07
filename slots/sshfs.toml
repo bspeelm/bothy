@@ -1,0 +1,22 @@
+# sshfs is advised, never installed: it publishes source tarballs only
+# (sshfs-3.7.6.tar.xz and a signature, no binaries), so there is nothing for
+# bothy.lock to pin, and every install path is a package manager and root.
+# ADR-046 records why there is no alternative.
+#
+# It fills no slot. `bothy connect` needs it and nothing else does.
+
+name      = "sshfs"
+what      = "mounts another machine's files, for 'bothy connect'"
+platforms = ["linux", "darwin"]
+
+[advise.install]
+# On an image-based host, install it in the toolbox bothy runs in rather than
+# layering it: the mount is visible to the processes that share that namespace,
+# which is exactly the workspace, and it costs no reboot.
+fedora-ostree = "inside your toolbox: sudo dnf install -y sshfs"
+fedora        = "sudo dnf install -y sshfs"
+ubuntu        = "sudo apt install -y sshfs"
+debian        = "sudo apt install -y sshfs"
+arch          = "sudo pacman -S sshfs"
+darwin        = "sshfs on macOS needs macFUSE, a kernel extension and a reboot — see https://macfuse.github.io"
+default       = "install sshfs with your package manager"

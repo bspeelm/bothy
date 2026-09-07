@@ -68,7 +68,7 @@ func cmdConfine(args []string) error {
 	if !confine.ImageBuilt(runtime, image) {
 		return explainTheBuild(p, image)
 	}
-	return launch(p, cfg, dir, cfg.Profile, cmd)
+	return launch(p, cfg, dir, cfg.Profile, cmd, remoteOpts{})
 }
 
 // explainTheBuild writes the recipe and names the command that builds it.

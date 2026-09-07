@@ -35,6 +35,10 @@ type Config struct {
 	Agent     Agent     `toml:"agent"`
 	Workspace Workspace `toml:"workspace"`
 	Extras    []string  `toml:"extras"`
+	// Remotes are machines `bothy connect` opens a workspace against, declared
+	// here rather than learned. Keyed by a name you choose, so Keys() skips it
+	// and `config set` cannot address it -- edit the file instead.
+	Remotes map[string]Remote `toml:"remotes"`
 	// Passthrough names slots that use your own config directory instead of
 	// bothy's: one environment variable per slot at launch, not a second code
 	// path. See PLAN.md §5.
@@ -372,6 +376,15 @@ func (c Config) ProviderFor(slot string) string {
 // PalettePath is the expanded custom palette file, or "" when none is set.
 func (c Config) PalettePath(p platform.Info) string {
 	return Expand(c.Theme.Palette, p.Home)
+}
+
+// Remote is a machine declared under [remotes.<name>]. Identity is a path to
+// a key and never a key: bothy says which one ssh should offer, and has no
+// business holding the thing itself.
+type Remote struct {
+	Host     string `toml:"host"`
+	Dir      string `toml:"dir"`
+	Identity string `toml:"identity"`
 }
 
 // Set applies a dotted key assignment, as used by `bothy config set`. The walk
