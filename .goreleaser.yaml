@@ -189,27 +189,44 @@ changelog:
     - title: Documentation
       regexp: '^docs'
       order: 2
+    # A group with no regexp catches everything the others miss. Without it
+    # goreleaser drops a commit that matches no group and says nothing, so a
+    # squash title in plain English disappears from the release page.
+    - title: Other changes
+      order: 999
   filters:
     exclude:
       - '^chore'
-      - '^test'
 
 release:
+  # The order is the README's, and for the README's reason: a signed package
+  # from your own package manager is the better default, and `curl | sh` is
+  # offered for the host where it is genuinely better rather than first
+  # because it is shortest. The release page is the busier of the two
+  # surfaces, so a footer that disagrees with the README undoes it.
   footer: |
     ## Install
 
+    | | |
+    |---|---|
+    | **Fedora** | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
+    | **Debian, Ubuntu, Mint** | download the `.deb` below, then `sudo apt install ./bothy_*.deb` |
+    | **macOS** | `brew install --cask bspeelm/bothy/bothy` |
+    | **you already have Go** | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+
+    Then run `bothy` from any directory.
+
+    On an image-based system like Silverblue, where `dnf` means `rpm-ostree`
+    and a reboot, there is a script that needs no root and layers nothing onto
+    the host:
+
     ```sh
     curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
-    bothy install
     ```
 
-    Or, on Debian and Ubuntu, download the `.deb` below and:
-
-    ```sh
-    sudo apt install ./bothy_*.deb
-    ```
-
-    Then run `bothy`.
+    It is fetched over HTTPS and run unsigned, before bothy exists to verify
+    anything -- the same trade as any `curl | sh`.
+    [All six ways in, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
 
     bothy writes only into `~/.local/share/bothy`. Your dotfiles are neither
     read nor written, and `bothy uninstall` removes that one directory.
