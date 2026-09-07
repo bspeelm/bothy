@@ -24,6 +24,10 @@ import (
 // that can reach it the same way you can. Nothing is placed over there
 // (ADR-046), and the only thing run over there is a shell you asked for.
 
+// mounted is platform.Mounted behind a seam, so a test can say what is mounted
+// without one.
+var mounted = platform.Mounted
+
 func cmdConnect(args []string) error {
 	fs := flag.NewFlagSet("connect", flag.ExitOnError)
 	dirFlag := fs.String("dir", "", "the directory on that machine (default: /, the whole machine)")
@@ -70,8 +74,8 @@ func cmdConnect(args []string) error {
 	// A workspace that was killed never ran its unmount, so clear a leftover
 	// before adding to it: sshfs stacks a second mount on the same directory
 	// happily, and then neither can be released by name.
-	if alreadyMounted(mount) {
-		unmount(mount)
+	if mounted(mount) {
+		unmount(p.OS, mount)
 	}
 	// Straight through rather than captured: ssh asks about an unknown host key
 	// and asks for a password on the terminal, and a prompt nobody can see is
@@ -81,7 +85,9 @@ func cmdConnect(args []string) error {
 	fmt.Printf("connecting to %s as %s\n", host, orLocalUser(user))
 	m := exec.Command(sshfs, mountArgs(host, rec.Identity, mount)...)
 	m.Stdin, m.Stdout, m.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := m.Run(); err != nil {
+	// sshfs forks and the parent exits 0 even when the child failed to mount,
+	// so the mount point is the only honest answer about whether this worked.
+	if err := m.Run(); err != nil || !mounted(mount) {
 		return fmt.Errorf("could not mount %s -- sshfs said why above\n"+
 			"      it tried to log in as %s. If the account there is different:\n"+
 			"        bothy connect <account>@%s\n"+
@@ -90,7 +96,7 @@ func cmdConnect(args []string) error {
 	}
 	// Released however this returns. A workspace that exits leaving the far
 	// machine mounted is a directory that looks local and is not.
-	defer unmount(mount)
+	defer unmount(p.OS, mount)
 
 	if err := writeShim(p); err != nil {
 		return err
@@ -213,11 +219,12 @@ func askLine(prompt string) string {
 // unmount releases the mount, lazily only if it has to. Errors are not
 // reported: this runs on the way out of a workspace, and a complaint about a
 // mount arriving after the window has gone helps nobody.
-func unmount(mount string) {
-	if exec.Command("fusermount3", unmountArgs(mount)...).Run() == nil {
+func unmount(goos, mount string) {
+	plain, forced := unmountArgv(goos, mount)
+	if exec.Command(plain[0], plain[1:]...).Run() == nil {
 		return
 	}
-	_ = exec.Command("fusermount3", unmountLazyArgs(mount)...).Run()
+	_ = exec.Command(forced[0], forced[1:]...).Run()
 }
 
 // orLocalUser names the account for a message, falling back to this machine's

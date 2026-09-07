@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -90,25 +89,21 @@ func mountArgs(host, identity, mount string) []string {
 	return []string{host + ":/", mount, "-o", opts}
 }
 
-// unmountArgs releases the mount, and unmountLazyArgs is the fallback.
+// unmountArgv is how this machine releases the mount: the plain attempt, and
+// the forceful one behind it.
 //
-// Plain first: a lazy unmount detaches the directory but leaves sshfs running
-// until every reference to it drops, which was measured leaving a process
-// behind after the workspace had gone. Lazy is what a hung connection needs,
-// where a plain unmount fails and leaves the directory unusable -- so it is
-// the second attempt rather than the first.
-func unmountArgs(mount string) []string     { return []string{"-u", mount} }
-func unmountLazyArgs(mount string) []string { return []string{"-u", "-z", mount} }
-
-// alreadyMounted reports whether something is mounted there. A workspace that
-// was killed never ran its unmount, and the next connect must not stack a
-// second sshfs on top of the first.
-func alreadyMounted(mount string) bool {
-	body, err := os.ReadFile("/proc/self/mounts")
-	if err != nil {
-		return false
+// libfuse's fusermount3 is Linux's; a FUSE-T mount on macOS is an NFS mount
+// that umount releases, and neither program exists on the other platform. Both
+// compile anywhere, so this is a runtime branch and not a build tag (ADR-031).
+//
+// Plain first: the forceful unmount is what a mount something still holds open
+// needs, and reaching for it first was measured tearing a mount out from under
+// a pane that was still reading it.
+func unmountArgv(goos, mount string) (plain, forced []string) {
+	if goos == "darwin" {
+		return []string{"umount", mount}, []string{"umount", "-f", mount}
 	}
-	return strings.Contains(string(body), " "+mount+" ")
+	return []string{"fusermount3", "-u", mount}, []string{"fusermount3", "-u", "-z", mount}
 }
 
 // shellCommand is what the shell pane runs: a login session on the far

@@ -172,6 +172,8 @@ func TestEveryRelativeDocLinkResolves(t *testing.T) {
 var buildTagged = map[string]int{
 	"internal/platform/termsize_unix.go":  30, // ioctl TIOCGWINSZ; no such constant on Windows
 	"internal/platform/termsize_other.go": 12,
+	"internal/platform/mounted_unix.go":   34, // syscall.Stat_t.Dev; Windows has no st_dev
+	"internal/platform/mounted_other.go":  8,
 }
 
 func TestPlatformSplitsStayShims(t *testing.T) {
