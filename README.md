@@ -29,8 +29,8 @@ bothy
   <img alt="the bothy workspace: a Yazi file browser across the top with a file preview, an agent pane and a shell below, inside Zellij" src="docs/images/workspace.png" width="900">
 </p>
 
-That is the entire idea. It is not a large one. Most of the effort went into
-making sure it did nothing else, and it still occasionally has to be reminded.
+That is the entire idea. It is not a large one, and most of the effort went
+into making sure it did nothing else.
 
 ## What happens when you type it
 
@@ -84,10 +84,9 @@ needs no root and layers nothing onto the host.
 curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
 ```
 
-What that costs, plainly: the script is fetched over HTTPS and run **unsigned**,
-before bothy exists to verify anything. No signature on a later artifact fixes
-that — it is the same trade as any `curl | sh`, and worth making deliberately
-rather than because it was the first line on the page.
+The cost: the script is fetched over HTTPS and run **unsigned**, before bothy
+exists to verify anything. No signature on a later artifact fixes that. It is
+the same trade as any `curl | sh`.
 
 There are six ways in, counting source, and each verifies what it fetched
 differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing) ·
@@ -246,7 +245,7 @@ bothy cannot test in a container, and says so.
 ## What bothy is not
 
 - A plugin marketplace or extension API
-- A bundle of the tools. It downloads their official releases and checks them, which is different, and the difference is the point
+- A bundle of the tools. It downloads their official releases and checks them against `bothy.lock`
 - An LSP or debugger manager
 - A background service, an auto-updater, or a collector of telemetry. It does not run when you are not looking, and has nothing to report if it did
 - A manager for your agent's config, keys or hooks. Those are yours, and so are the consequences
@@ -277,8 +276,8 @@ bug in the provider format, not in you.
 What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). Why
 things are the way they are is recorded in
 [`docs/decisions.md`](docs/decisions.md). 
-The plan for the project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
-the project better than most plans do, which is to say partially.
+The plan for the project is in [`docs/PLAN.md`](docs/PLAN.md), kept current
+where the project has moved on from it.
 
 ## Authorship
 I wanted an easy way to make my development setup portable — all of the things I use and nothing I don't. It started as a cheatsheet I'd hand to an agent to set up the configuration; that's still in the docs if you're curious, and it's probably where this should have stopped. But while working on another project I felt the pull to go through every step of shipping something with a fully open AI workflow, and this was about as low-stakes a candidate as it gets.
