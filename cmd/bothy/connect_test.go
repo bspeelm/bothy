@@ -239,3 +239,30 @@ func TestConfineRefusesInsideAConnect(t *testing.T) {
 		t.Errorf("confine refused an ordinary local project: %v", err)
 	}
 }
+
+// An unreachable host was not an error but a wait: measured at 45 seconds and
+// still going, silently, which reads as bothy hanging rather than the machine
+// being unreachable.
+func TestAnUnreachableHostFailsRatherThanHangs(t *testing.T) {
+	opts := strings.Join(mountArgs("abbey", "", "/m"), " ")
+	if !strings.Contains(opts, "ConnectTimeout=") {
+		t.Error("no ConnectTimeout, so an unreachable host hangs until the kernel gives up")
+	}
+}
+
+// `bothy connect 10.0.0.5` logs in as the local username, which is right on
+// your own machines and wrong on somebody else's — and the failure that
+// follows looks like the host being down rather than the account being wrong.
+func TestTheAccountIsNamedBeforeConnecting(t *testing.T) {
+	if got := orLocalUser("bryan"); got != "bryan" {
+		t.Errorf("orLocalUser(bryan) = %q", got)
+	}
+	t.Setenv("USER", "someone")
+	if got := orLocalUser(""); got != "someone" {
+		t.Errorf("orLocalUser() = %q, want this machine's account", got)
+	}
+	t.Setenv("USER", "")
+	if got := orLocalUser(""); got == "" {
+		t.Error("orLocalUser() came back empty, so the message would name nobody")
+	}
+}

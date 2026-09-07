@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -75,7 +76,11 @@ func localPath(mount, remote string) string {
 // mounted, not the working directory, so remotePath stays arithmetic when
 // somebody navigates out of it in yazi.
 func mountArgs(host, identity, mount string) []string {
-	opts := "reconnect,ServerAliveInterval=15,ServerAliveCountMax=3"
+	// ConnectTimeout, or an unreachable host is not an error but a wait.
+	// Measured against an address that cannot route: 45 seconds and still
+	// going, silently, which reads as bothy hanging rather than the host being
+	// unreachable. With it, ten seconds and sshfs says why.
+	opts := "reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,ConnectTimeout=10"
 	if identity != "" {
 		// Forwarded to ssh, which takes any config keyword after -o. Choosing a
 		// key is not weakening verification; StrictHostKeyChecking and friends
@@ -226,4 +231,23 @@ func agentWithNote(cfg config.Config, host, remoteDir, mount string) string {
 		return agent
 	}
 	return agent + " " + flag + " " + shellQuote(remoteNote(host, remoteDir, mount))
+}
+
+// sshUser is who ssh would log in as, from ssh's own resolution of the host.
+//
+// `bothy connect 10.0.0.5` uses the local username, which is right on your own
+// machines and wrong on somebody else's -- and the failure that follows looks
+// like the host being down rather than the account being wrong. Saying it
+// first costs one local call and no round trip.
+func sshUser(host string) string {
+	out, err := exec.Command("ssh", "-G", "--", host).Output()
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if u, ok := strings.CutPrefix(line, "user "); ok {
+			return strings.TrimSpace(u)
+		}
+	}
+	return ""
 }
