@@ -1683,3 +1683,122 @@ code cap is not doing two jobs. The prose ratio rises with the code and has
 never been the binding constraint. And the binary cap is unmoved at 10 MB,
 which is the only budget a user can feel.
 
+## ADR-046 — The workspace runs here; the far machine supplies files and a shell
+
+**Status:** accepted. Implements `bothy connect`.
+
+`bothy connect <host>` opens a workspace against another machine. yazi browses
+that machine's files, the shell pane is a login session on it, and the agent
+works on its files.
+
+**Nothing is ever placed on the far machine.** Not bothy, not a tool, not a
+credential, not a cache, not a temporary file. The only software used over
+there is the `sshd` and `sftp-server` already running, which is what connecting
+over SSH means. This is a requirement, not a preference, and the two designs it
+rules out are recorded below so they are not proposed again.
+
+**Rejected: run bothy on the far machine.** This is the VSCode model -- Remote
+SSH ships a server into `~/.vscode-server` on first connect. It puts a binary
+on somebody else's box, and it also breaks the thing ADR-042 and ADR-043 built.
+The ownership machinery assumes a shared `/proc` and a shared filesystem: with
+a remote multiplexer server, `unwatchedClients` scans the local process table,
+finds nothing, and `refuseIfInUse` refuses forever -- the exact lockout ADR-042
+was written to end. Worse, `Reclaim` would signal a *remote* pid number on the
+*local* machine, which can kill an unrelated local process.
+
+**Rejected: rewrite the agent pane into `ssh -t host <agent>`.** It avoids
+putting bothy over there but requires the agent to be logged in over there,
+which is the same mistake wearing a hat.
+
+**So the workspace runs here**, and the far machine is reached three ways, one
+per pane. sshfs mounts it at `<cache>/remotes/<host>`; yazi reads that mount;
+the shell pane is `ssh <host>`; the agent is a local process with the mount as
+its directory, and it shells out to ssh like anything else. The multiplexer
+server stays local, so everything ADR-042 and ADR-043 established keeps
+working against a session bothy can actually see.
+
+**The mount is a pure prefix, and that is load-bearing.** The remote root is
+mounted at `<cache>/remotes/<host>`, so `/srv/api` over there is always
+`<mount>/srv/api` here. Stripping the prefix gives the remote path with no
+lookup table. Everything the agent does depends on that being arithmetic.
+
+**The agent is told where it is, and given one verb.** Its paths and the far
+machine's do not match, so an agent reasoning "I am in `$(pwd)`, therefore
+`ssh host \"cd $(pwd) && make\"`" names a directory that does not exist there.
+`SessionEnv` carries `BOTHY_REMOTE`, `BOTHY_REMOTE_DIR` and
+`BOTHY_REMOTE_MOUNT` for a connect, and bothy writes one shim into its own bin
+-- on **this** machine, beside the `xdg-open` shim it already writes -- so that
+`on make test` runs `ssh host "cd <remote dir> && make test"`. Without it the
+agent has two ways to be wrong and no way to tell which happened.
+
+**Keyed by host, not by project.** A box belongs to a project, so
+`<state>/boxes.json` is keyed by directory. A remote belongs to a machine and
+usually has no local counterpart, so `bothy connect myserver` must work from
+anywhere. Session names carry the host, or a remote `api` collides with a local
+one in `bothy ls`.
+
+**`-i` is fine; the other three are not.** bothy asks `ssh -G <host>` what ssh
+already knows and passes `-i <path>` only when the answer is nothing. It never
+writes `StrictHostKeyChecking`, `UserKnownHostsFile` or
+`PasswordAuthentication`: choosing a key is not weakening verification, and
+those three are.
+
+**sshfs is a local prerequisite, on the ghostty precedent** -- advised, never
+installed, with a doctor check naming the command and a refusal that prints it
+rather than mounting nothing.
+
+It is not fetched and never will be. sshfs publishes **source tarballs only**
+-- `sshfs-3.7.6.tar.xz` and its signature, no binaries -- so there is nothing
+for `bothy.lock` to pin, and the format is the one ADR-014 refused a dependency
+to read. Installing it means a package manager and root, which ADR-002 forbids.
+rclone ships static binaries and can mount sftp, and is still not the answer:
+fetching 30 MB to avoid telling somebody to run one command is a poor trade,
+and it would put a second filesystem implementation in the project.
+
+There is no alternative to a mount, either: yazi declares no remote support, a
+FUSE filesystem inside bothy needs a Go dependency PLAN.md 13 forbids, and
+running yazi over there would put a binary on the box.
+
+**Confine is degraded over a connect and says so.** The wall mounts the project
+directory and the agent's credentials and deliberately not `~/.ssh`, so a
+confined agent can edit the far machine's files through the mount and cannot
+reach it any other way. ADR-034 promises confinement never runs silently, so
+this is printed rather than discovered.
+
+## ADR-047 — The code cap rises to 7,400, and stops being squeezed
+
+**Status:** accepted. Amends ADR-045.
+
+ADR-045 raised the cap to 7,000 and said it left "about a hundred lines". It
+did not: measured on the day this was written, the tree was at 6,991. The
+arithmetic was wrong when it was published, and saying so is cheaper than
+letting the next raise inherit it.
+
+ADR-010's rule is that when a measure and the thing it measures disagree, fix
+the measure -- **and do not damage the thing to satisfy it**. That second half
+is what decides this. `bothy connect` is about 235 lines written legibly.
+Compressing it to fit would mean merging functions that answer different
+questions and dropping the comments that record why the mount is a prefix and
+why `-i` is not a weakening -- damage to the thing, to satisfy the measure.
+
+**What was tried first**, because ADR-026 requires the finding rather than the
+assertion. Every exported helper was checked for callers: `render.IsGenerated`
+and `slots.Fills` are reachable only from tests, but they back
+`TestEveryGeneratedFileSaysItIsGenerated` and the provider-registry
+assertions -- deleting them buys 27 lines by deleting proofs of ADR-009. The
+one genuine redundancy was `filepath.Join(destDir, name)` written five times in
+`fetch.Install`, worth four lines. **There is no fat**, which is the finding
+ADR-026 asks for.
+
+**Why 7,400.** ADR-044's surface is spent and ADR-046's is decided in full at
+about 235 lines. 7,400 covers it with roughly 175 left, which is a budget
+rather than a ceiling. The claim the number stands for is unchanged and is the
+one that matters: a skeptical stranger can still read the whole thing in an
+afternoon.
+
+**What keeps it honest.** The comment ratio bounds prose independently. The
+binary cap is unmoved at 10 MB, which is the only budget a user can feel. And
+`TestTheDocumentedBudgetsMatchTheMakefile` holds the three places this number
+is written against the one place it is enforced, so no raise can be a quiet
+one.
+
