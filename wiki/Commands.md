@@ -142,7 +142,7 @@ way you can.
 
 ```
 $ bothy connect abbey
-directory on abbey [/home/you]: /srv/api
+directory on abbey [/]: /srv/api
 ssh key, if that host needs one named [none]:
 abbey mounted at ~/.local/share/bothy/cache/remotes/abbey
 ```

@@ -49,8 +49,21 @@ func TestTheMountIsAPurePrefixOfTheRemotePath(t *testing.T) {
 	}
 }
 
-// "~" is the default and only the far machine can expand it, so it maps to the
-// mount root rather than to a directory called "~" that nothing will contain.
+// The default is the whole machine, so a connect lands somewhere that has
+// something in it. A remote home is usually ten dotfiles and nothing else,
+// which reads as a connection that did not work.
+func TestTheDefaultIsTheWholeMachine(t *testing.T) {
+	const mount = "/c/remotes/abbey"
+	if got := localPath(mount, "/"); got != mount {
+		t.Errorf("localPath(/) = %q, want the mount root", got)
+	}
+	if got := sessionFor("abbey", "/"); got != "bothy-abbey" {
+		t.Errorf("sessionFor(abbey, /) = %q, want bothy-abbey", got)
+	}
+}
+
+// A ~ can still be typed, and only the far machine can expand it — so it maps
+// to the mount root rather than to a directory called "~" that nothing has.
 func TestAnUnexpandedHomeOpensAtTheMountRoot(t *testing.T) {
 	const mount = "/c/remotes/abbey"
 	for _, remote := range []string{"", "~", "~/src/api"} {

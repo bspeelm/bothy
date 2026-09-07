@@ -84,6 +84,13 @@ The first time you connect, bothy asks which directory to open and, if that
 host needs a particular key, where it is. It remembers both, so afterwards
 `bothy connect abbey` is enough. `bothy connect edit abbey` changes them.
 
+**The default is `/`, the whole machine.** That is deliberate: a home
+directory on a server usually holds nothing but dotfiles, so opening there
+looks like a connection that did not work. The root always has something in
+it, and anywhere below is a few keystrokes away in the browser. Type a path if
+you know where you are going — `~` works too, and is expanded by asking that
+machine rather than guessing with yours.
+
 You can also write them down. Anything in `config.toml` wins over what bothy
 learned, and the file is the one you already keep in git:
 

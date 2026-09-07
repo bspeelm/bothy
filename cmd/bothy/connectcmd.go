@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -25,7 +26,7 @@ import (
 
 func cmdConnect(args []string) error {
 	fs := flag.NewFlagSet("connect", flag.ExitOnError)
-	dirFlag := fs.String("dir", "", "the directory on that machine (default: your home there)")
+	dirFlag := fs.String("dir", "", "the directory on that machine (default: /, the whole machine)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -91,47 +92,64 @@ func cmdConnect(args []string) error {
 	})
 }
 
-// settle decides where the work lives on that machine, asking at most once.
+// settle decides where on that machine the work lives, asking at most once.
 //
-// The default is your home over there, which only that machine can expand --
-// so it is asked for rather than guessed, and the absolute answer is recorded.
-// Everything else depends on the recorded path being one the far machine
-// actually uses.
+// The default is the whole machine. A server's home directory usually holds
+// nothing but dotfiles, so landing there looks like a connection that did not
+// work -- measured on a real host, ten entries and every one of them hidden.
+// The root always has something in it, and anywhere below it is a few
+// keystrokes away in the browser.
 func settle(p platform.Info, cfg config.Config, host string, rec state.Remote,
 	dirFlag string, known, edit bool) (state.Remote, error) {
 
 	if dirFlag != "" {
 		rec.Dir = dirFlag
 	}
-	if edit || !known || rec.Dir == "" {
-		if _, declared := cfg.Remotes[host]; declared && !edit {
-			return rec, nil // config said so; do not second-guess it
+	if !edit && known && rec.Dir != "" {
+		return rec, nil
+	}
+	if _, declared := cfg.Remotes[host]; declared && !edit {
+		return rec, nil // config said so; do not second-guess it
+	}
+	if rec.Dir == "" {
+		rec.Dir = "/"
+	}
+	if edit || !known {
+		if answer := askLine(fmt.Sprintf("directory on %s [%s]: ", host, rec.Dir)); answer != "" {
+			rec.Dir = answer
 		}
-		if rec.Dir == "" {
-			home, err := remoteHome(host, rec.Identity)
-			if err != nil {
-				return rec, err
-			}
-			rec.Dir = home
-		}
-		if edit || !known {
-			if answer := askLine(fmt.Sprintf("directory on %s [%s]: ", host, rec.Dir)); answer != "" {
-				rec.Dir = answer
-			}
-			if id := askLine("ssh key, if that host needs one named [none]: "); id != "" {
-				rec.Identity = id
-			}
-		}
-		if err := install.RecordRemote(p, host, rec); err != nil {
-			return rec, err
+		if id := askLine("ssh key, if that host needs one named [none]: "); id != "" {
+			rec.Identity = id
 		}
 	}
-	return rec, nil
+	dir, err := expandRemote(host, rec.Identity, rec.Dir)
+	if err != nil {
+		return rec, err
+	}
+	rec.Dir = dir
+	return rec, install.RecordRemote(p, host, rec)
 }
 
-// remoteHome asks the machine what your home is there, because "~" is only
-// meaningful to the shell that expands it and this one is the wrong shell.
-// A question, not a change: it runs `printf` and leaves nothing behind.
+// expandRemote resolves a leading ~ by asking the machine it belongs to.
+//
+// Only that shell can expand it, and this is the wrong shell -- so a "~" typed
+// here is a question for over there rather than a guess made with this
+// machine's home. Nothing else needs asking, which is why the default of "/"
+// costs no round trip at all.
+func expandRemote(host, identity, dir string) (string, error) {
+	if dir != "~" && !strings.HasPrefix(dir, "~/") {
+		return dir, nil
+	}
+	home, err := remoteHome(host, identity)
+	if err != nil {
+		return "", err
+	}
+	return path.Join(home, strings.TrimPrefix(strings.TrimPrefix(dir, "~"), "/")), nil
+}
+
+// remoteHome asks the machine what your home is there. A question, not a
+// change: it runs printf and leaves nothing behind. A package variable so a
+// test can answer without a machine to reach.
 var remoteHome = func(host, identity string) (string, error) {
 	argv := []string{}
 	if identity != "" {
@@ -141,7 +159,7 @@ var remoteHome = func(host, identity string) (string, error) {
 	out, err := exec.Command("ssh", argv...).Output()
 	home := strings.TrimSpace(string(out))
 	if err != nil || home == "" {
-		return "", fmt.Errorf("could not ask %s where your home is; name it with --dir", host)
+		return "", fmt.Errorf("could not ask %s where your home is; name the directory in full", host)
 	}
 	return home, nil
 }

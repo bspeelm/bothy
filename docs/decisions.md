@@ -1722,6 +1722,13 @@ mounted at `<cache>/remotes/<host>`, so `/srv/api` over there is always
 `<mount>/srv/api` here. Stripping the prefix gives the remote path with no
 lookup table. Everything the agent does depends on that being arithmetic.
 
+**The default directory is the whole machine.** A home directory on a server
+usually holds nothing but dotfiles -- measured on a real host, ten entries and
+every one of them hidden -- so opening there reads as a connection that did not
+work. The root always has something in it, and it costs no round trip to
+resolve. A "~" typed by hand is still expanded, by asking the machine it
+belongs to rather than guessing with this one's home.
+
 **The agent is told where it is, and given one verb.** Its paths and the far
 machine's do not match, so an agent reasoning "I am in `$(pwd)`, therefore
 `ssh host \"cd $(pwd) && make\"`" names a directory that does not exist there.
