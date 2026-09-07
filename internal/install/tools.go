@@ -286,7 +286,7 @@ func RemoteFor(p platform.Info, cfg config.Config, name string) (host string, r 
 	if d, ok := cfg.Remotes[name]; ok {
 		h := d.Host
 		if h == "" {
-			h = name // [remotes.abbey] with no host = the host is the name
+			h = name // [remotes.<client>] with no host = the host is the name
 		}
 		return h, state.Remote{Dir: d.Dir, Identity: d.Identity}, true
 	}

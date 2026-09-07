@@ -10,7 +10,7 @@ import (
 // reported as "nothing is mounted here" -- so a leaked mount was never cleared
 // and the next connect mounted on top of it.
 func TestAnOrdinaryDirectoryIsNotAMount(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "remotes", "abbey")
+	dir := filepath.Join(t.TempDir(), "remotes", "<client>")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}

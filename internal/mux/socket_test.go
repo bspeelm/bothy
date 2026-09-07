@@ -11,13 +11,13 @@ import (
 // shortening is macOS's long $TMPDIR and nothing else.
 func TestLinuxSessionNamesAreNeverRewritten(t *testing.T) {
 	room := socketRoom("linux", "/tmp/zellij-1000")
-	for _, n := range []string{"bothy-abbey", "bothy-shadowthebearded-192-168-30-93"} {
+	for _, n := range []string{"bothy-<client>", "bothy-longishaccountname-203-0-113-42"} {
 		if len(n) > room {
 			t.Errorf("%q (%d bytes) would be rewritten on Linux, which has room for %d", n, len(n), room)
 		}
 	}
 	// Measured on macOS 25.6: zellij refused a 115-byte path, max 103.
-	if r := socketRoom("darwin", "/var/folders/y2/2ld819k10yb0c4c11sq7gckm0000gn/T/zellij-501"); r != 24 {
+	if r := socketRoom("darwin", "/var/folders/y2/x1y2z3a4b5c6d7e8f9g0h1i2j3k000/T/zellij-501"); r != 24 {
 		t.Errorf("socketRoom(darwin) = %d, want the measured 24", r)
 	}
 }
@@ -25,7 +25,7 @@ func TestLinuxSessionNamesAreNeverRewritten(t *testing.T) {
 // zellij exited with "the IPC socket path is too long (115 bytes, max 103)"
 // before the workspace opened, which read as bothy printing terminal garbage.
 func TestAnOverlongSessionNameIsShortenedAndStaysUnique(t *testing.T) {
-	t.Setenv("ZELLIJ_SOCKET_DIR", "/var/folders/y2/2ld819k10yb0c4c11sq7gckm0000gn/T/zellij-501")
+	t.Setenv("ZELLIJ_SOCKET_DIR", "/var/folders/y2/x1y2z3a4b5c6d7e8f9g0h1i2j3k000/T/zellij-501")
 	room := socketRoom(runtime.GOOS, os.Getenv("ZELLIJ_SOCKET_DIR"))
 	long := "bothy-averylongaccountname-192-168-30-93-with-a-deep-project-directory"
 	a, b := FitSocket(long), FitSocket(long+"4")
@@ -35,7 +35,7 @@ func TestAnOverlongSessionNameIsShortenedAndStaysUnique(t *testing.T) {
 	if a == b {
 		t.Errorf("two machines collapsed onto one session name %q -- ADR-046 keeps them apart", a)
 	}
-	if got := FitSocket("bothy-abbey"); got != "bothy-abbey" {
+	if got := FitSocket("bothy-<client>"); got != "bothy-<client>" {
 		t.Errorf("a name that already fits was rewritten to %q", got)
 	}
 }

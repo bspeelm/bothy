@@ -34,7 +34,7 @@ func TestConnectPutsNothingOnTheRemote(t *testing.T) {
 // Everything the agent does rests on this being arithmetic. The mount holds
 // the remote root, so stripping it gives the path the far machine knows.
 func TestTheMountIsAPurePrefixOfTheRemotePath(t *testing.T) {
-	const mount = "/home/me/.cache/bothy/remotes/abbey"
+	const mount = "/home/me/.cache/bothy/remotes/<client>"
 	cases := []struct {
 		local, want string
 		ok          bool
@@ -57,19 +57,21 @@ func TestTheMountIsAPurePrefixOfTheRemotePath(t *testing.T) {
 // something in it. A remote home is usually ten dotfiles and nothing else,
 // which reads as a connection that did not work.
 func TestTheDefaultIsTheWholeMachine(t *testing.T) {
-	const mount = "/c/remotes/abbey"
+	const mount = "/c/remotes/<client>"
 	if got := localPath(mount, "/"); got != mount {
 		t.Errorf("localPath(/) = %q, want the mount root", got)
 	}
-	if got := sessionFor("abbey", "/"); got != "bothy-abbey" {
-		t.Errorf("sessionFor(abbey, /) = %q, want bothy-abbey", got)
+	// sanitise() keeps only what a multiplexer accepts, so the angle brackets
+	// of the placeholder host come off and "client" is what is left.
+	if got := sessionFor("<client>", "/"); got != "bothy-client" {
+		t.Errorf("sessionFor(<client>, /) = %q, want bothy-client", got)
 	}
 }
 
 // A ~ can still be typed, and only the far machine can expand it — so it maps
 // to the mount root rather than to a directory called "~" that nothing has.
 func TestAnUnexpandedHomeOpensAtTheMountRoot(t *testing.T) {
-	const mount = "/c/remotes/abbey"
+	const mount = "/c/remotes/<client>"
 	for _, remote := range []string{"", "~", "~/src/api"} {
 		if got := localPath(mount, remote); got != mount {
 			t.Errorf("localPath(%q) = %q, want the mount root", remote, got)
@@ -88,7 +90,7 @@ func TestAllThreePanesWorkOnTheRemote(t *testing.T) {
 		{Panes: []layout.Pane{{Slot: "browser"}}},
 		{Panes: []layout.Pane{{Slot: "agent"}, {Name: "side"}}},
 	}}
-	got := withRemoteShell(prof, "ssh -t -- abbey 'cd /srv/api; exec $SHELL -l'")
+	got := withRemoteShell(prof, "ssh -t -- <client> 'cd /srv/api; exec $SHELL -l'")
 
 	if c := got.Rows[0].Panes[0].Command; c != "" {
 		t.Errorf("the browser pane was rewritten to %q — it reads the mount", c)
@@ -96,7 +98,7 @@ func TestAllThreePanesWorkOnTheRemote(t *testing.T) {
 	if c := got.Rows[1].Panes[0].Command; c != "" {
 		t.Errorf("the agent pane was rewritten to %q — it runs here", c)
 	}
-	if c := got.Rows[1].Panes[1].Command; !strings.Contains(c, "ssh") || !strings.Contains(c, "abbey") {
+	if c := got.Rows[1].Panes[1].Command; !strings.Contains(c, "ssh") || !strings.Contains(c, "<client>") {
 		t.Errorf("the shell pane is %q, want a session on the far machine", c)
 	}
 	if prof.Rows[1].Panes[1].Command != "" {
@@ -108,11 +110,11 @@ func TestAllThreePanesWorkOnTheRemote(t *testing.T) {
 // and a session name that cannot tell them apart makes the second launch join
 // the first by accident.
 func TestSessionNamesCarryTheHost(t *testing.T) {
-	remote := sessionFor("abbey", "/srv/api")
+	remote := sessionFor("<client>", "/srv/api")
 	if remote == "bothy-api" {
 		t.Fatal("the remote session is named as though it were local")
 	}
-	if !strings.Contains(remote, "abbey") || !strings.Contains(remote, "api") {
+	if !strings.Contains(remote, "client") || !strings.Contains(remote, "api") {
 		t.Errorf("sessionFor() = %q, want the host and the directory", remote)
 	}
 	if got := sessionFor("10.0.0.5", "~"); strings.ContainsAny(got, "./~:") {
@@ -125,9 +127,9 @@ func TestSessionNamesCarryTheHost(t *testing.T) {
 func TestBothyChoosesAKeyButNeverWeakensVerification(t *testing.T) {
 	weakening := []string{"StrictHostKeyChecking", "UserKnownHostsFile", "PasswordAuthentication", "NoHostAuthenticationForLocalhost"}
 	argvs := [][]string{
-		mountArgs("abbey", "/home/me/.ssh/id_abbey", "/c/remotes/abbey"),
-		mountArgs("abbey", "", "/c/remotes/abbey"),
-		{shellCommand("abbey", "/home/me/.ssh/id_abbey", "/srv/api")},
+		mountArgs("<client>", "/home/me/.ssh/id_<client>", "/c/remotes/<client>"),
+		mountArgs("<client>", "", "/c/remotes/<client>"),
+		{shellCommand("<client>", "/home/me/.ssh/id_<client>", "/srv/api")},
 		{shimScript()},
 	}
 	for _, argv := range argvs {
@@ -138,10 +140,10 @@ func TestBothyChoosesAKeyButNeverWeakensVerification(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(strings.Join(mountArgs("abbey", "/k", "/m"), " "), "IdentityFile=/k") {
+	if !strings.Contains(strings.Join(mountArgs("<client>", "/k", "/m"), " "), "IdentityFile=/k") {
 		t.Error("an identity was given and sshfs was not told about it")
 	}
-	if strings.Contains(strings.Join(mountArgs("abbey", "", "/m"), " "), "IdentityFile") {
+	if strings.Contains(strings.Join(mountArgs("<client>", "", "/m"), " "), "IdentityFile") {
 		t.Error("no identity was given and one was invented")
 	}
 }
@@ -149,7 +151,7 @@ func TestBothyChoosesAKeyButNeverWeakensVerification(t *testing.T) {
 // ssh reads a leading dash as an option, and everything else is ssh's business
 // to interpret, not bothy's to parse.
 func TestHostsAreHandedToSSHUnexamined(t *testing.T) {
-	for _, ok := range []string{"abbey", "user@1.2.3.4", "[::1]", "abbey.example.com", "1.2.3.4"} {
+	for _, ok := range []string{"<client>", "user@1.2.3.4", "[::1]", "<client>.example.com", "1.2.3.4"} {
 		if _, err := hostArg(ok); err != nil {
 			t.Errorf("hostArg(%q) = %v, want it accepted", ok, err)
 		}
@@ -182,7 +184,7 @@ func TestTheShimRunsOnTheBoxInTheRightDirectory(t *testing.T) {
 // the directory bothy owns.
 func TestTheMountIsInsideBothysOwnTree(t *testing.T) {
 	cache := "/home/me/.local/share/bothy/cache"
-	m := mountPoint(cache, "abbey")
+	m := mountPoint(cache, "<client>")
 	if !strings.HasPrefix(m, cache+string(filepath.Separator)) {
 		t.Errorf("mountPoint() = %q, want it under %q", m, cache)
 	}
@@ -192,7 +194,7 @@ func TestTheMountIsInsideBothysOwnTree(t *testing.T) {
 // unmount attempts exited 127, and every connect leaked its mount until a
 // later one was asked to mount over a live one and failed.
 func TestEveryPlatformCanReleaseItsOwnMount(t *testing.T) {
-	const m = "/c/remotes/abbey"
+	const m = "/c/remotes/<client>"
 	for _, goos := range []string{"linux", "darwin"} {
 		plain, forced := unmountArgv(goos, m)
 		if plain[0] != forced[0] {
@@ -240,10 +242,10 @@ func force(argv []string) bool {
 // machine, then read /etc/os-release and described it as though it were the
 // far one. It has to be told, not left to deduce.
 func TestTheAgentIsToldWhichMachineItIsNotOn(t *testing.T) {
-	const mount = "/c/remotes/abbey"
-	note := remoteNote("abbey", "/srv/api", mount)
+	const mount = "/c/remotes/<client>"
+	note := remoteNote("<client>", "/srv/api", mount)
 
-	for _, want := range []string{"NOT running on abbey", mount, "on <command>", "/srv/api"} {
+	for _, want := range []string{"NOT running on <client>", mount, "on <command>", "/srv/api"} {
 		if !strings.Contains(note, want) {
 			t.Errorf("the note does not mention %q:\n%s", want, note)
 		}
@@ -253,11 +255,11 @@ func TestTheAgentIsToldWhichMachineItIsNotOn(t *testing.T) {
 	// command, never a flag bothy guessed at.
 	cfg := config.Default()
 	cfg.Slots.Agent = "aider"
-	if got := agentWithNote(cfg, "abbey", "/srv/api", mount); strings.Contains(got, "--") {
+	if got := agentWithNote(cfg, "<client>", "/srv/api", mount); strings.Contains(got, "--") {
 		t.Errorf("agentWithNote(aider) = %q, want the bare command", got)
 	}
 	cfg.Slots.Agent = "claude-code"
-	if got := agentWithNote(cfg, "abbey", "/srv/api", mount); !strings.Contains(got, "append-system-prompt") {
+	if got := agentWithNote(cfg, "<client>", "/srv/api", mount); !strings.Contains(got, "append-system-prompt") {
 		t.Errorf("agentWithNote(claude-code) = %q, want the declared flag", got)
 	}
 }
@@ -269,7 +271,7 @@ func TestTheAgentIsToldWhichMachineItIsNotOn(t *testing.T) {
 // files it was opened for.
 func TestConfineRefusesInsideAConnect(t *testing.T) {
 	p := platform.Info{Root: "/home/me/.local/share/bothy"}
-	mount := filepath.Join(p.CacheDir(), "remotes", "abbey", "srv", "api")
+	mount := filepath.Join(p.CacheDir(), "remotes", "<client>", "srv", "api")
 
 	if err := refuseInsideAConnect(p, mount); err == nil {
 		t.Error("confine accepted a directory the container cannot see")
@@ -285,7 +287,7 @@ func TestConfineRefusesInsideAConnect(t *testing.T) {
 // still going, silently, which reads as bothy hanging rather than the machine
 // being unreachable.
 func TestAnUnreachableHostFailsRatherThanHangs(t *testing.T) {
-	opts := strings.Join(mountArgs("abbey", "", "/m"), " ")
+	opts := strings.Join(mountArgs("<client>", "", "/m"), " ")
 	if !strings.Contains(opts, "ConnectTimeout=") {
 		t.Error("no ConnectTimeout, so an unreachable host hangs until the kernel gives up")
 	}

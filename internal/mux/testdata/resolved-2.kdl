@@ -1,13 +1,13 @@
 layout {
     cwd "/home/user/project"
     tab name="Tab #1" focus=true hide_floating_panes=true {
-        pane command="yazi" cwd="mnt/workbench/aip-app-site/api" focus=true size="42%" {
+        pane command="yazi" cwd="mnt/workbench/project/api" focus=true size="42%" {
             start_suspended true
         }
-        pane command="claude" name="claude" cwd="home/shadowthebearded" size="48%" {
+        pane command="claude" name="claude" cwd="home/user" size="48%" {
             start_suspended true
         }
-        pane name="side" cwd="home/shadowthebearded" size="10%"
+        pane name="side" cwd="home/user" size="10%"
         pane size=1 borderless=true {
             plugin location="zellij:tab-bar"
         }

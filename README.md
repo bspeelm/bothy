@@ -130,19 +130,19 @@ toolbox knows nothing about.
 
 ## Another machine
 
-`bothy connect abbey` opens the workspace against a different machine. The file
+`bothy connect <client>` opens the workspace against a different machine. The file
 browser shows its files, the shell pane is a real login session on it, and the
 agent works on its files.
 
 ```
-$ bothy connect abbey
-abbey mounted at ~/.local/share/bothy/cache/remotes/abbey
+$ bothy connect <client>
+<client> mounted at ~/.local/share/bothy/cache/remotes/<client>
 ```
 
 **bothy puts nothing on the machine you connect to** — not itself, not a tool,
 not a credential, not a temporary file. The only thing it uses over there is
-the SSH server already running. If you can `ssh abbey` today, you can
-`bothy connect abbey`.
+the SSH server already running. If you can `ssh <client>` today, you can
+`bothy connect <client>`.
 
 The workspace itself still runs on your machine, which is why sessions,
 `bothy ls` and `bothy attach` all keep working normally, and why a dropped

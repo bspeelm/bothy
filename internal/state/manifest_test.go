@@ -127,7 +127,7 @@ func TestLoadReportsACorruptManifest(t *testing.T) {
 func TestARemoteRecordIsNeverPrunedAgainstThisFilesystem(t *testing.T) {
 	dir := t.TempDir()
 	r := Remotes{
-		"abbey":    {Dir: "/srv/api", Identity: "~/.ssh/id_abbey"},
+		"<client>": {Dir: "/srv/api", Identity: "~/.ssh/id_<client>"},
 		"10.0.0.5": {Dir: "/definitely/not/here"},
 	}
 	if err := r.Save(dir); err != nil {
@@ -141,8 +141,8 @@ func TestARemoteRecordIsNeverPrunedAgainstThisFilesystem(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("LoadRemotes() kept %d of 2 — a remote path is not this machine's to check", len(got))
 	}
-	if got["abbey"].Dir != "/srv/api" || got["abbey"].Identity != "~/.ssh/id_abbey" {
-		t.Errorf("abbey round-tripped as %+v", got["abbey"])
+	if got["<client>"].Dir != "/srv/api" || got["<client>"].Identity != "~/.ssh/id_<client>" {
+		t.Errorf("<client> round-tripped as %+v", got["<client>"])
 	}
 }
 
