@@ -169,7 +169,13 @@ func TestTheMountIsInsideBothysOwnTree(t *testing.T) {
 	if !strings.HasPrefix(m, cache+string(filepath.Separator)) {
 		t.Errorf("mountPoint() = %q, want it under %q", m, cache)
 	}
-	if unmount := unmountArgs(m); !strings.Contains(strings.Join(unmount, " "), "-z") {
-		t.Error("unmount is not lazy, so a hung connection leaves the directory unusable")
+	// Plain first, lazy only as a fallback: a lazy unmount detaches the
+	// directory and leaves sshfs running until every reference drops, which was
+	// measured leaving a process behind after the workspace had gone.
+	if strings.Contains(strings.Join(unmountArgs(m), " "), "-z") {
+		t.Error("the first unmount is lazy, which leaks the sshfs process")
+	}
+	if !strings.Contains(strings.Join(unmountLazyArgs(m), " "), "-z") {
+		t.Error("there is no lazy fallback, so a hung mount stays unusable")
 	}
 }

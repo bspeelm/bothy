@@ -66,12 +66,18 @@ func cmdConnect(args []string) error {
 	if err := os.MkdirAll(mount, 0o755); err != nil {
 		return fmt.Errorf("connect: %w", err)
 	}
+	// A workspace that was killed never ran its unmount, so clear a leftover
+	// before adding to it: sshfs stacks a second mount on the same directory
+	// happily, and then neither can be released by name.
+	if alreadyMounted(mount) {
+		unmount(mount)
+	}
 	if out, err := exec.Command(sshfs, mountArgs(host, rec.Identity, mount)...).CombinedOutput(); err != nil {
 		return fmt.Errorf("could not reach %s: %s", host, strings.TrimSpace(string(out)))
 	}
 	// Released however this returns. A workspace that exits leaving the far
 	// machine mounted is a directory that looks local and is not.
-	defer func() { _ = exec.Command("fusermount3", unmountArgs(mount)...).Run() }()
+	defer unmount(mount)
 
 	if err := writeShim(p); err != nil {
 		return err
@@ -171,4 +177,14 @@ func askLine(prompt string) string {
 		return ""
 	}
 	return strings.TrimSpace(line)
+}
+
+// unmount releases the mount, lazily only if it has to. Errors are not
+// reported: this runs on the way out of a workspace, and a complaint about a
+// mount arriving after the window has gone helps nobody.
+func unmount(mount string) {
+	if exec.Command("fusermount3", unmountArgs(mount)...).Run() == nil {
+		return
+	}
+	_ = exec.Command("fusermount3", unmountLazyArgs(mount)...).Run()
 }
