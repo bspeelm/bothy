@@ -871,3 +871,147 @@ func TestNoCommitIsDroppedFromTheReleaseNotes(t *testing.T) {
 	t.Error("every changelog group has a regexp, so a commit matching none of them " +
 		"never reaches the release notes and nothing says it was dropped")
 }
+
+// The completion scripts are a third copy of the command list, in a language
+// with no compiler and no import of the first two. They rot the way the README
+// rotted, and nobody notices, because a completion that is merely incomplete
+// still works.
+//
+// So both scripts are held against the dispatch switch itself, in both
+// directions: every command bothy answers to is offered, and every command
+// they offer exists. `lock` is excluded by the same map and for the same
+// reason as the usage text.
+func completionScripts(t *testing.T) (bash, zsh string) {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "completions", "bothy.bash"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	z, err := os.ReadFile(filepath.Join("..", "..", "completions", "_bothy"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b), string(z)
+}
+
+// dispatched is every command in main.go's switch, minus the ones deliberately
+// kept out of sight. Shared with TestEveryCommandIsInTheUsage's reasoning: the
+// switch is the only list that cannot lie.
+func dispatched(t *testing.T) []string {
+	t.Helper()
+	body, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	hidden := map[string]bool{
+		"--version": true, "-v": true, "--help": true, "-h": true, "lock": true,
+	}
+	var out []string
+	for _, m := range regexp.MustCompile(`(?m)^\tcase "([a-z-]+)"`).FindAllStringSubmatch(string(body), -1) {
+		if !hidden[m[1]] {
+			out = append(out, m[1])
+		}
+	}
+	if len(out) < 10 {
+		t.Fatalf("found %d dispatched commands; the switch shape has changed", len(out))
+	}
+	return out
+}
+
+func TestTheCompletionsOfferEveryCommand(t *testing.T) {
+	bash, zsh := completionScripts(t)
+
+	// The bash script keeps its list in one variable and the zsh script in one
+	// array of name:description pairs. Read those rather than the whole file,
+	// or a command named in a comment would count as offered.
+	bashList := regexp.MustCompile(`(?s)commands='([^']*)'`).FindStringSubmatch(bash)
+	if bashList == nil {
+		t.Fatal("no commands='...' list in bothy.bash")
+	}
+	bashOffers := map[string]bool{}
+	for _, w := range strings.Fields(bashList[1]) {
+		bashOffers[w] = true
+	}
+	zshOffers := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(?m)^\t\t'([a-z-]+):`).FindAllStringSubmatch(zsh, -1) {
+		zshOffers[m[1]] = true
+	}
+
+	for _, cmd := range dispatched(t) {
+		if !bashOffers[cmd] {
+			t.Errorf("`bothy %s` exists and completions/bothy.bash does not offer it", cmd)
+		}
+		if !zshOffers[cmd] {
+			t.Errorf("`bothy %s` exists and completions/_bothy does not offer it", cmd)
+		}
+	}
+
+	// And back the other way, which is the direction that catches a command
+	// that was renamed rather than one that was added.
+	exists := map[string]bool{}
+	for _, cmd := range dispatched(t) {
+		exists[cmd] = true
+	}
+	for name, offers := range map[string]map[string]bool{
+		"completions/bothy.bash": bashOffers,
+		"completions/_bothy":     zshOffers,
+	} {
+		for cmd := range offers {
+			if !exists[cmd] {
+				t.Errorf("%s offers `bothy %s`, which does not exist", name, cmd)
+			}
+		}
+	}
+}
+
+// Flags were the one part of the command surface nothing checked. There is no
+// list of them outside the flag.NewFlagSet calls, so the usage text, the wiki
+// and now the completions could each disagree with the code and with each
+// other in silence.
+//
+// Every command file declares exactly one flag set, named for its command,
+// which is what makes a flag attributable to a command by reading alone.
+func TestTheCompletionsOfferEveryFlag(t *testing.T) {
+	bash, zsh := completionScripts(t)
+
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := regexp.MustCompile(`flag\.NewFlagSet\("([a-z-]+)"`)
+	decl := regexp.MustCompile(`fs\.(?:String|Bool|Int)\("([a-z-]+)"`)
+
+	found := 0
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		body, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := set.FindSubmatch(body)
+		if name == nil {
+			continue
+		}
+		cmd := string(name[1])
+		// `lock` is not offered at all, so its flags are not either.
+		if cmd == "lock" {
+			continue
+		}
+		for _, m := range decl.FindAllSubmatch(body, -1) {
+			flag := "--" + string(m[1])
+			found++
+			if !strings.Contains(bash, flag) {
+				t.Errorf("`bothy %s %s` exists (%s) and completions/bothy.bash does not offer it", cmd, flag, f)
+			}
+			if !strings.Contains(zsh, flag) {
+				t.Errorf("`bothy %s %s` exists (%s) and completions/_bothy does not offer it", cmd, flag, f)
+			}
+		}
+	}
+	// The parser has to keep finding flags, or this passes by seeing none.
+	if found < 10 {
+		t.Fatalf("found %d flags across the command files; the parser has rotted", found)
+	}
+}

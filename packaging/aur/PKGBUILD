@@ -30,4 +30,6 @@ package() {
   cd "$pkgname-$pkgver"
   install -Dm755 bothy "$pkgdir/usr/bin/bothy"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 completions/bothy.bash "$pkgdir/usr/share/bash-completion/completions/bothy"
+  install -Dm644 completions/_bothy "$pkgdir/usr/share/zsh/site-functions/_bothy"
 }

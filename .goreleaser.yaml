@@ -37,6 +37,9 @@ archives:
     files:
       - LICENSE
       - README.md
+      # bootstrap/install.sh places these; without them in the archive it has
+      # nothing to place.
+      - completions/*
 
 # Two channels published from the tag, so their versions are derived rather
 # than hand-bumped. #60's failure mode is a channel whose version drifts from
@@ -112,6 +115,8 @@ aur_sources:
       cd "$pkgname-$pkgver"
       install -Dm755 bothy "$pkgdir/usr/bin/bothy"
       install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+      install -Dm644 completions/bothy.bash "$pkgdir/usr/share/bash-completion/completions/bothy"
+      install -Dm644 completions/_bothy "$pkgdir/usr/share/zsh/site-functions/_bothy"
 
 nfpms:
   # A Debian package for the release page, and nothing more. There is no apt
@@ -162,6 +167,11 @@ nfpms:
         dst: /usr/share/doc/bothy/README.md
       - src: NOTICE
         dst: /usr/share/doc/bothy/NOTICE
+      # apt writes these, not bothy -- the same division as the rpm's %files.
+      - src: completions/bothy.bash
+        dst: /usr/share/bash-completion/completions/bothy
+      - src: completions/_bothy
+        dst: /usr/share/zsh/site-functions/_bothy
 
     # Deliberately no Depends, as the spec has no Requires. bothy needs git at
     # runtime for its Yazi plugins and infocmp for one doctor check; neither is

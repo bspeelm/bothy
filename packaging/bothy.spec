@@ -49,6 +49,10 @@ go build -trimpath -ldflags "-s -w -X main.Version=%{version}" -o %{name} ./cmd/
 
 %install
 install -Dpm 0755 %{name} %{buildroot}%{_bindir}/%{name}
+# Shell completion. dnf writes these, not bothy: ADR-002 forbids bothy touching
+# a root path, and says nothing about a package manager doing its own job.
+install -Dpm 0644 completions/bothy.bash %{buildroot}%{_datadir}/bash-completion/completions/%{name}
+install -Dpm 0644 completions/_bothy %{buildroot}%{_datadir}/zsh/site-functions/_%{name}
 
 %check
 export GOFLAGS="-mod=vendor"
@@ -61,6 +65,13 @@ go test ./...
 %license LICENSE
 %doc README.md NOTICE
 %{_bindir}/%{name}
+# The directories are owned here as well as by bash-completion and zsh. Owning
+# a directory jointly is normal; the alternative is requiring those packages,
+# and bothy declares no Requires on purpose.
+%dir %{_datadir}/bash-completion/completions
+%dir %{_datadir}/zsh/site-functions
+%{_datadir}/bash-completion/completions/%{name}
+%{_datadir}/zsh/site-functions/_%{name}
 
 %changelog
 * Mon Sep 07 2026 Bryan Speelman <bryspeelm@pm.me> - 0.11.2-1

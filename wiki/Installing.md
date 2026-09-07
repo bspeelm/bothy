@@ -147,6 +147,51 @@ your AI tools and their credentials are your business, and bothy has enough
 of its own. `bothy doctor` gives you the right command for both and then goes
 quiet.
 
+## Tab completion
+
+`bothy` completes its commands, subcommands and flags in bash and zsh.
+
+**From dnf, apt, pacman or the AUR you already have it.** The package installs
+the two files the way it installs the licence and the docs — the package
+manager writing to its own prefix, which is its job. Open a new shell and press
+Tab.
+
+| shell | where the package puts it |
+|---|---|
+| bash | `/usr/share/bash-completion/completions/bothy` |
+| zsh | `/usr/share/zsh/site-functions/_bothy` |
+
+**From the install script, Homebrew or `go install`, copy it once.** No package
+manager ran, so nothing placed it, and bothy does not place it itself — a file
+outside its own tree is a file `bothy uninstall` would have to name, and
+completion is not worth that. Both files are in the release archive and in the
+repository:
+
+```sh
+mkdir -p ~/.local/share/bash-completion/completions
+curl -fsSL -o ~/.local/share/bash-completion/completions/bothy \
+  https://raw.githubusercontent.com/bspeelm/bothy/main/completions/bothy.bash
+```
+
+bash finds that path on its own. For zsh, put `_bothy` in any directory on your
+`fpath` — zsh has no per-user default the way bash does, so this is the one that
+needs a line in your `~/.zshrc`:
+
+```sh
+fpath=(~/.zsh/completions $fpath)
+```
+
+Completion works inside a bothy session too, with nothing extra: the shell pane
+is an ordinary interactive shell, and bothy does not redirect the directories
+completions live in.
+
+**It offers what bothy accepts, not what you have.** Commands, subcommands and
+flags — not your toolbox names, hosts or running sessions. Those would mean
+running bothy on every keypress. `TestTheCompletionsOfferEveryCommand` and
+`TestTheCompletionsOfferEveryFlag` hold both files against the code, in both
+directions, so a command that is renamed breaks the build rather than the
+completion.
+
 ## Removing it
 
 `bothy uninstall` removes bothy's tree and the binary. `--dry-run` shows what
