@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/layout"
 )
 
@@ -190,5 +191,31 @@ func TestTheMountIsInsideBothysOwnTree(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(unmountLazyArgs(m), " "), "-z") {
 		t.Error("there is no lazy fallback, so a hung mount stays unusable")
+	}
+}
+
+// Observed before this existed: the agent ran nproc and described the local
+// machine, then read /etc/os-release and described it as though it were the
+// far one. It has to be told, not left to deduce.
+func TestTheAgentIsToldWhichMachineItIsNotOn(t *testing.T) {
+	const mount = "/c/remotes/abbey"
+	note := remoteNote("abbey", "/srv/api", mount)
+
+	for _, want := range []string{"NOT running on abbey", mount, "on <command>", "/srv/api"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("the note does not mention %q:\n%s", want, note)
+		}
+	}
+
+	// An agent whose provider declares no way to take a note gets the plain
+	// command, never a flag bothy guessed at.
+	cfg := config.Default()
+	cfg.Slots.Agent = "aider"
+	if got := agentWithNote(cfg, "abbey", "/srv/api", mount); strings.Contains(got, "--") {
+		t.Errorf("agentWithNote(aider) = %q, want the bare command", got)
+	}
+	cfg.Slots.Agent = "claude-code"
+	if got := agentWithNote(cfg, "abbey", "/srv/api", mount); !strings.Contains(got, "append-system-prompt") {
+		t.Errorf("agentWithNote(claude-code) = %q, want the declared flag", got)
 	}
 }

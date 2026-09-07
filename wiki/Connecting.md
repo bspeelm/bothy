@@ -78,6 +78,18 @@ not exist over there.
 `on` is written into bothy's own directory on your machine when you connect.
 Nothing is written on the other machine.
 
+## What the agent is told
+
+The agent is handed a short note when the workspace opens, because otherwise it
+has to work out where it is by experiment — and gets it wrong. It says which
+machine is mounted, that the agent is **not** running on it, that paths under
+the working directory belong to that machine while `/etc` and `/home` are
+yours, and that `on` is how to run something over there.
+
+Agents differ in how they take a note, so each one declares it in its own
+provider file. An agent that declares nothing is started plainly rather than
+with a flag bothy guessed at.
+
 ## Naming a machine
 
 The first time you connect, bothy asks which directory to open and, if that

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/layout"
 )
 
@@ -197,3 +199,31 @@ func sanitise(s string) string {
 
 // shQuote wraps a value for the remote shell, which is not this shell.
 func shQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }
+
+// remoteNote is what the agent is told about the workspace it is opening in.
+//
+// Without it the agent has to work this out by experiment, and gets it wrong:
+// it runs `nproc` and describes the local machine, or reads /etc/os-release
+// and describes it as though it were the far one. Both were observed.
+func remoteNote(host, remoteDir, mount string) string {
+	return fmt.Sprintf(
+		"This workspace is connected to the machine %q over SSH.\n"+
+			"You are NOT running on %s. Your process runs on the local machine.\n"+
+			"The working directory is an sshfs mount of %s's whole filesystem, so "+
+			"everything under %s belongs to %s. Absolute paths like /etc and /home "+
+			"are this machine's: %s's /etc is %s/etc.\n"+
+			"To run a command on %s, use `on <command>` -- it runs in %s there. "+
+			"Reading and writing files under the mount needs no ssh; they are %s's already.",
+		host, host, host, mount, host, host, mount, host, remoteDir, host)
+}
+
+// agentWithNote is the agent command carrying that note, or the plain command
+// when the provider declares no way to take one.
+func agentWithNote(cfg config.Config, host, remoteDir, mount string) string {
+	agent := install.AgentBinary(cfg.Slots.Agent)
+	flag := install.AgentContextFlag(cfg.Slots.Agent)
+	if flag == "" {
+		return agent
+	}
+	return agent + " " + flag + " " + shellQuote(remoteNote(host, remoteDir, mount))
+}

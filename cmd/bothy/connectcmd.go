@@ -85,11 +85,12 @@ func cmdConnect(args []string) error {
 	}
 	fmt.Printf("%s mounted at %s\n", host, tilde(mount, p.Home))
 
-	return launch(p, cfg, localPath(mount, rec.Dir), cfg.Profile, "", remoteOpts{
-		session: sessionFor(host, rec.Dir),
-		shell:   shellCommand(host, rec.Identity, rec.Dir),
-		env:     connectEnv(host, rec.Dir, mount),
-	})
+	return launch(p, cfg, localPath(mount, rec.Dir), cfg.Profile,
+		agentWithNote(cfg, host, rec.Dir, mount), remoteOpts{
+			session: sessionFor(host, rec.Dir),
+			shell:   shellCommand(host, rec.Identity, rec.Dir),
+			env:     connectEnv(host, rec.Dir, mount),
+		})
 }
 
 // settle decides where on that machine the work lives, asking at most once.

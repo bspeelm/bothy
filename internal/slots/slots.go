@@ -56,6 +56,11 @@ type Advise struct {
 	Binary  string            `toml:"binary"`
 	Install map[string]string `toml:"install"`
 	Avoid   []Avoid           `toml:"avoid"`
+	// ContextFlag is how this agent takes a note about the workspace it is
+	// opening in. Declared per provider because the flag is the agent's, not
+	// bothy's: one that has not been checked gets no note rather than a
+	// guessed flag.
+	ContextFlag string `toml:"context_flag"`
 }
 
 // Avoid is a repository known to cause a problem worse than the one it solves.

@@ -1772,7 +1772,7 @@ confined agent can edit the far machine's files through the mount and cannot
 reach it any other way. ADR-034 promises confinement never runs silently, so
 this is printed rather than discovered.
 
-## ADR-047 — The code cap rises to 7,400, and stops being squeezed
+## ADR-047 — The code cap rises to 7,500, and stops being squeezed
 
 **Status:** accepted. Amends ADR-045.
 
@@ -1797,9 +1797,11 @@ one genuine redundancy was `filepath.Join(destDir, name)` written five times in
 `fetch.Install`, worth four lines. **There is no fat**, which is the finding
 ADR-026 asks for.
 
-**Why 7,400.** ADR-044's surface is spent and ADR-046's is decided in full at
-about 235 lines. 7,400 covers it with roughly 175 left, which is a budget
-rather than a ceiling. The claim the number stands for is unchanged and is the
+**Why 7,500.** ADR-044's surface is spent and ADR-046's is decided in full at
+about 250 lines, the last fifteen of which are the note the agent is handed --
+added after watching an agent work out where it was by experiment and describe
+the wrong machine twice. 7,500 covers it with roughly 90 left, which is a
+budget rather than a ceiling. The claim the number stands for is unchanged and is the
 one that matters: a skeptical stranger can still read the whole thing in an
 afternoon.
 

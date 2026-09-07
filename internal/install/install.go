@@ -324,6 +324,19 @@ func AgentBinary(slot string) string {
 	return advice.Binary(slot)
 }
 
+// AgentContextFlag is how the agent takes a note about its workspace, or ""
+// when the provider declares none.
+func AgentContextFlag(slot string) string {
+	if slot == "" {
+		slot = "claude-code"
+	}
+	a, err := advice.Get(slot)
+	if err != nil {
+		return ""
+	}
+	return a.ContextFlag
+}
+
 // Commands maps layout slots to the commands their panes run.
 func Commands(cfg config.Config) layout.Commands {
 	return layout.Commands{
