@@ -1,17 +1,17 @@
 # Connecting to another machine
 
-`bothy connect abbey` opens a workspace against another machine. The file
+`bothy connect <client>` opens a workspace against another machine. The file
 browser shows that machine's files, the shell pane is a login session on it,
 and the agent works on its files.
 
 ```sh
-bothy connect abbey
+bothy connect <client>
 ```
 
 **bothy puts nothing on the machine you connect to.** Not itself, not a tool,
 not a credential, not a temporary file. The only thing it uses over there is
 the SSH server already running, which is what connecting over SSH means. If
-you can `ssh abbey` today, you can `bothy connect abbey`.
+you can `ssh <client>` today, you can `bothy connect <client>`.
 
 ## What you need
 
@@ -20,7 +20,7 @@ tells you the command for your system if it is missing:
 
 ```
 sshfs is not installed, and it is what lets the file browser
-see abbey. bothy does not install it:
+see <client>. bothy does not install it:
   sudo dnf install -y sshfs
 ```
 
@@ -38,12 +38,12 @@ does, and bothy hands your host string to it untouched.
 
 So the two things that catch people out are the two that would catch `ssh` out:
 
-**The account.** `bothy connect 192.168.30.93` logs in as *your local
+**The account.** `bothy connect 192.168.1.42` logs in as *your local
 username*, because that is what ssh does with a bare address. On someone else's
 machine that is usually wrong. Name it instead:
 
 ```sh
-bothy connect bryan@192.168.30.93
+bothy connect <user>@192.168.1.42
 ```
 
 bothy prints the account before it connects, so you can see which one it is
@@ -56,13 +56,13 @@ sitting there.
 The tidier fix for a machine you use often is an entry in `~/.ssh/config`:
 
 ```
-Host abbey
-    HostName 192.168.30.93
-    User bryan
-    IdentityFile ~/.ssh/id_abbey
+Host <client>
+    HostName 192.168.1.42
+    User <user>
+    IdentityFile ~/.ssh/id_<client>
 ```
 
-Then `ssh abbey` works, and so does `bothy connect abbey` — no account, no
+Then `ssh <client>` works, and so does `bothy connect <client>` — no account, no
 address, no key to remember.
 
 ## What runs where
@@ -85,21 +85,21 @@ session.
 The other machine's whole filesystem appears under one directory here:
 
 ```
-~/.local/share/bothy/cache/remotes/abbey/srv/api     is     /srv/api on abbey
+~/.local/share/bothy/cache/remotes/<client>/srv/api     is     /srv/api on <client>
 ```
 
-Strip the first part and you have the path abbey knows. That is worth
+Strip the first part and you have the path <client> knows. That is worth
 remembering, because the file browser shows you the long path and the shell
 pane shows you the short one. They are the same file.
 
 ## Running things on the other machine
 
 The agent and the shell both run commands, but in different places. The shell
-pane is *on* abbey, so anything you type there runs there. The agent is on your
+pane is *on* <client>, so anything you type there runs there. The agent is on your
 machine, so a command it runs happens here, with your toolchain, against files
 fetched over the network.
 
-When you want the agent to run something on abbey, there is a command for it:
+When you want the agent to run something on <client>, there is a command for it:
 
 ```sh
 on make test
@@ -107,7 +107,7 @@ on make test
 
 `on` runs its argument on the machine you are connected to, in the directory
 the workspace is open on. It exists because the paths differ — without it, an
-agent that tries `ssh abbey "cd $(pwd) && make"` names a directory that does
+agent that tries `ssh <client> "cd $(pwd) && make"` names a directory that does
 not exist over there.
 
 `on` is written into bothy's own directory on your machine when you connect.
@@ -129,7 +129,7 @@ with a flag bothy guessed at.
 
 The first time you connect, bothy asks which directory to open and, if that
 host needs a particular key, where it is. It remembers both, so afterwards
-`bothy connect abbey` is enough. `bothy connect edit abbey` changes them.
+`bothy connect <client>` is enough. `bothy connect edit <client>` changes them.
 
 **The default is `/`, the whole machine.** That is deliberate: a home
 directory on a server usually holds nothing but dotfiles, so opening there
@@ -175,7 +175,7 @@ does not overrule it — the same reason it never turns password authentication
 on. It just cannot answer the prompt for you.
 
 ```sh
-ssh-copy-id abbey
+ssh-copy-id <client>
 ```
 
 A key with a passphrase has the same problem for the same reason, and the same
@@ -188,15 +188,15 @@ The session lives on your machine, so it behaves like any other:
 
 ```sh
 bothy ls                 # shows it, named for the host
-bothy attach bothy-abbey-api
-bothy kill bothy-abbey-api
+bothy attach bothy-<client>-api
+bothy kill bothy-<client>-api
 ```
 
 The name carries the host so a project called `api` over there and one called
 `api` here are two workspaces rather than one.
 
 If the network drops, the mount goes stale and the session survives. Reconnect
-with `bothy connect abbey` again.
+with `bothy connect <client>` again.
 
 ## What to expect
 

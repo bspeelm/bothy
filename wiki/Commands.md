@@ -141,15 +141,15 @@ the shell pane is a login session on it, and the agent can reach it the same
 way you can.
 
 ```
-$ bothy connect abbey
-directory on abbey [/]: /srv/api
+$ bothy connect <client>
+directory on <client> [/]: /srv/api
 ssh key, if that host needs one named [none]:
-abbey mounted at ~/.local/share/bothy/cache/remotes/abbey
+<client> mounted at ~/.local/share/bothy/cache/remotes/<client>
 ```
 
 bothy puts nothing on the machine you connect to. It needs **sshfs on your own
 machine** and refuses with the install command if it is missing. `--dir` sets
-the directory without being asked; `bothy connect edit abbey` changes what was
+the directory without being asked; `bothy connect edit <client>` changes what was
 remembered.
 
 Inside the workspace, `on <command>` runs something on that machine in the
