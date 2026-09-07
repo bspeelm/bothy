@@ -73,8 +73,20 @@ func cmdConnect(args []string) error {
 	if alreadyMounted(mount) {
 		unmount(mount)
 	}
-	if out, err := exec.Command(sshfs, mountArgs(host, rec.Identity, mount)...).CombinedOutput(); err != nil {
-		return fmt.Errorf("could not reach %s: %s", host, strings.TrimSpace(string(out)))
+	// Straight through rather than captured: ssh asks about an unknown host key
+	// and asks for a password on the terminal, and a prompt nobody can see is
+	// the difference between a question and a hang. Its own message is also
+	// better than any paraphrase of it.
+	user := sshUser(host)
+	fmt.Printf("connecting to %s as %s\n", host, orLocalUser(user))
+	m := exec.Command(sshfs, mountArgs(host, rec.Identity, mount)...)
+	m.Stdin, m.Stdout, m.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := m.Run(); err != nil {
+		return fmt.Errorf("could not mount %s -- sshfs said why above\n"+
+			"      it tried to log in as %s. If the account there is different:\n"+
+			"        bothy connect <account>@%s\n"+
+			"      if it needs a particular key:  bothy connect edit %s",
+			host, orLocalUser(user), host, host)
 	}
 	// Released however this returns. A workspace that exits leaving the far
 	// machine mounted is a directory that looks local and is not.
@@ -206,4 +218,16 @@ func unmount(mount string) {
 		return
 	}
 	_ = exec.Command("fusermount3", unmountLazyArgs(mount)...).Run()
+}
+
+// orLocalUser names the account for a message, falling back to this machine's
+// when ssh declines to say -- which is also the account it would use.
+func orLocalUser(user string) string {
+	if user != "" {
+		return user
+	}
+	if u := os.Getenv("USER"); u != "" {
+		return u
+	}
+	return "your local username"
 }

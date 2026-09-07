@@ -30,6 +30,41 @@ and that route costs no reboot.
 
 Nothing else. The far machine needs no preparation at all.
 
+## What "it works" means
+
+**If `ssh <host>` works from your terminal, `bothy connect <host>` works.** That
+is the whole test. bothy does not manage keys, users, ports or jump hosts — ssh
+does, and bothy hands your host string to it untouched.
+
+So the two things that catch people out are the two that would catch `ssh` out:
+
+**The account.** `bothy connect 192.168.30.93` logs in as *your local
+username*, because that is what ssh does with a bare address. On someone else's
+machine that is usually wrong. Name it instead:
+
+```sh
+bothy connect bryan@192.168.30.93
+```
+
+bothy prints the account before it connects, so you can see which one it is
+about to use.
+
+**Being reachable.** If the address is wrong, the machine is off, or a firewall
+drops the connection, bothy gives up after ten seconds and says so rather than
+sitting there.
+
+The tidier fix for a machine you use often is an entry in `~/.ssh/config`:
+
+```
+Host abbey
+    HostName 192.168.30.93
+    User bryan
+    IdentityFile ~/.ssh/id_abbey
+```
+
+Then `ssh abbey` works, and so does `bothy connect abbey` — no account, no
+address, no key to remember.
+
 ## What runs where
 
 This is worth understanding, because it explains everything else.
