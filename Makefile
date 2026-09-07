@@ -28,7 +28,7 @@ SOURCES := $(shell find cmd internal -name '*.go' -not -name '*_test.go')
 LIVE_DOCS := $(shell find . -name '*.md' -not -path './vendor/*' -not -path './.git/*' \
                      -not -path './docs/history/*' -not -path './docs/review/*')
 
-.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag copr
+.PHONY: all build test lint vet fmt budgets crossbuild check clean install-binary vendor srpm release release-tag milestone copr
 
 all: check
 
@@ -158,7 +158,32 @@ release-tag:
 	echo && \
 	echo "pushed v$$v. Actions is building the archives; the webhook is building the rpms." && \
 	echo "  https://github.com/bspeelm/$(BINARY)/actions" && \
-	echo "  https://copr.fedorainfracloud.org/coprs/bspeelman/$(BINARY)/builds/"
+	echo "  https://copr.fedorainfracloud.org/coprs/bspeelman/$(BINARY)/builds/" && \
+	$(MAKE) --no-print-directory milestone VERSION=$$v
+
+# What is still assigned to this release, asked at the moment the release
+# exists. Milestones lapsed after 0.8.0 and three releases were cut without
+# one, which nothing noticed because nothing looked.
+#
+# Never fails the release: the tag is pushed by the time this runs, and a
+# release that has already happened cannot be un-happened by a bookkeeping
+# complaint. It reports, and hands over the command.
+milestone:
+	@command -v gh >/dev/null 2>&1 || { echo; echo "gh not installed; close the $(VERSION) milestone by hand."; exit 0; }
+	@m=$$(gh api repos/bspeelm/$(BINARY)/milestones --jq \
+	    '.[] | select(.title == "$(VERSION)") | "\(.number)\t\(.open_issues)"' 2>/dev/null); \
+	if [ -z "$$m" ]; then \
+	    echo; echo "no open $(VERSION) milestone -- nothing to close."; exit 0; fi; \
+	num=$$(echo "$$m" | cut -f1); open=$$(echo "$$m" | cut -f2); \
+	echo; \
+	if [ "$$open" -gt 0 ]; then \
+	    echo "the $(VERSION) milestone still has $$open open issue(s) -- this release does not"; \
+	    echo "contain what the milestone says it does:"; \
+	    gh issue list --milestone "$(VERSION)" --state open --limit 20 2>/dev/null | sed 's/^/    /'; \
+	    echo "    move them on, then:"; \
+	fi; \
+	echo "close the milestone:"; \
+	echo "  gh api -X PATCH repos/bspeelm/$(BINARY)/milestones/$$num -f state=closed"
 
 # Publish the tag to Copr. The package is an SCM package, so this hands Copr a
 # ref and Copr does the rest: clone, .copr/Makefile, build. Nothing is built or
