@@ -29,8 +29,8 @@ bothy
   <img alt="the bothy workspace: a Yazi file browser across the top with a file preview, an agent pane and a shell below, inside Zellij" src="docs/images/workspace.png" width="900">
 </p>
 
-That is the entire idea. It is not a large one. Most of the effort went into
-making sure it did nothing else, and it still occasionally has to be reminded.
+That is the entire idea. It is not a large one, and most of the effort went
+into making sure it did nothing else.
 
 ## What happens when you type it
 
@@ -49,17 +49,21 @@ The same thing in order, with the reasons for the order, is
 
 ## Install
 
-You need **git**, and **curl** or **wget**. Everything else bothy brings, or
-tells you how to get. A terminal that can draw images — Ghostty, Kitty,
-WezTerm — makes previews real pictures rather than block art, and an AI agent
-is optional, though it is what the middle pane is for (and sort of the point).
+You need **git**. Everything else bothy brings, or tells you how to get. A
+terminal that can draw images — Ghostty, Kitty, WezTerm — makes previews real
+pictures rather than block art, and an AI agent is optional, though it is what
+the middle pane is for (and sort of the point).
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
-```
+Pick the one that fits your machine:
 
-No root, nothing layered onto the host, so this works unchanged on Silverblue
-and inside Toolbx. Then, from any directory:
+| | |
+|---|---|
+| **Fedora** | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
+| **Debian, Ubuntu, Mint** | download the `.deb` from [the latest release](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
+| **macOS** | `brew install --cask bspeelm/bothy/bothy` |
+| **you already have Go** | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+
+Then, from any directory:
 
 ```sh
 bothy
@@ -69,9 +73,24 @@ The first run lists what you are missing, asks before downloading anything,
 then opens the window. It is not fast. It does not need to be; you will do this
 once.
 
-There are six ways in — the script, dnf, apt, Homebrew, Go and source — each verifying
-what it fetched differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
-[What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security).
+### If none of those fit
+
+There is an install script, and one case where it is genuinely the better
+answer: an image-based system like Silverblue, where `dnf` means `rpm-ostree`
+and a reboot for a binary that runs perfectly well out of `~/.local/bin`. It
+needs no root and layers nothing onto the host.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
+```
+
+The cost: the script is fetched over HTTPS and run **unsigned**, before bothy
+exists to verify anything. No signature on a later artifact fixes that. It is
+the same trade as any `curl | sh`.
+
+There are six ways in, counting source, and each verifies what it fetched
+differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing) ·
+[What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security)
 
 ## Commands
 
@@ -226,7 +245,7 @@ bothy cannot test in a container, and says so.
 ## What bothy is not
 
 - A plugin marketplace or extension API
-- A bundle of the tools. It downloads their official releases and checks them, which is different, and the difference is the point
+- A bundle of the tools. It downloads their official releases and checks them against `bothy.lock`
 - An LSP or debugger manager
 - A background service, an auto-updater, or a collector of telemetry. It does not run when you are not looking, and has nothing to report if it did
 - A manager for your agent's config, keys or hooks. Those are yours, and so are the consequences
@@ -257,8 +276,8 @@ bug in the provider format, not in you.
 What it is aiming at is in [`docs/north-star.md`](docs/north-star.md). Why
 things are the way they are is recorded in
 [`docs/decisions.md`](docs/decisions.md). 
-The plan for the project is in [`docs/PLAN.md`](docs/PLAN.md), and has survived contact with
-the project better than most plans do, which is to say partially.
+The plan for the project is in [`docs/PLAN.md`](docs/PLAN.md), kept current
+where the project has moved on from it.
 
 ## Authorship
 I wanted an easy way to make my development setup portable — all of the things I use and nothing I don't. It started as a cheatsheet I'd hand to an agent to set up the configuration; that's still in the docs if you're curious, and it's probably where this should have stopped. But while working on another project I felt the pull to go through every step of shipping something with a fully open AI workflow, and this was about as low-stakes a candidate as it gets.
