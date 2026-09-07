@@ -67,6 +67,32 @@ after the bump commit has already been made.
 tagged (which means the PR was never merged), or if `.copr/Makefile` is
 missing from the checkout.
 
+### The milestone
+
+Each release has a GitHub milestone holding the issues it is meant to contain.
+After tagging, `release-tag` reports on it and hands you the command to close
+it:
+
+```
+close the milestone:
+  gh api -X PATCH repos/bspeelm/bothy/milestones/<n> -f state=closed
+```
+
+If issues are still open on it, it lists them first and says the release does
+not contain what the milestone claims — move them to the next one before
+closing.
+
+It never fails the release. The tag is already pushed by the time this runs,
+and a release that has happened cannot be un-happened by a bookkeeping
+complaint; the step exists to be seen at the moment it is actionable, not to
+be a gate.
+
+This is a habit being restarted rather than continued. Milestones stopped
+after 0.8.0 and 0.9.0, 0.10.x and 0.11.x were cut without one, while the eight
+that existed were all left open with nothing in them — an open milestone with
+no open issues reads as outstanding work, which is worse than no milestone at
+all. Nothing noticed for four releases because nothing looked.
+
 ### Publishing to Copr by hand
 
 ```sh
