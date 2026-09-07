@@ -9,6 +9,7 @@ import (
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/mux"
 )
 
 // The half of `bothy connect` that starts nothing: what to mount, what each
@@ -172,11 +173,11 @@ exec ssh -t -- "$BOTHY_REMOTE" "cd ${BOTHY_REMOTE_DIR:-.} && $*"
 // api here are one session in `bothy ls`, and the second launch joins the
 // first by accident.
 func sessionFor(host, remoteDir string) string {
-	base := strings.Trim(filepath.Base(strings.TrimSuffix(remoteDir, "/")), "~/.")
-	if base == "" {
-		return "bothy-" + sanitise(host)
+	name := "bothy-" + sanitise(host)
+	if base := strings.Trim(filepath.Base(strings.TrimSuffix(remoteDir, "/")), "~/."); base != "" {
+		name += "-" + sanitise(base)
 	}
-	return "bothy-" + sanitise(host) + "-" + sanitise(base)
+	return mux.FitSocket(name)
 }
 
 // sanitise keeps a session name to what every multiplexer accepts, matching
