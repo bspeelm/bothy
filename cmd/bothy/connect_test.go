@@ -2,9 +2,7 @@ package main
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -200,8 +198,14 @@ func TestEveryPlatformCanReleaseItsOwnMount(t *testing.T) {
 		if plain[0] != forced[0] {
 			t.Errorf("%s: two unmount programs, %q and %q", goos, plain[0], forced[0])
 		}
-		if _, err := exec.LookPath(plain[0]); err != nil && goos == runtime.GOOS {
-			t.Errorf("%s has no %q, so its mounts are never released", goos, plain[0])
+		// The program is named, not looked for. Whether it is installed is a
+		// runtime question -- and asking it here failed the rpm build, whose
+		// buildroot is minimal and carries no fuse3, while CI has it.
+		if goos == "darwin" && plain[0] != "umount" {
+			t.Errorf("darwin releases mounts with %q; it has no fusermount3", plain[0])
+		}
+		if goos == "linux" && plain[0] != "fusermount3" {
+			t.Errorf("linux releases FUSE mounts with %q, not umount", plain[0])
 		}
 		// Plain first, forceful only as a fallback: reaching for force first was
 		// measured tearing a mount out from under a pane still reading it.
