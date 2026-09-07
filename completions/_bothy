@@ -1,0 +1,93 @@
+#compdef bothy
+#
+# zsh completion for bothy. Static, for the reasons in completions/bothy.bash:
+# no live values, so no bothy process on every <TAB>.
+#
+# The descriptions are the ones from `bothy help`, because two wordings of the
+# same command drift and only one of them is tested.
+
+_bothy() {
+	local curcontext="$curcontext" state line
+	typeset -A opt_args
+
+	# 'lock' is absent on purpose -- a maintainer command, out of `bothy help`
+	# for the same reason.
+	local -a commands
+	commands=(
+		'attach:reattach to this project'\''s session'
+		'box:the toolbox this project uses, and the rest'
+		'confine:run the agent walled off from the rest of $HOME'
+		'config:read and change settings'
+		'connect:open the workspace against another machine'
+		'desktop-entry:print a .desktop launcher'
+		'doctor:report what is broken and how to fix it'
+		'help:show usage'
+		'install:write the configs, then check them'
+		'keys:the bindings worth knowing'
+		'kill:end a session without attaching to it'
+		'layout:print the layout that would be launched'
+		'ls:which sessions are running, and which stopped'
+		'outdated:which pinned tools have newer releases'
+		'theme:print a blank palette file to fill in'
+		'tools:show which tools are used and where they came from'
+		'uninstall:remove bothy'\''s directory and its binary'
+		'upgrade:how to upgrade this copy of bothy'
+		'version:print the version'
+	)
+
+	_arguments -C \
+		'--dir[the directory to open in]:directory:_files -/' \
+		'--profile[the layout profile]:profile:' \
+		'--window[always open a new window]' \
+		'--in-place[always run in the current terminal]' \
+		'--help[show usage]' \
+		'--version[print the version]' \
+		'1: :->command' \
+		'*:: :->argument' && return
+
+	case $state in
+	command)
+		_describe -t commands 'bothy command' commands
+		;;
+	argument)
+		case $words[1] in
+		box)
+			if (($CURRENT == 2)); then
+				_values 'box command' \
+					'ls[every toolbox, and the sessions in it]' \
+					'use[move this project to a different toolbox]' \
+					'stop[stop a toolbox nothing is using]' \
+					'create[make one, and use it here]' \
+					'rm[delete one]'
+			else
+				case $words[2] in
+				# 'host' is box use's word for no box at all.
+				use) _values 'box' 'host[no toolbox; run on the host]' '--yes[do not ask]' ;;
+				rm) _arguments '--yes[do not ask]' ;;
+				esac
+			fi
+			;;
+		config)
+			_values 'config command' \
+				'path[where the settings file is]' \
+				'get[print the settings]' \
+				'set[change one setting]' \
+				'edit[open the settings in $EDITOR]'
+			;;
+		# --dir is offered before the host only: Go's flag package stops at the
+		# first operand, so it does not work after one.
+		connect) _arguments '--dir[the directory on that machine]:directory:' '1:host:' ;;
+		theme) _values 'theme command' 'example[print a blank palette file]' ;;
+		install) _arguments '--dry-run[say what would happen]' '--offline[use only installed tools]' ;;
+		doctor | outdated) _arguments '--json[machine-readable]' ;;
+		ls) _arguments '--prune[delete stopped sessions]' ;;
+		layout) _arguments '--profile[the layout profile]:profile:' ;;
+		confine) _arguments '--print[show the recipe and the command, run neither]' ;;
+		desktop-entry) _arguments '--install[write the entry]' '--remove[delete a written entry]' ;;
+		uninstall) _arguments '--dry-run[say what would be removed]' '--keep-binary[leave the binary]' ;;
+		esac
+		;;
+	esac
+}
+
+_bothy "$@"
