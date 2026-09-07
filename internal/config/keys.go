@@ -28,6 +28,12 @@ func keysOf(t reflect.Type, prefix string) []string {
 			out = append(out, keysOf(f.Type, name+".")...)
 			continue
 		}
+		// A map's keys are names you chose, so there is no fixed list of them
+		// to offer and nothing for `config set` to address. Declare them by
+		// editing the file; `bothy config edit` opens it.
+		if f.Type.Kind() == reflect.Map {
+			continue
+		}
 		out = append(out, name)
 	}
 	return out

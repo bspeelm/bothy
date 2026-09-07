@@ -78,6 +78,7 @@ func (z Zellij) Open(r Request) error {
 	if err := os.Chdir(r.Dir); err != nil {
 		return err
 	}
+	r.Env = withPWD(r.Env, r.Dir)
 	if !slices.Contains(r.Live, r.Session) {
 		z.discardDead(r.Bin, r.Env, r.Session)
 	}

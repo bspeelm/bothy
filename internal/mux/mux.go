@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
@@ -94,6 +95,23 @@ type Request struct {
 
 // runReplacing hands stdio to the multiplexer. A non-zero exit is the
 // multiplexer's status, not a bothy error.
+// withPWD makes PWD name the directory the workspace is opening in.
+//
+// The variable is inherited from wherever bothy was typed, and chdir does not
+// touch it. A tool that trusts it over the syscall -- yazi does -- then opens
+// the wrong directory entirely, which is invisible until --dir or a remote
+// mount makes the two differ. Measured: yazi in a workspace whose every
+// process had the right cwd, showing the directory bothy was launched from.
+func withPWD(env []string, dir string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, "PWD=") {
+			out = append(out, kv)
+		}
+	}
+	return append(out, "PWD="+dir)
+}
+
 func runReplacing(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env

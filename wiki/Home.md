@@ -38,7 +38,7 @@ Two directories, and it is worth knowing which is which:
 
 ## Using it
 
-- **[Commands](Commands)** — all sixteen, with their flags.
+- **[Commands](Commands)** — all seventeen, with their flags.
 - **[The doctor](The-doctor)** — how to read a report, and why a capability can
   come back unavailable rather than broken.
 - **[Installing](Installing)** — every channel, what each one checks, and the
@@ -54,6 +54,8 @@ Two directories, and it is worth knowing which is which:
 
 - **[Toolboxes](Toolboxes)** — which box a project opens in, how bothy decides,
   and the commands for the boxes you already have.
+- **[Connecting](Connecting)** — opening the workspace against another machine
+  over SSH, without putting anything on it.
 - **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
   confine`, the toolbox case, and removing it.
 - **[Profiles](Profiles)** — the three layouts that ship, and writing your own.

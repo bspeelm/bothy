@@ -14,6 +14,9 @@ credentials = ["~/.claude", "~/.claude.json"]
 
 [advise]
 binary      = "claude"
+# How to hand it a note about the workspace. `bothy connect` uses this to say
+# which machine is mounted and that the agent is not running on it.
+context_flag = "--append-system-prompt"
 
 [advise.install]
 default        = "npm install -g @anthropic-ai/claude-code"

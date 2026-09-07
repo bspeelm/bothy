@@ -89,7 +89,7 @@ func cmdDev(args []string) error {
 	if plan.Container != "" {
 		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
 	}
-	return launch(p, cfg, plan.Dir, plan.Profile, "")
+	return launch(p, cfg, plan.Dir, plan.Profile, "", remoteOpts{})
 }
 
 // refuseIfInUse stops a launch into a session that already has a client. A
@@ -209,10 +209,23 @@ func ownSession(p platform.Info, cfg config.Config, dir string) func() {
 // session environment from install.SessionEnv, which is where isolation happens.
 // agentOverride replaces the agent pane's command when non-empty, which is
 // how `bothy confine` runs it inside a container without a second launch path.
-func launch(p platform.Info, cfg config.Config, dir, profileName, agentOverride string) error {
+// remoteOpts adjusts a launch for a connect: a session name that carries the
+// host, a shell command that runs on the far machine, and the environment that
+// tells the panes where they are. The zero value is an ordinary launch, which
+// is why this is one function rather than two.
+type remoteOpts struct {
+	session string
+	shell   string
+	env     []string
+}
+
+func launch(p platform.Info, cfg config.Config, dir, profileName, agentOverride string, rem remoteOpts) error {
 	prof, err := install.LoadProfile(p, profileName)
 	if err != nil {
 		return err
+	}
+	if rem.shell != "" {
+		prof = withRemoteShell(prof, rem.shell)
 	}
 	if _, err := os.Stat(p.ConfigRoot()); err != nil {
 		return fmt.Errorf("no workspace configured yet\n"+
@@ -224,9 +237,13 @@ func launch(p platform.Info, cfg config.Config, dir, profileName, agentOverride 
 	if err != nil {
 		return err
 	}
-	env := install.SessionEnv(p, cfg)
+	env := append(install.SessionEnv(p, cfg), rem.env...)
+	session := backend.SessionName(dir)
+	if rem.session != "" {
+		session = rem.session
+	}
 	return backend.Open(mux.Request{
-		Platform: p, Bin: bin, Session: backend.SessionName(dir), Dir: dir,
+		Platform: p, Bin: bin, Session: session, Dir: dir,
 		Profile: prof, Commands: commandsWith(cfg, agentOverride), Env: env,
 		Live: backend.Live(bin, env),
 	})

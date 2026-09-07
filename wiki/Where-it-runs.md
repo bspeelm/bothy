@@ -9,6 +9,10 @@ opposite; the flags still win for a single run. With no graphical display —
 over SSH, say — it stays where it is, which is generally the sensible thing to
 do when somewhere else.
 
+That is bothy noticing you are somewhere else. `bothy connect` is the other
+direction: you stay here and the workspace opens against another machine's
+files, with nothing installed on it. See [Connecting](Connecting).
+
 iTerm2 draws images too, by a protocol of its own that Zellij does not carry,
 so previews there arrive as characters after all. The doctor says which of the
 two is at fault rather than leaving you to adjust the wrong setting.

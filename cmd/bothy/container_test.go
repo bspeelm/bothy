@@ -93,6 +93,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"passthrough":           doctor.Skip, // none configured
 	"isolation":             doctor.Pass,
 	"confine":               doctor.Skip, // opt-in; nothing has asked for it here
+	"sshfs":                 doctor.Skip, // opt-in; no other machine named here
 	"quarantine":            doctor.Skip,
 	"config-schema":         doctor.Pass,
 	"config-keys":           doctor.Pass, // the only config is the one the test wrote

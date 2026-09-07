@@ -134,6 +134,28 @@ then every project that pointed at the box is told where it opens now.
 [Toolboxes](Toolboxes) has the rules, the first-run prompt, and what happens on
 a machine with no toolboxes.
 
+### `bothy connect [edit] <host>`
+
+Opens the workspace against another machine. The file browser shows its files,
+the shell pane is a login session on it, and the agent can reach it the same
+way you can.
+
+```
+$ bothy connect abbey
+directory on abbey [/]: /srv/api
+ssh key, if that host needs one named [none]:
+abbey mounted at ~/.local/share/bothy/cache/remotes/abbey
+```
+
+bothy puts nothing on the machine you connect to. It needs **sshfs on your own
+machine** and refuses with the install command if it is missing. `--dir` sets
+the directory without being asked; `bothy connect edit abbey` changes what was
+remembered.
+
+Inside the workspace, `on <command>` runs something on that machine in the
+right directory — the agent needs it because the paths on the two machines
+differ. [Connecting](Connecting) explains all of it.
+
 ### `bothy keys`
 
 The bindings worth knowing on a first day. They are Zellij's, not bothy's —
@@ -143,7 +165,7 @@ bothy leaves them alone.
 
 ### `bothy doctor [--json]`
 
-Twenty-nine checks against the workspace, each with a fix. This is the command
+Thirty checks against the workspace, each with a fix. This is the command
 the project is built around: [The doctor](The-doctor) explains the output,
 the severities and the capability grouping.
 

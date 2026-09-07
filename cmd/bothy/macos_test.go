@@ -45,6 +45,7 @@ var macExpectation = map[string]doctor.Severity{
 	"passthrough":           doctor.Skip,
 	"isolation":             doctor.Pass,
 	"confine":               doctor.Skip, // opt-in; nothing has asked for it here
+	"sshfs":                 doctor.Skip, // opt-in; no other machine named here
 	"tool-data":             doctor.Pass,
 	"quarantine":            doctor.Pass,
 	"config-schema":         doctor.Pass,

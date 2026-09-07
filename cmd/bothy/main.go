@@ -40,6 +40,7 @@ Usage:
   bothy ls [--prune]            which sessions are running, and which stopped
   bothy kill [session]          end a session without attaching to it
   bothy box     [ls|use|stop|create|rm]  the toolbox this project uses, and the rest
+  bothy connect [edit] <host>   open the workspace against another machine
   bothy keys                    the bindings worth knowing
   bothy confine                 run the agent walled off from the rest of $HOME
   bothy install [--dry-run]     write the configs, then check them
@@ -101,6 +102,8 @@ func main() {
 		err = cmdLs(args)
 	case "box":
 		err = cmdBox(args)
+	case "connect":
+		err = cmdConnect(args)
 	case "keys":
 		err = cmdKeys(args)
 	case "confine":
