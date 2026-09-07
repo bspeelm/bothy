@@ -157,6 +157,31 @@ jobs:
             }
           done
 
+  buildroot:
+    # The rpm's %check runs `go test ./...` in a minimal buildroot, and twice
+    # now a test that passed everywhere else failed there: once on a signal the
+    # runner delivered differently, once on a tool the buildroot does not
+    # install. Both were found by a Copr build *after* the tag was cut, which
+    # is the most expensive place to find anything.
+    #
+    # `make check` runs on a runner carrying every tool anyone has ever needed,
+    # so it cannot see this class at all. This is the other environment: Fedora
+    # with Go and nothing else, vendored, no proxy — the same three conditions
+    # packaging/bothy.spec sets.
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # docker run rather than a container: job, because a container: job needs
+      # node in the image for the checkout action and the Fedora image has none.
+      - name: go test in a minimal Fedora buildroot
+        run: |
+          docker run --rm -v "$PWD":/src:ro -w /src fedora:latest sh -c '
+            dnf install -y --setopt=install_weak_deps=False golang >/dev/null &&
+            GOFLAGS=-mod=vendor GOPROXY=off go test ./...'
+
   macos:
     # ADR-012: a platform is supported when CI installs it, runs the doctor and
     # matches an expected table. The README has listed macOS since v0.1.0 and
