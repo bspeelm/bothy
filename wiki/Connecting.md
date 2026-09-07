@@ -151,10 +151,13 @@ with `bothy connect abbey` again.
 the whole tree over the network. Run it in the shell pane, or with `on`, and it
 runs on the machine that has the files.
 
-**Confine and connect do not combine.** `bothy confine` opens its own
-workspace with the agent walled off, and `bothy connect` opens one against
-another machine. They are two different launches, and there is no way to ask
-for both at once today.
+**Confine and connect do not combine, and bothy says so.** Run `bothy confine`
+in a connected workspace and it refuses, because the wall could not reach the
+files. The container is started by podman, and an sshfs mount made where bothy
+runs is invisible to it — measured: twenty-four entries inside the toolbox,
+none from the host. The bind would succeed and mount an *empty* directory, so
+the agent would start walled off from the very files you opened it for. A wall
+that hides the project is worse than none.
 
 **macOS is untested.** sshfs there needs macFUSE, a kernel extension and a
 reboot. Nothing about bothy prevents it; nobody has run it.

@@ -8,6 +8,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/layout"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // The requirement, as a test: nothing bothy does may put a file on the far
@@ -217,5 +218,24 @@ func TestTheAgentIsToldWhichMachineItIsNotOn(t *testing.T) {
 	cfg.Slots.Agent = "claude-code"
 	if got := agentWithNote(cfg, "abbey", "/srv/api", mount); !strings.Contains(got, "append-system-prompt") {
 		t.Errorf("agentWithNote(claude-code) = %q, want the declared flag", got)
+	}
+}
+
+// The wall is built by the podman confinement reaches, and an sshfs mount made
+// where bothy runs is invisible to it — measured: 24 entries inside the
+// toolbox, none from the host, nothing in the host's mount table. The bind
+// would succeed and mount an empty directory, walling the agent off from the
+// files it was opened for.
+func TestConfineRefusesInsideAConnect(t *testing.T) {
+	p := platform.Info{Root: "/home/me/.local/share/bothy"}
+	mount := filepath.Join(p.CacheDir(), "remotes", "abbey", "srv", "api")
+
+	if err := refuseInsideAConnect(p, mount); err == nil {
+		t.Error("confine accepted a directory the container cannot see")
+	} else if !strings.Contains(err.Error(), "empty directory") {
+		t.Errorf("the refusal does not say what would go wrong: %v", err)
+	}
+	if err := refuseInsideAConnect(p, "/home/me/code/api"); err != nil {
+		t.Errorf("confine refused an ordinary local project: %v", err)
 	}
 }

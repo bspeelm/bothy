@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/confine"
@@ -43,6 +44,9 @@ func cmdConfine(args []string) error {
 		image = confine.DefaultImage
 	}
 	dir, _ := os.Getwd()
+	if err := refuseInsideAConnect(p, dir); err != nil {
+		return err
+	}
 	agent := cfg.ProviderOrDefault("agent")
 	pr, _ := slots.Get(agent)
 	creds := confine.Credentials(p, cfg.Agent.Credentials, pr)
@@ -83,4 +87,23 @@ func explainTheBuild(p platform.Info, image string) error {
 		"        podman build -t %s %s\n\n"+
 		"      then: bothy confine\n", path, image, confine.Dir(p))
 	return nil
+}
+
+// refuseInsideAConnect stops the wall being built around a directory the
+// container cannot see.
+//
+// Measured: an sshfs mount made where bothy runs is invisible to the podman
+// confinement reaches -- 24 entries inside the toolbox, none from the host,
+// and nothing in the host's mount table. The bind would succeed and mount an
+// empty directory, so the agent would start walled off from the very files it
+// was opened for. ADR-034 asks for a wall nobody misunderstands, and one
+// hiding the project is worse than none.
+func refuseInsideAConnect(p platform.Info, dir string) error {
+	remotes := filepath.Join(p.CacheDir(), "remotes") + string(filepath.Separator)
+	if !strings.HasPrefix(dir, remotes) {
+		return nil
+	}
+	return fmt.Errorf("this workspace is connected to another machine, and the wall cannot reach it\n" +
+		"      the container would see an empty directory where the files are\n" +
+		"      run 'bothy confine' on a local project, or 'bothy connect' without it")
 }

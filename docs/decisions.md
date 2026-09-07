@@ -1766,6 +1766,15 @@ There is no alternative to a mount, either: yazi declares no remote support, a
 FUSE filesystem inside bothy needs a Go dependency PLAN.md 13 forbids, and
 running yazi over there would put a binary on the box.
 
+**Confine refuses inside a connect, and the reason is measured.** The wall is
+built by the podman confinement reaches, and an sshfs mount made where bothy
+runs is invisible to it: twenty-four entries inside the toolbox, none from the
+host, nothing in the host's mount table. The bind would succeed and mount an
+empty directory, so the agent would start walled off from the files it was
+opened for -- which ADR-034's "a wall people misunderstand is worse than none"
+rules out. `bothy confine` therefore refuses when the directory is under the
+remotes cache, and names what would have gone wrong.
+
 **Confine is degraded over a connect and says so.** The wall mounts the project
 directory and the agent's credentials and deliberately not `~/.ssh`, so a
 confined agent can edit the far machine's files through the mount and cannot
