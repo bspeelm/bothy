@@ -45,8 +45,12 @@ the script says so and prints the line to add.
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **source** | contributors | `git clone` then `make install-binary` |
 
-**The script is the recommended one on Linux**, and on an image-based host it is
-the only one with no cost: `dnf` there means `rpm-ostree` and a reboot for
+**Reach for your package manager first** — dnf on Fedora, the `.deb` on Debian
+and Ubuntu, Homebrew on macOS. They are signed, they upgrade the way everything
+else on your machine upgrades, and the script's own gap does not apply to them.
+
+**The script earns its place on an image-based host**, where it is the only one
+with no cost: `dnf` there means `rpm-ostree` and a reboot for
 bothy itself, which is a lot to pay for a binary that runs perfectly well from
 `~/.local/bin`. The `.deb` is a file rather than a repository, so `apt upgrade`
 will not bring you the next one — download it when you want it

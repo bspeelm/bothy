@@ -49,17 +49,21 @@ The same thing in order, with the reasons for the order, is
 
 ## Install
 
-You need **git**, and **curl** or **wget**. Everything else bothy brings, or
-tells you how to get. A terminal that can draw images — Ghostty, Kitty,
-WezTerm — makes previews real pictures rather than block art, and an AI agent
-is optional, though it is what the middle pane is for (and sort of the point).
+You need **git**. Everything else bothy brings, or tells you how to get. A
+terminal that can draw images — Ghostty, Kitty, WezTerm — makes previews real
+pictures rather than block art, and an AI agent is optional, though it is what
+the middle pane is for (and sort of the point).
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
-```
+Pick the one that fits your machine:
 
-No root, nothing layered onto the host, so this works unchanged on Silverblue
-and inside Toolbx. Then, from any directory:
+| | |
+|---|---|
+| **Fedora** | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
+| **Debian, Ubuntu, Mint** | download the `.deb` from [the latest release](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
+| **macOS** | `brew install --cask bspeelm/bothy/bothy` |
+| **you already have Go** | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
+
+Then, from any directory:
 
 ```sh
 bothy
@@ -69,9 +73,25 @@ The first run lists what you are missing, asks before downloading anything,
 then opens the window. It is not fast. It does not need to be; you will do this
 once.
 
-There are six ways in — the script, dnf, apt, Homebrew, Go and source — each verifying
-what it fetched differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
-[What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security).
+### If none of those fit
+
+There is an install script, and one case where it is genuinely the better
+answer: an image-based system like Silverblue, where `dnf` means `rpm-ostree`
+and a reboot for a binary that runs perfectly well out of `~/.local/bin`. It
+needs no root and layers nothing onto the host.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bspeelm/bothy/main/bootstrap/install.sh | sh
+```
+
+What that costs, plainly: the script is fetched over HTTPS and run **unsigned**,
+before bothy exists to verify anything. No signature on a later artifact fixes
+that — it is the same trade as any `curl | sh`, and worth making deliberately
+rather than because it was the first line on the page.
+
+There are six ways in, counting source, and each verifies what it fetched
+differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing) ·
+[What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security)
 
 ## Commands
 
