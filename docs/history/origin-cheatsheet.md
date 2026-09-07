@@ -661,7 +661,7 @@ theme = dracula-pro
 #
 # `position` is ignored under stretch. Re-measure the percentages if the dev
 # layout's pane sizes ever change.
-background-image = /var/home/shadowthebearded/.config/ghostty/tux.png
+background-image = /var/home/user/.config/ghostty/tux.png
 background-image-opacity = 0.04
 background-image-fit = stretch
 background-image-repeat = false
@@ -687,7 +687,7 @@ colorscheme dracula_pro
 set number relativenumber      " hybrid line numbers
 set ignorecase smartcase       " case-insensitive until you type a capital
 set incsearch hlsearch
-set expandtab shiftwidth=2 softtabstop=2   " matches the JSX/SCSS in aip-app-site
+set expandtab shiftwidth=2 softtabstop=2   " matches the JSX/SCSS it was written for
 set autoindent smartindent
 set scrolloff=4
 set hidden                     " switch buffers without saving
