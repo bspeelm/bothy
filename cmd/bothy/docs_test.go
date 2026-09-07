@@ -800,3 +800,74 @@ func TestEveryShippingBuildIsTrimmed(t *testing.T) {
 			checked, len(files))
 	}
 }
+
+// goreleaserBlock returns one top-level block of .goreleaser.yaml.
+func goreleaserBlock(t *testing.T, key string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("../..", ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	in := false
+	for _, line := range strings.Split(string(b), "\n") {
+		switch {
+		case line == key+":":
+			in = true
+		case in && line != "" && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "#"):
+			return strings.Join(out, "\n")
+		case in:
+			out = append(out, line)
+		}
+	}
+	if !in {
+		t.Fatalf("no %q block in .goreleaser.yaml", key)
+	}
+	return strings.Join(out, "\n")
+}
+
+// The release page carries its own install instructions, generated from
+// .goreleaser.yaml and never from the README, so the two drift without a
+// word. v0.11.2 shipped a footer still leading with the script the README had
+// demoted that morning -- on the busier of the two pages.
+func TestTheReleaseFooterOffersTheSameChannelsAsTheREADME(t *testing.T) {
+	footer := goreleaserBlock(t, "release")
+	for _, want := range []string{
+		"dnf install bothy",
+		"apt install ./bothy",
+		"brew install --cask",
+		"go install github.com/bspeelm/bothy",
+	} {
+		if !strings.Contains(footer, want) {
+			t.Errorf("the release footer never offers %q, and the README does", want)
+		}
+	}
+	script, pkg := strings.Index(footer, "install.sh"), strings.Index(footer, "dnf install bothy")
+	if script >= 0 && pkg >= 0 && script < pkg {
+		t.Error("the release footer leads with the install script; the README leads " +
+			"with a package manager and the release page is read more often")
+	}
+}
+
+// A commit matching no changelog group is dropped, silently. v0.11.2's
+// generated notes listed one of its four changes and omitted the rpm fix the
+// release existed for, because two squash titles were written in plain English
+// rather than with a conventional prefix.
+func TestNoCommitIsDroppedFromTheReleaseNotes(t *testing.T) {
+	block := goreleaserBlock(t, "changelog")
+	at := strings.Index(block, "groups:")
+	if at < 0 {
+		t.Fatal("no changelog groups in .goreleaser.yaml")
+	}
+	groups := block[at:]
+	if end := strings.Index(groups, "\n  filters:"); end > 0 {
+		groups = groups[:end]
+	}
+	for _, g := range strings.Split(groups, "- title:")[1:] {
+		if !strings.Contains(g, "regexp:") {
+			return
+		}
+	}
+	t.Error("every changelog group has a regexp, so a commit matching none of them " +
+		"never reaches the release notes and nothing says it was dropped")
+}
