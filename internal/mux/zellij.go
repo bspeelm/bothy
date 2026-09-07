@@ -3,9 +3,11 @@ package mux
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -53,7 +55,47 @@ func (Zellij) SessionName(dir string) string {
 	if name == "" {
 		return "bothy"
 	}
-	return "bothy-" + name
+	return FitSocket("bothy-" + name)
+}
+
+// FitSocket bounds a session name by what zellij's IPC socket path can hold.
+//
+// zellij binds <socket dir>/contract_version_N/<session>, and a unix socket
+// path is capped by sun_path: 104 bytes on macOS, 108 on Linux. macOS spends 49
+// of them putting $TMPDIR under /var/folders, leaving 24 for the name, so
+// `bothy connect user@host` overflowed and zellij exited before the workspace
+// opened. Linux's /tmp leaves room for 71, so a name that fits is never
+// rewritten and nothing there changes.
+//
+// The hash is load-bearing rather than decoration: ADR-046 puts the host in the
+// name so a remote api and a local one stay two sessions, and truncating alone
+// would put them back together.
+func FitSocket(name string) string {
+	dir := os.Getenv("ZELLIJ_SOCKET_DIR") // zellij's own override, honoured first
+	if dir == "" {
+		dir = filepath.Join(os.TempDir(), "zellij-"+strconv.Itoa(os.Getuid()))
+	}
+	room := socketRoom(runtime.GOOS, dir)
+	if len(name) <= room {
+		return name
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(name)) // hash.Hash never reports one
+	tag := fmt.Sprintf("%06x", h.Sum64()&0xffffff)
+	if room < len(tag)+2 {
+		return tag
+	}
+	return strings.TrimRight(name[:room-len(tag)-1], "-") + "-" + tag
+}
+
+// socketRoom is what is left for the name after the path zellij builds around
+// it. Split out from FitSocket so a test can ask about a platform it is not on.
+func socketRoom(goos, dir string) int {
+	limit := 107
+	if goos == "darwin" {
+		limit = 103
+	}
+	return limit - len(dir) - len("/contract_version_1/")
 }
 
 // Open writes the rendered layout where zellij reads it, then attaches. The

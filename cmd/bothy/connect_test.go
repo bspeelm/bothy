@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -184,15 +186,54 @@ func TestTheMountIsInsideBothysOwnTree(t *testing.T) {
 	if !strings.HasPrefix(m, cache+string(filepath.Separator)) {
 		t.Errorf("mountPoint() = %q, want it under %q", m, cache)
 	}
-	// Plain first, lazy only as a fallback: a lazy unmount detaches the
-	// directory and leaves sshfs running until every reference drops, which was
-	// measured leaving a process behind after the workspace had gone.
-	if strings.Contains(strings.Join(unmountArgs(m), " "), "-z") {
-		t.Error("the first unmount is lazy, which leaks the sshfs process")
+}
+
+// Measured on macOS 25.6 with FUSE-T: fusermount3 does not exist there, both
+// unmount attempts exited 127, and every connect leaked its mount until a
+// later one was asked to mount over a live one and failed.
+func TestEveryPlatformCanReleaseItsOwnMount(t *testing.T) {
+	const m = "/c/remotes/abbey"
+	for _, goos := range []string{"linux", "darwin"} {
+		plain, forced := unmountArgv(goos, m)
+		if plain[0] != forced[0] {
+			t.Errorf("%s: two unmount programs, %q and %q", goos, plain[0], forced[0])
+		}
+		if _, err := exec.LookPath(plain[0]); err != nil && goos == runtime.GOOS {
+			t.Errorf("%s has no %q, so its mounts are never released", goos, plain[0])
+		}
+		// Plain first, forceful only as a fallback: reaching for force first was
+		// measured tearing a mount out from under a pane still reading it.
+		if force(plain) {
+			t.Errorf("%s: the first unmount is the forceful one", goos)
+		}
+		if !force(forced) {
+			t.Errorf("%s: no forceful fallback, so a busy mount stays wedged", goos)
+		}
 	}
-	if !strings.Contains(strings.Join(unmountLazyArgs(m), " "), "-z") {
-		t.Error("there is no lazy fallback, so a hung mount stays unusable")
+}
+
+// Measured mounting onto an occupied mount point: sshfs printed "fuse: mount
+// failed with errro: -1" and exited 0, because it forks and the parent knows
+// nothing. bothy reported a mount it did not have and opened the workspace on
+// an empty local directory.
+func TestSSHFSExitCodeIsNotProofOfAMount(t *testing.T) {
+	src, err := os.ReadFile("connectcmd.go")
+	if err != nil {
+		t.Fatal(err)
 	}
+	if !strings.Contains(string(src), "err != nil || !mounted(mount)") {
+		t.Error("connect trusts sshfs's exit status, which is 0 even when the mount failed")
+	}
+}
+
+// -z is libfuse's lazy detach, -f is umount's force. Both are "do it anyway".
+func force(argv []string) bool {
+	for _, a := range argv[1:] {
+		if a == "-z" || a == "-f" {
+			return true
+		}
+	}
+	return false
 }
 
 // Observed before this existed: the agent ran nproc and described the local
