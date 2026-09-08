@@ -21,9 +21,10 @@ type UninstallReport struct {
 }
 
 // Uninstall removes bothy's tree, which under ADR-009 is all of it: removing
-// one directory is exact by construction rather than by bookkeeping. Two
-// things are left deliberately -- ~/.config/bothy, which is the user's own
-// settings, and the binary, which is running this code.
+// one directory is exact by construction rather than by bookkeeping. The
+// binary goes too -- the bootstrap puts it outside the tree, so the tree alone
+// would leave bothy runnable. ~/.config/bothy stays: the settings are the
+// user's, and are named on the way out rather than removed.
 func Uninstall(p platform.Info, dryRun, keepBinary bool) (*UninstallReport, error) {
 	rep := &UninstallReport{}
 

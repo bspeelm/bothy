@@ -486,6 +486,13 @@ var retiredUninstallClaims = []string{
 	"one folder goes and nothing else does",
 	"uninstall leaves nothing",
 	"removes everything it wrote",
+	// Shipped on every release page through v0.12.0: the binary is outside the
+	// tree, so removing the tree alone leaves bothy runnable.
+	"removes that one directory",
+	// A count of the leftovers goes stale whenever one is added -- completions
+	// made it four in 0.12.0 -- and nothing here can check it.
+	"names the three things",
+	"the three things it leaves",
 }
 
 func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
@@ -496,8 +503,11 @@ func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
 	}
 	files = append(files, filepath.Join(root, "README.md"),
 		filepath.Join(root, "CONTRIBUTING.md"), filepath.Join(root, "SECURITY.md"))
-	// The help text carried this one too, so the source is in scope.
-	files = append(files, filepath.Join(root, "cmd", "bothy", "main.go"))
+	// The help text carried this one too, so the source is in scope -- and so
+	// is the release footer, which is where the claim survived longest: it is
+	// prose, on the busiest surface, in a file no prose check was reading.
+	files = append(files, filepath.Join(root, "cmd", "bothy", "main.go"),
+		filepath.Join(root, ".goreleaser.yaml"))
 
 	for _, f := range files {
 		body, err := os.ReadFile(f)
@@ -508,7 +518,7 @@ func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
 		for _, claim := range retiredUninstallClaims {
 			if strings.Contains(lower, claim) {
 				t.Errorf("%s says %q; uninstall removes the tree and the binary "+
-					"and names three leftovers", filepath.Base(f), claim)
+					"and names what it leaves", filepath.Base(f), claim)
 			}
 		}
 	}

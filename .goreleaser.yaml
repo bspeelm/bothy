@@ -238,5 +238,6 @@ release:
     anything -- the same trade as any `curl | sh`.
     [All six ways in, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
 
-    bothy writes only into `~/.local/share/bothy`. Your dotfiles are neither
-    read nor written, and `bothy uninstall` removes that one directory.
+    bothy keeps its own things in `~/.local/share/bothy` and your settings in
+    `~/.config/bothy`. Your dotfiles are neither read nor written, and
+    `bothy uninstall` removes the tree and the binary, naming what it leaves.

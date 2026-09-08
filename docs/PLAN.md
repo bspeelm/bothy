@@ -47,8 +47,9 @@ This is the load-bearing section. Everything else serves it.
 
 **Nothing else.** No `~/.vimrc`, no `~/.config/yazi`, no `~/.config/ghostty`, no
 `~/.bashrc.d`, no `git config --global`. `bothy uninstall` removes the tree and
-the binary, and names the three things it leaves — the settings, the container
-image, and the desktop entry. See the README for the list it prints.
+the binary, and names what it leaves — the settings, the container image, the
+desktop entry, and any completion script it installed. See the README for the
+list it prints.
 
 The settings directory surviving is the answer to portability: clone it onto a
 new machine, run `bothy install`, and you have your workspace. One folder, not a
