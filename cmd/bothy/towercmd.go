@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -56,12 +57,16 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 
 	tick := time.NewTicker(every)
 	defer tick.Stop()
+	rows := paneRows()
+	replyPrompt(os.Stdout, rows)
 	last := ""
 	for {
 		select {
 		case line := <-typed:
 			relay(backend, bin, env, session, agent, line)
 			last = "" // the reply is about to change the screen; do not skip it
+			rows = paneRows()
+			replyPrompt(os.Stdout, rows)
 		case <-tick.C:
 			screen, err := mirrorOnce(backend, bin, env, session, agent)
 			if err != nil {
@@ -70,11 +75,12 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 				fmt.Printf("\n%s: %v\n", session, err)
 				continue
 			}
-			// Only when it changed: a repaint clears the screen and would wipe
-			// a half-typed reply. An agent waiting for one draws a still
-			// screen, so measured, an idle pane repaints never.
+			// Only when it changed, which saves the work rather than protecting
+			// the reply line -- paint does that by leaving the bottom rows
+			// alone. Measured: an idle pane's dump is byte-identical between
+			// refreshes, so watching a quiet agent costs one read and no draw.
 			if screen != last {
-				paint(os.Stdout, screen)
+				paint(os.Stdout, screen, rows)
 				last = screen
 			}
 		}
@@ -198,4 +204,24 @@ func envInt(env []string, key string) int {
 		}
 	}
 	return 0
+}
+
+// paneRows is how tall this pane is, 0 when it cannot be found out.
+//
+// stty rather than an ioctl, which would need unsafe and a constant that differs
+// between Linux and macOS; stty is in coreutils and present even in a minimal
+// build root. A pane that will not say its size is painted whole.
+func paneRows() int {
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	out, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+	f := strings.Fields(string(out))
+	if len(f) != 2 {
+		return 0
+	}
+	n, _ := strconv.Atoi(f[0])
+	return n
 }

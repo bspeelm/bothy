@@ -226,10 +226,9 @@ mirrors with `Alt+h/j/k/l` first, so the reply goes where you are looking.
 your keyboard. bothy composes nothing, answers nothing on your behalf, and
 sends nothing on a timer.
 
-A mirror only redraws when the screen it is watching has changed, which is what
-lets you type into it: an agent waiting for an answer draws a still screen, so
-nothing repaints over what you are writing. An agent that animates while idle
-would still repaint under a half-written reply.
+The bottom two rows of a mirror are yours. Nothing the mirror draws reaches
+them, so a reply stays on screen while the agent above it keeps working — you
+can type at an agent mid-thought, which is when you most often want to.
 
 This sends a line of text. It does not send arrows, tab, or Ctrl-C, so a
 question that has to be answered by moving a selection still needs its own

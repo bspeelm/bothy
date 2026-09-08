@@ -1930,14 +1930,23 @@ A relay that composed its own text would be an orchestrator, and PLAN §11's
 refusal would apply to it. One that carries a keystroke is a keyboard with a
 longer cable.
 
-**The refresh skips an unchanged screen, which is what makes typing possible.**
-A repaint clears the pane, so it would wipe a half-written reply. Rather than
-take the terminal into raw mode to know when someone is mid-line, the mirror
-simply does not repaint a screen that has not changed -- and an agent waiting
-for an answer draws a still screen, which is exactly when a reply is being
-typed. Measured: an idle agent pane's dump is byte-identical between refreshes,
-while a working one differs. The cost is honest and small: an agent that
-animates while idle would still repaint under a reply.
+**The bottom two rows of a mirror belong to the reply, and nothing draws on
+them.** A frame saves the cursor, paints only as far down as those rows, clears
+each painted row rather than clearing to the end of the screen, and puts the
+cursor back. The pane's height comes from `stty size` -- an ioctl would need
+`unsafe` and a constant that differs between Linux and macOS, while stty is in
+coreutils and present even in a minimal build root. A pane that will not say its
+height is painted whole, which is what the mirror did before it had a reply line
+to protect.
+
+The first attempt got this wrong, and the way it was wrong is worth recording.
+It reasoned that repainting only a *changed* screen made typing safe, because
+an agent waiting for an answer draws a still one. That premise was measured and
+true, and the conclusion was still false: people type at an agent while it is
+working -- to interrupt it, or to queue what comes next -- which is exactly when
+the screen changes fastest. The repaint then wiped the line mid-word and the
+half of it that had been typed went to the agent. Skipping an unchanged screen
+is kept, but as a saving rather than as the thing that makes replies possible.
 
 **Why 7,800.** The tower is 190 lines: the pane lookup, the screen read, the
 layout, and the loop that reprints one pane. ADR-047 said the cap "stops being

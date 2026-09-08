@@ -250,20 +250,57 @@ func TestTheTowerLayoutRendersForTheMultiplexer(t *testing.T) {
 // was fixed, which is visible in the pane's scroll indicator.
 func TestPaintLeavesNothingInScrollback(t *testing.T) {
 	var b strings.Builder
-	paint(&b, "one\ntwo\nthree\n")
+	paint(&b, "one\ntwo\nthree\n", 0)
 	out := b.String()
 
 	if strings.HasSuffix(out, "\n") {
 		t.Error("the frame ends in a newline, which scrolls the previous one away")
 	}
-	if !strings.HasPrefix(out, "\033[H") {
+	if !strings.Contains(out, "\033[H") {
 		t.Error("the frame does not home the cursor, so it draws below the last one")
-	}
-	if !strings.HasSuffix(out, "\033[J") {
-		t.Error("the frame does not wipe what a taller previous frame left below it")
 	}
 	if n := strings.Count(out, "\033[K"); n != 3 {
 		t.Errorf("%d lines cleared for a 3-line screen; a shorter line leaves the old one behind", n)
+	}
+}
+
+// The reply line is the bottom of the pane, and a repaint that reached it wiped
+// what was being typed there -- keystrokes were eaten mid-word while an agent
+// worked. The frame must therefore write no further down than the reserved
+// rows, put the cursor back where it found it, and never clear to the end of
+// the screen.
+func TestPaintNeverReachesTheReplyLine(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "a\nb\nc\nd\ne\nf\ng\nh", 6)
+	out := b.String()
+
+	if strings.Contains(out, "\033[J") {
+		t.Error("the frame clears to the end of the screen, which wipes the reply line")
+	}
+	if !strings.HasPrefix(out, "\0337") || !strings.HasSuffix(out, "\0338") {
+		t.Error("the frame does not save and restore the cursor, so typing resumes in the wrong place")
+	}
+	// Six rows, two reserved: four painted, and they are the last four, because
+	// the bottom is where an agent says what it is waiting for.
+	if n := strings.Count(out, "\033[K"); n != 4 {
+		t.Errorf("painted %d rows into a 6-row pane reserving %d; want 4", n, replyRows)
+	}
+	for _, gone := range []string{"a\033[K", "b\033[K", "c\033[K", "d\033[K"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("kept the top of the screen (%q); the bottom is the part worth showing", gone)
+		}
+	}
+	if !strings.Contains(out, "h\033[K") {
+		t.Error("the last line of the screen was not painted")
+	}
+}
+
+// A pane too short to reserve anything is painted whole rather than not at all.
+func TestAPaneTooShortToReserveIsPaintedWhole(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "a\nb\nc", 2)
+	if n := strings.Count(b.String(), "\033[K"); n != 3 {
+		t.Errorf("painted %d rows of a 3-line screen into a 2-row pane; want all 3", n)
 	}
 }
 

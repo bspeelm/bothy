@@ -112,23 +112,48 @@ func abreast(mirrors []mirror, width int) bool {
 	return total <= width
 }
 
-// paint writes a screen without scrolling.
+// replyRows is how much of the pane the mirror keeps its hands off: a blank
+// line and the line being typed on.
+const replyRows = 2
+
+// paint writes a screen into the top of the pane and leaves the bottom alone.
 //
-// Homing the cursor and clearing each line as it is written, rather than
-// printing the lines plainly: a plain print pushes the previous frame into
-// scrollback, which reached 1,382 lines of history after a few minutes of
-// watching. No newline follows the last line, so a screen that fits the pane
-// never scrolls it at all.
-func paint(w io.Writer, screen string) {
-	fmt.Fprint(w, "\033[H")
+// The bottom rows carry the reply being typed, so the cursor is saved and put
+// back, rows are cleared one at a time rather than to the end of the screen,
+// and nothing is written below them. Reaching them ate keystrokes mid-word.
+//
+// The bottom of the screen is what is kept when it does not fit: that is where
+// an agent says what it is waiting for.
+func paint(w io.Writer, screen string, rows int) {
 	lines := strings.Split(strings.TrimRight(screen, "\n"), "\n")
-	for i, line := range lines {
+	area := len(lines)
+	if rows > replyRows+1 {
+		area = rows - replyRows
+	}
+	if len(lines) > area {
+		lines = lines[len(lines)-area:]
+	}
+	fmt.Fprint(w, "\0337\033[H")
+	for i := 0; i < area; i++ {
+		line := ""
+		if i < len(lines) {
+			line = lines[i]
+		}
 		if i > 0 {
 			fmt.Fprint(w, "\r\n")
 		}
 		fmt.Fprint(w, line, "\033[K")
 	}
-	fmt.Fprint(w, "\033[J")
+	fmt.Fprint(w, "\0338")
+}
+
+// replyPrompt puts the cursor on the reply line and marks it, so there is
+// somewhere obvious to type and the mirror above never reaches it.
+func replyPrompt(w io.Writer, rows int) {
+	if rows <= replyRows {
+		return
+	}
+	fmt.Fprintf(w, "\033[%d;1H\033[K> ", rows)
 }
 
 // watchable is the sessions worth a row: running, holding an agent, and not the
