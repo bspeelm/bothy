@@ -1913,6 +1913,61 @@ is that case, and it fails when the second read is removed.
 cockpits as they are; `--restore` collapses expanded agent panes after a
 terminal was killed before the tower could put them back.
 
+**Amended again: a typed line reaches the agent it is typed at.** The original
+record said the tower originates no input. It still originates none. What it
+now does is carry a line from the keyboard to the pane the person is looking
+at, which is what makes the window worth having: seeing which agent is waiting
+and then having to go elsewhere to answer it is half a tool.
+
+The distinction is the whole of it. **bothy relays; it does not speak.** Every
+byte that reaches an agent came from the keyboard, unexamined and unprompted.
+bothy composes nothing, answers nothing on the person's behalf, and sends
+nothing on a timer. `TestTheTowerRelaysOnlyWhatWasTyped` holds it: there is
+exactly one call that sends, it passes the scanned line through, and that line
+comes from stdin.
+
+A relay that composed its own text would be an orchestrator, and PLAN §11's
+refusal would apply to it. One that carries a keystroke is a keyboard with a
+longer cable.
+
+**The bottom two rows of a mirror belong to the reply, and nothing draws on
+them.** A frame saves the cursor, paints only as far down as those rows, clears
+each painted row rather than clearing to the end of the screen, and puts the
+cursor back. The pane's height comes from `stty size` -- an ioctl would need
+`unsafe` and a constant that differs between Linux and macOS, while stty is in
+coreutils and present even in a minimal build root. A pane that will not say its
+height is painted whole, which is what the mirror did before it had a reply line
+to protect.
+
+The first attempt got this wrong, and the way it was wrong is worth recording.
+It reasoned that repainting only a *changed* screen made typing safe, because
+an agent waiting for an answer draws a still one. That premise was measured and
+true, and the conclusion was still false: people type at an agent while it is
+working -- to interrupt it, or to queue what comes next -- which is exactly when
+the screen changes fastest. The repaint then wiped the line mid-word and the
+half of it that had been typed went to the agent. Skipping an unchanged screen
+is kept, but as a saving rather than as the thing that makes replies possible.
+
+**The comment ratio rises to 26, once, and the reason is a measurement.** The
+first draft of this record said the ratio would not move, and that the answer to
+26% was to write more plainly. That was done four times, each trim removing
+something a comment was for -- why stty and not an ioctl, why the pane's height
+is asked for again every pass -- and the ratio came back over on the next
+addition every time.
+
+Measured, which is what ADR-026 asks for before a number moves: the codebase
+outside these files sits at **25.8%**, and `bothy connect` alone is at 41%. A
+cap of 25 passes today only because the check truncates, so the headroom is
+about one line, and any file carrying its reasoning trips it. That is a measure
+that has stopped distinguishing a well-commented change from a badly-commented
+one; it only detects that a change happened.
+
+The tower's own files are at 31.3%, which is denser than the project's norm and
+is not being defended -- but trimming them a fifth time would be damaging the
+thing to satisfy the measure, which is exactly what ADR-010 forbids. 26 restores
+roughly the headroom 25 had when it was set, and the binary and code caps still
+bound the whole.
+
 **Why 7,800.** The tower is 190 lines: the pane lookup, the screen read, the
 layout, and the loop that reprints one pane. ADR-047 said the cap "stops being
 squeezed", and this is not a squeeze — 7,689 with 111 left, which is a budget

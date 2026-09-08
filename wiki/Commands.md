@@ -216,6 +216,24 @@ Stacked, each shows the bottom of its pane — enough to see which agent wants
 you — and the multiplexer's fullscreen binding on a tower pane then shows the
 whole thing.
 
+## Answering from the tower
+
+Type into a mirror and press Enter, and the line goes to the agent that mirror
+is watching, as if you had typed it in that agent's own window. Move between
+mirrors with `Alt+h/j/k/l` first, so the reply goes where you are looking.
+
+**bothy relays; it does not speak.** Everything that reaches an agent came from
+your keyboard. bothy composes nothing, answers nothing on your behalf, and
+sends nothing on a timer.
+
+The bottom two rows of a mirror are yours. Nothing the mirror draws reaches
+them, so a reply stays on screen while the agent above it keeps working — you
+can type at an agent mid-thought, which is when you most often want to.
+
+This sends a line of text. It does not send arrows, tab, or Ctrl-C, so a
+question that has to be answered by moving a selection still needs its own
+window.
+
 **It cannot bring a session's window to the front.** Selecting a row shows you
 which session wants attention; switching to it is yours to do. No Wayland
 compositor lets one application raise another's window, and bothy will not

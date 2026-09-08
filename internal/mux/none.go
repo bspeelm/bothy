@@ -47,4 +47,5 @@ func (None) PanesOf(string, string, []string) ([]PaneRef, bool) { return nil, fa
 func (None) Screen(string, string, string, []string) (string, error) {
 	return "", ErrUnsupported
 }
-func (None) Expand(string, string, string, []string) error { return ErrUnsupported }
+func (None) Expand(string, string, string, []string) error       { return ErrUnsupported }
+func (None) Send(string, string, string, string, []string) error { return ErrUnsupported }

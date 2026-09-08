@@ -99,6 +99,11 @@ type Backend interface {
 	// It changes what a session looks like and nothing about what runs in it.
 	// The program inside receives SIGWINCH and redraws (ADR-048).
 	Expand(bin, session, pane string, env []string) error
+
+	// Send delivers a line a person typed to a pane, addressed so it reaches the
+	// agent rather than whichever pane the session has focused. What bothy may
+	// send is only what someone typed; it originates nothing (ADR-048).
+	Send(bin, session, pane, line string, env []string) error
 }
 
 // PaneRef is a pane of a running session: enough to find the agent's and no

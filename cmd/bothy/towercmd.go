@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -49,15 +53,70 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	session string, every time.Duration) error {
 
 	agent := install.AgentBinary(cfg.Slots.Agent)
+	typed := make(chan string, 1)
+	go readLines(os.Stdin, typed)
+
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	rows := paneRows()
+	replyPrompt(os.Stdout, rows)
+	last := ""
 	for {
-		screen, err := mirrorOnce(backend, bin, env, session, agent)
-		paint(os.Stdout, screen)
-		if err != nil {
-			// Reported in the pane, not returned: one session ending must not
-			// close a pane the other mirrors share a window with.
-			fmt.Printf("\n%s: %v\n", session, err)
+		select {
+		case line := <-typed:
+			relay(backend, bin, env, session, agent, line)
+			last = "" // the reply is about to change the screen; do not skip it
+			rows = paneRows()
+			replyPrompt(os.Stdout, rows)
+		case <-tick.C:
+			// Asked every pass, not once: fullscreening a mirror makes its pane
+			// taller, and a height read at startup leaves the rest of it dead
+			// with the reply line stranded where the bottom used to be.
+			if r := paneRows(); r != rows {
+				rows, last = r, ""
+				replyPrompt(os.Stdout, rows)
+			}
+			screen, err := mirrorOnce(backend, bin, env, session, agent)
+			if err != nil {
+				// Reported in the pane, not returned: one session ending must
+				// not close a pane the other mirrors share a window with.
+				fmt.Printf("\n%s: %v\n", session, err)
+				continue
+			}
+			// Only when it changed, which saves the work rather than protecting
+			// the reply line -- paint does that by leaving the bottom rows
+			// alone. Measured: an idle pane's dump is byte-identical between
+			// refreshes, so watching a quiet agent costs one read and no draw.
+			if screen != last {
+				paint(os.Stdout, screen, rows)
+				last = screen
+			}
 		}
-		time.Sleep(every)
+	}
+}
+
+// readLines carries what someone typed to the loop that paints, from a
+// goroutine because the scanner blocks until Enter.
+func readLines(r io.Reader, out chan<- string) {
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		out <- sc.Text()
+	}
+}
+
+// relay hands a typed line to the agent this pane mirrors. It arrives from the
+// keyboard and is passed on unexamined: bothy relays, it does not speak.
+func relay(backend mux.Backend, bin string, env []string, session, agent, line string) {
+	panes, ok := backend.PanesOf(bin, session, env)
+	if !ok {
+		return
+	}
+	pane, found := agentPane(panes, agent)
+	if !found {
+		return
+	}
+	if err := backend.Send(bin, session, pane.Addr(), line, env); err != nil {
+		fmt.Printf("\n%s: %v\n", session, err)
 	}
 }
 
@@ -90,6 +149,14 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	if len(mirrors) == 0 {
 		return fmt.Errorf("no sessions with an agent to watch\n" +
 			"      the tower shows agent panes of running sessions; 'bothy ls' lists them")
+	}
+
+	// A tower already running is stale: its panes mirror what was there when it
+	// opened, and Open would attach to that rather than build the layout just
+	// computed. Nothing in a tower is worth keeping, so it is replaced.
+	if slices.Contains(live, towerSession) {
+		_ = backend.Kill(bin, env, towerSession)
+		live = backend.Live(bin, env)
 	}
 
 	if restore {
@@ -153,4 +220,24 @@ func envInt(env []string, key string) int {
 		}
 	}
 	return 0
+}
+
+// paneRows is how tall this pane is, 0 when it cannot be found out.
+//
+// stty rather than an ioctl, which would need unsafe and a constant that differs
+// between Linux and macOS; stty is in coreutils and present even in a minimal
+// build root. A pane that will not say its size is painted whole.
+func paneRows() int {
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	out, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+	f := strings.Fields(string(out))
+	if len(f) != 2 {
+		return 0
+	}
+	n, _ := strconv.Atoi(f[0])
+	return n
 }

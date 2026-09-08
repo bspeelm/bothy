@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bspeelm/bothy/internal/mux"
 )
@@ -177,7 +178,7 @@ func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	forbidden := []string{
 		"write-chars", "send-keys", "\"write\"", "paste",
 		"switch-session", "focus-pane", "new-pane", "close-pane",
-		"Kill(", "Discard(", "detach",
+		"Discard(", "detach",
 	}
 	both := ""
 	for _, f := range []string{"tower.go", "towercmd.go"} {
@@ -196,6 +197,15 @@ func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	// multiplexer cannot be handed a different meaning for it.
 	if !strings.Contains(both, "backend.Expand(") {
 		t.Error("the tower no longer expands panes through the backend seam")
+	}
+	// Ending a session is permitted for exactly one session: the tower's own,
+	// which holds nothing but mirrors of elsewhere. An agent's session is never
+	// the tower's to end.
+	if n := strings.Count(both, ".Kill("); n != 1 {
+		t.Errorf("%d calls end a session; there is one, and it ends the tower's own", n)
+	}
+	if !strings.Contains(both, "backend.Kill(bin, env, towerSession)") {
+		t.Error("a session other than the tower's own is being ended")
 	}
 }
 
@@ -249,20 +259,57 @@ func TestTheTowerLayoutRendersForTheMultiplexer(t *testing.T) {
 // was fixed, which is visible in the pane's scroll indicator.
 func TestPaintLeavesNothingInScrollback(t *testing.T) {
 	var b strings.Builder
-	paint(&b, "one\ntwo\nthree\n")
+	paint(&b, "one\ntwo\nthree\n", 0)
 	out := b.String()
 
 	if strings.HasSuffix(out, "\n") {
 		t.Error("the frame ends in a newline, which scrolls the previous one away")
 	}
-	if !strings.HasPrefix(out, "\033[H") {
+	if !strings.Contains(out, "\033[H") {
 		t.Error("the frame does not home the cursor, so it draws below the last one")
-	}
-	if !strings.HasSuffix(out, "\033[J") {
-		t.Error("the frame does not wipe what a taller previous frame left below it")
 	}
 	if n := strings.Count(out, "\033[K"); n != 3 {
 		t.Errorf("%d lines cleared for a 3-line screen; a shorter line leaves the old one behind", n)
+	}
+}
+
+// The reply line is the bottom of the pane, and a repaint that reached it wiped
+// what was being typed there -- keystrokes were eaten mid-word while an agent
+// worked. The frame must therefore write no further down than the reserved
+// rows, put the cursor back where it found it, and never clear to the end of
+// the screen.
+func TestPaintNeverReachesTheReplyLine(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "a\nb\nc\nd\ne\nf\ng\nh", 6)
+	out := b.String()
+
+	if strings.Contains(out, "\033[J") {
+		t.Error("the frame clears to the end of the screen, which wipes the reply line")
+	}
+	if !strings.HasPrefix(out, "\0337") || !strings.HasSuffix(out, "\0338") {
+		t.Error("the frame does not save and restore the cursor, so typing resumes in the wrong place")
+	}
+	// Six rows, two reserved: four painted, and they are the last four, because
+	// the bottom is where an agent says what it is waiting for.
+	if n := strings.Count(out, "\033[K"); n != 4 {
+		t.Errorf("painted %d rows into a 6-row pane reserving %d; want 4", n, replyRows)
+	}
+	for _, gone := range []string{"a\033[K", "b\033[K", "c\033[K", "d\033[K"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("kept the top of the screen (%q); the bottom is the part worth showing", gone)
+		}
+	}
+	if !strings.Contains(out, "h\033[K") {
+		t.Error("the last line of the screen was not painted")
+	}
+}
+
+// A pane too short to reserve anything is painted whole rather than not at all.
+func TestAPaneTooShortToReserveIsPaintedWhole(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "a\nb\nc", 2)
+	if n := strings.Count(b.String(), "\033[K"); n != 3 {
+		t.Errorf("painted %d rows of a 3-line screen into a 2-row pane; want all 3", n)
 	}
 }
 
@@ -314,5 +361,63 @@ func TestARestoreSkipsASessionThatWentAway(t *testing.T) {
 	expanded := []mirror{{Session: "bothy-api", Pane: "terminal_1"}}
 	if got := collapsible(expanded, gone, "claude"); len(got) != 0 {
 		t.Errorf("collapsible = %+v for a session that is gone", got)
+	}
+}
+
+// Everything bothy sends to an agent came from the keyboard. A literal here
+// would be bothy speaking to the agent in its own voice, which is the line
+// ADR-048 draws and the difference between relaying and orchestrating.
+func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
+	body, err := os.ReadFile("towercmd.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+
+	if n := strings.Count(src, ".Send("); n != 1 {
+		t.Errorf("%d calls send to an agent; there is one, and it passes on a typed line", n)
+	}
+	// The line reaches Send as a parameter named for where it came from, and
+	// relay's only caller is the branch reading the typed channel.
+	if !strings.Contains(src, "backend.Send(bin, session, pane.Addr(), line, env)") {
+		t.Error("the sending call no longer passes the typed line through unexamined")
+	}
+	if !strings.Contains(src, "go readLines(os.Stdin, typed)") {
+		t.Error("the mirror no longer reads what to send from the keyboard")
+	}
+}
+
+// The scanner blocks until Enter, so it runs beside the paint loop rather than
+// in it. Without this the mirror would stop refreshing whenever someone rested
+// a hand on the keyboard.
+func TestTypedLinesArriveWithoutBlockingTheRefresh(t *testing.T) {
+	typed := make(chan string, 2)
+	go readLines(strings.NewReader("yes\n2\n"), typed)
+
+	for _, want := range []string{"yes", "2"} {
+		select {
+		case got := <-typed:
+			if got != want {
+				t.Errorf("read %q, want %q", got, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("nothing arrived; expected %q", want)
+		}
+	}
+}
+
+// A short screen in a tall pane must clear the rows it does not fill, or what
+// the last frame left there stays on screen under the new one.
+func TestATallPaneIsClearedBelowTheContent(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "one\ntwo", 20)
+	out := b.String()
+
+	// Eighteen rows painted for a twenty-row pane, whatever the screen holds.
+	if n := strings.Count(out, "\033[K"); n != 18 {
+		t.Errorf("cleared %d rows of an 20-row pane reserving %d; want 18", n, replyRows)
+	}
+	if !strings.Contains(out, "one\033[K") || !strings.Contains(out, "two\033[K") {
+		t.Error("the content itself was not painted")
 	}
 }
