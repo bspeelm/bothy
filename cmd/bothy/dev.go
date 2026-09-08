@@ -83,8 +83,7 @@ func cmdDev(args []string) error {
 	}
 	// After the spawn: the bothy that opens a window and exits is not the one
 	// watching the session, the one living in the window is.
-	defer ownSession(p, cfg, plan.Dir)()
-	defer onHangup(endTheSession(p, cfg, plan.Dir))()
+	defer watching(p, cfg, sessionNameFor(p, cfg, plan.Dir))()
 
 	if plan.Container != "" {
 		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
@@ -176,16 +175,46 @@ func onHangup(cleanup func()) func() {
 // the next launch would have to clean up after it. The pid namespace is shared
 // with the container, so ending it is a signal from here rather than a round
 // trip back through the container runtime.
-func endTheSession(p platform.Info, cfg config.Config, dir string) func() {
-	backend, _, err := muxPath(p, cfg)
+func endTheSession(p platform.Info, cfg config.Config, session string) func() {
+	backend, bin, err := muxPath(p, cfg)
 	if err != nil || p.InContainer() {
 		return func() {}
 	}
-	session := backend.SessionName(dir)
+	env := install.SessionEnv(p, cfg)
 	return func() {
 		_ = os.Remove(filepath.Join(p.StateDir(), "sessions", session))
 		mux.Reclaim(backend.Name(), session)
+		// And the session itself. A window closing is how most people say they
+		// are finished, and leaving the session running means they accumulate
+		// invisibly -- `bothy ls` cannot tell one being worked in from one
+		// abandoned days ago. What is recorded on disk is untouched: the agent's
+		// own transcript is what `/resume` reads, and no multiplexer call
+		// reaches it.
+		_ = backend.Kill(bin, env, session)
 	}
+}
+
+// watching registers this bothy as the one showing a session and ends that
+// session when the window closes. One call because registering half of it is
+// the failure: an owner with no hangup handler leaves the session running, and
+// a handler with no owner cannot tell an abandoned client from a live one.
+func watching(p platform.Info, cfg config.Config, session string) func() {
+	unhook := onHangup(endTheSession(p, cfg, session))
+	unown := ownSession(p, cfg, session)
+	return func() {
+		unhook()
+		unown()
+	}
+}
+
+// sessionFor is the name a directory's workspace runs under, "" when the
+// multiplexer cannot be resolved.
+func sessionNameFor(p platform.Info, cfg config.Config, dir string) string {
+	backend, _, err := muxPath(p, cfg)
+	if err != nil {
+		return ""
+	}
+	return backend.SessionName(dir)
 }
 
 // ownSession records this process as the terminal showing the session, and
@@ -194,15 +223,11 @@ func endTheSession(p platform.Info, cfg config.Config, dir string) func() {
 // Never from inside a container: that copy outlives the window too, so its
 // record would never go stale and the project would be shut for good -- which
 // is the failure this whole path exists to undo.
-func ownSession(p platform.Info, cfg config.Config, dir string) func() {
-	if p.InContainer() {
+func ownSession(p platform.Info, cfg config.Config, session string) func() {
+	if p.InContainer() || session == "" {
 		return func() {}
 	}
-	backend, _, err := muxPath(p, cfg)
-	if err != nil {
-		return func() {}
-	}
-	return mux.Own(p.StateDir(), backend.SessionName(dir))
+	return mux.Own(p.StateDir(), session)
 }
 
 // launch renders the profile and hands off to the multiplexer with the
@@ -344,11 +369,9 @@ func cmdAttach(args []string) error {
 	if err != nil {
 		return err
 	}
-	// Same reason ownSession refuses inside a container: the copy in there
-	// outlives the window, so its record would never go stale.
-	if plan.Session != "" && !p.InContainer() {
-		defer mux.Own(p.StateDir(), plan.Session)()
-	}
+	// Attaching is how a second window onto one session is had deliberately, and
+	// closing it says the same thing closing the first one does.
+	defer watching(p, cfg, plan.Session)()
 	if plan.Container != "" {
 		return containerHop(plan.Container, plan.Command)
 	}

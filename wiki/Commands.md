@@ -21,12 +21,17 @@ missing, asks before downloading, then opens.
 | `--window` | always open a new Ghostty window |
 | `--in-place` | always run in the terminal you are already in |
 
-**Closing the window does not strand the project.** Inside a container the
-multiplexer client would otherwise outlive the terminal that opened it —
-`podman exec` ignores the hangup — and a session with a client on it is
-refused, which used to mean the project could not be opened again. bothy ends
-its client when the window closes. If one is left behind anyway, by a crash or
-a version older than this, the next launch ends it and says so:
+**Closing the window ends the session.** That is what closing it usually means,
+and a session left running is one you cannot tell from a session you are using.
+What is written down is untouched: the agent keeps its own transcript, so its
+conversation comes back with that agent's own resume command. What is lost is
+whatever turn was in flight.
+
+Inside a container the multiplexer client would otherwise outlive the terminal
+that opened it — `podman exec` ignores the hangup — and a session with a client
+on it is refused, which used to mean the project could not be opened again. If
+one is left behind anyway, by a crash or a kill, the next launch ends it and
+says so:
 
 ```
 bothy: reclaimed bothy-work from a closed window

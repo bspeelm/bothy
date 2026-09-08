@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -97,7 +98,9 @@ func TestABothyInsideTheContainerDoesNotClaimTheSession(t *testing.T) {
 	cfg := config.Default()
 
 	outside := sandbox(t, true)
-	forget := ownSession(outside, cfg, "/w/proj")
+	// The name is derived by the caller now, so deriving it here keeps that
+	// step in the test rather than hard-coding what it produces.
+	forget := ownSession(outside, cfg, sessionNameFor(outside, cfg, "/w/proj"))
 	if !claimed(t, outside, "bothy-proj") {
 		t.Fatal("the terminal on the host did not claim the session")
 	}
@@ -108,7 +111,7 @@ func TestABothyInsideTheContainerDoesNotClaimTheSession(t *testing.T) {
 
 	inside := sandbox(t, true)
 	inside.Container = platform.Toolbx
-	release := ownSession(inside, cfg, "/w/proj")
+	release := ownSession(inside, cfg, sessionNameFor(inside, cfg, "/w/proj"))
 	defer release()
 	if claimed(t, inside, "bothy-proj") {
 		t.Error("a bothy inside the container claimed a session it can never release")
@@ -216,5 +219,76 @@ func hangup(t *testing.T) {
 	}
 	if err := self.Signal(syscall.SIGHUP); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Registering half of the pair is the failure this exists to prevent: an owner
+// with no hangup handler leaves the session running when the window closes, and
+// a handler with no owner cannot tell an abandoned client from a live one. Every
+// command that opens a workspace must register both.
+func TestEveryCommandThatOpensAWorkspaceWatchesIt(t *testing.T) {
+	for _, f := range []string{"dev.go", "confinecmd.go", "connectcmd.go", "towercmd.go"} {
+		body, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "watching(p, cfg,") {
+			t.Errorf("%s opens a workspace and does not register a watcher for it", f)
+		}
+	}
+	// And nothing registers half of it directly, which is what the helper is for.
+	for _, f := range []string{"confinecmd.go", "connectcmd.go", "towercmd.go"} {
+		body, _ := os.ReadFile(f)
+		for _, half := range []string{"ownSession(", "onHangup("} {
+			if strings.Contains(string(body), half) {
+				t.Errorf("%s calls %s directly rather than watching()", f, half)
+			}
+		}
+	}
+}
+
+// Closing a window ends the session, which is what most people mean by closing
+// it. What is recorded on disk is untouched: the agent's transcript is what
+// /resume reads and no multiplexer call reaches it.
+func TestClosingTheWindowEndsTheSession(t *testing.T) {
+	body, err := os.ReadFile("dev.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+	end := strings.Index(src, "func endTheSession")
+	if end < 0 {
+		t.Fatal("endTheSession is gone")
+	}
+	after := src[end:]
+	if stop := strings.Index(after, "\nfunc "); stop > 0 {
+		after = after[:stop]
+	}
+	if !strings.Contains(after, "backend.Kill(bin, env, session)") {
+		t.Error("the hangup no longer ends the session, only its clients")
+	}
+	if !strings.Contains(after, "mux.Reclaim(") {
+		t.Error("the reclaim is gone; it is still the net for a crash or a reboot")
+	}
+}
+
+// A session nobody is looking at reads differently from the one being worked in.
+// Silence when the multiplexer will not answer: "could not ask" is not "nobody
+// is looking", and reporting the second when you mean the first is what makes a
+// listing worth ignoring.
+func TestASessionWithNoWindowSaysSo(t *testing.T) {
+	for _, tt := range []struct {
+		clients    int
+		counted    bool
+		note, want string
+	}{
+		{0, true, "", "detached"},
+		{0, true, "this directory", ", detached"},
+		{1, true, "", ""},
+		{0, false, "", ""},
+	} {
+		if got := lonely(tt.clients, tt.counted, tt.note); got != tt.want {
+			t.Errorf("lonely(%d, %v, %q) = %q, want %q", tt.clients, tt.counted, tt.note, got, tt.want)
+		}
 	}
 }

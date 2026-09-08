@@ -185,6 +185,7 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	}
 	fmt.Printf("watching %d agent(s), %s; %d pane(s) expanded to be worth reading\n",
 		len(mirrors), shape, len(expanded))
+	defer watching(p, cfg, towerSession)()
 	err = backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: towerSession, Dir: p.Home,
 		Profile: prof, Commands: install.Commands(cfg), Env: env, Live: live,

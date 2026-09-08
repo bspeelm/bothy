@@ -103,6 +103,7 @@ func cmdConnect(args []string) error {
 	}
 	fmt.Printf("%s mounted at %s\n", host, tilde(mount, p.Home))
 
+	defer watching(p, cfg, sessionFor(host, rec.Dir))()
 	return launch(p, cfg, localPath(mount, rec.Dir), cfg.Profile,
 		agentWithNote(cfg, host, rec.Dir, mount), remoteOpts{
 			session: sessionFor(host, rec.Dir),

@@ -13,7 +13,7 @@ precisely, and nothing below makes sense without them.
 |---|---|
 | **workspace** | the thing `bothy` opens: three panes in one terminal window. Not a project, not a directory — the room you work in |
 | **pane** | one region of the window. The file browser across the top, the agent and a shell below. Three panes is the invariant: a stack that cannot produce them is not a bothy stack |
-| **session** | a running workspace you can walk away from. Detach with `Ctrl-o d`, come back with `bothy attach`, and it has carried on without you. One per project directory, named after it |
+| **session** | a running workspace you can walk away from. Detach with `Ctrl-o d`, come back with `bothy attach`, and it has carried on without you. Closing the window ends it instead. One per project directory, named after it |
 | **slot** | a job to be filled, not a program. There are five: **terminal**, **mux**, **browser**, **editor**, **agent**. You say which program fills each |
 | **provider** | a program that can fill a slot, described by one TOML file — how to detect it, fetch it, configure it. `zellij` fills the mux slot; `yazi` fills the browser slot |
 | **mux** | short for multiplexer: the thing that splits one terminal into panes and keeps them running after you disconnect. Zellij, today |

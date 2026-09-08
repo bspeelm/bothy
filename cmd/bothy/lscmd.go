@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/mux"
@@ -46,14 +47,15 @@ func cmdLs(args []string) error {
 	here := backend.SessionName(dir)
 	current := backend.CurrentSession()
 	for _, s := range live {
+		note := ""
 		switch {
 		case s == current:
-			fmt.Printf("  %-28s the one you are in\n", s)
+			note = "the one you are in"
 		case s == here:
-			fmt.Printf("  %-28s this directory\n", s)
-		default:
-			fmt.Printf("  %s\n", s)
+			note = "this directory"
 		}
+		n, counted := backend.Clients(bin, env, s, live)
+		fmt.Println(strings.TrimRight(fmt.Sprintf("  %-28s %s", s, note+lonely(n, counted, note)), " "))
 	}
 
 	// Stopped sessions are not junk: attaching brings the layout back as it
@@ -86,4 +88,18 @@ func pruneSessions(backend mux.Backend, bin string, env []string, stopped []stri
 		fmt.Printf("  removed %s\n", s)
 	}
 	return nil
+}
+
+// lonely says a session has no window on it. One left running behind a closed
+// window used to read exactly like the one being worked in, which is how they
+// accumulated unnoticed. Nothing is said when the multiplexer will not answer:
+// "could not ask" is not "nobody is looking".
+func lonely(clients int, counted bool, note string) string {
+	if !counted || clients > 0 {
+		return ""
+	}
+	if note != "" {
+		return ", detached"
+	}
+	return "detached"
 }

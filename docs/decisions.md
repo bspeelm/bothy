@@ -2022,3 +2022,56 @@ This is the second raise on this arc, after ADR-048 took it to 7,900 for the
 tower. Two raises in one release is worth saying out loud rather than letting
 the numbers drift quietly, and the reason both happened is that a tower plus
 three fixes is simply more work than 7,500 was ever meant to hold.
+
+## ADR-050 — Closing the window ends the session, and the record it leaves is the agent's
+
+**Status:** accepted. Extends ADR-042 and ADR-043 rather than reversing them.
+
+Closing a bothy window left the session running with no client. Sessions
+accumulated, `bothy ls` could not tell one being worked in from one abandoned
+days ago, and `bothy tower` listed sessions that had no window — which is how
+this surfaced. Closing a window is how most people say they are finished, and
+`Ctrl-q` is not something anyone reaches for.
+
+**This reverses nothing.** ADR-042 and ADR-043 are about detecting orphaned
+*clients*; ADR-043's own text says the hangup handler "forgets its record and
+ends the session's client". Ending the session was never considered either way.
+What changes is that `refuseIfInUse` and `Reclaim` become the net for a crash, a
+SIGKILL or a reboot — which is what ADR-043 already said they should have been —
+rather than the ordinary path. They are kept: those three cases still leave a
+live session and a stale record, and nothing else catches them.
+
+**The distinction that decides it is runtime against record.** The runtime
+session is bothy's to end. What is written down is not, and is untouched: the
+agent keeps its own transcript, which is what `/resume` reads, and no
+multiplexer call reaches it. Ending a session costs an in-flight turn, not the
+work.
+
+**Two measurements, both of which contradicted the first design.** The plan for
+this said to add a `Stop` wrapping `zellij kill-session`, on the reasoning that
+it ends the runtime and leaves the session resurrectable, where
+`delete-session --force` — what `Kill` already is — removes both. Measured on a
+scratch session, `kill-session` removes the session from `list-sessions`
+entirely; it leaves nothing to resurrect. So the distinction the new method
+existed for does not exist, and `Kill` is the right call.
+
+It is also the consistent one. bothy already declines zellij's resurrection:
+`discardDead` deletes a stopped session before creating one, because attaching
+to an EXITED session "resurrects it with commands suspended behind 'Waiting to
+run' and a changed profile ignored". A record bothy refuses to read is not a
+record worth preserving.
+
+**Every entry point registers the same pair.** Only bare `bothy` did. `confine`,
+`connect` and `tower` opened workspaces with no ownership record and no hangup
+handler at all, so nothing happened when their windows closed and a client
+orphaned behind a container boundary would refuse forever. They now share one
+`watching` helper, because registering half of it is the failure: an owner with
+no handler leaves the session running, and a handler with no owner cannot tell
+an abandoned client from a live one.
+
+**`bothy attach` is included, and the consequence is named.** Closing an
+attached window ends the session for whoever else is in it. ADR-043 already
+accepted the same thing for the launching window, on the grounds that bothy
+refuses a second launch into a live session so being in that position is
+deliberate. Attaching is that deliberate act, and closing the window is a
+reasonable way to say the workspace is finished.
