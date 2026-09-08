@@ -65,6 +65,11 @@ bothy ls         # which sessions are running
 One session per project directory, named after it — which is how `attach` finds
 the right one without being told.
 
+**Closing the window ends the session too.** Detaching is the way to leave
+something running; closing the window says you are finished with it. The agent's
+own conversation is not lost either way — it keeps its own transcript — but a
+turn in progress is.
+
 **`Ctrl-q` is the other thing.** It ends the session rather than leaving it.
 There is no undo.
 

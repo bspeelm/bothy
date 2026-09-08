@@ -72,6 +72,7 @@ func cmdConfine(args []string) error {
 	if !confine.ImageBuilt(runtime, image) {
 		return explainTheBuild(p, image)
 	}
+	defer watching(p, cfg, sessionNameFor(p, cfg, dir))()
 	return launch(p, cfg, dir, cfg.Profile, cmd, remoteOpts{})
 }
 
