@@ -17,9 +17,9 @@ func cockpitPanes() []mux.PaneRef {
 	return []mux.PaneRef{
 		{ID: 0, Plugin: true},
 		{ID: 1, Plugin: true},
-		{ID: 0, Command: "yazi", Dir: "/w/shanty"},
-		{ID: 1, Command: "claude", Dir: "/w/shanty"},
-		{ID: 2, Command: "/bin/bash", Dir: "/w/shanty"},
+		{ID: 0, Command: "yazi", Dir: "/w/api"},
+		{ID: 1, Command: "claude", Dir: "/w/api"},
+		{ID: 2, Command: "/bin/bash", Dir: "/w/api"},
 	}
 }
 
@@ -236,13 +236,13 @@ func TestTheWatchingMethodsAreQueries(t *testing.T) {
 func TestTheTowerLayoutRendersForTheMultiplexer(t *testing.T) {
 	mirrors := []mirror{
 		{Session: "bothy-api", Pane: "terminal_1", Label: "api"},
-		{Session: "bothy-abbey-srv", Pane: "terminal_2", Label: "srv", Cols: 57},
+		{Session: "bothy-web-srv", Pane: "terminal_2", Label: "srv", Cols: 57},
 	}
 	out, err := mux.Zellij{}.Preview(towerProfile(mirrors, "/usr/bin/bothy", 0), nil)
 	if err != nil {
 		t.Fatalf("the tower's layout does not render: %v", err)
 	}
-	for _, want := range []string{"bothy-api", "bothy-abbey-srv", "--mirror"} {
+	for _, want := range []string{"bothy-api", "bothy-web-srv", "--mirror"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("rendered layout does not mention %q:\n%s", want, out)
 		}

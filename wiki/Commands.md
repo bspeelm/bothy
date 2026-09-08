@@ -58,7 +58,7 @@ looking at — and which have stopped but are still kept:
 
 ```
   bothy-api                  the one you are in
-  bothy-server_setup         detached
+  bothy-notes                detached
 
 1 stopped, kept so it can be resurrected:
   polite-galaxy
@@ -83,8 +83,8 @@ since then is ignored. Nothing removes them on their own, so they accumulate.
 Ends a session without attaching to it. With no name, this directory's session.
 
 ```
-$ bothy kill bothy-server_setup
-ended bothy-server_setup
+$ bothy kill bothy-notes
+ended bothy-notes
 ```
 
 Nothing is left behind — the same end state as pressing `Ctrl-q` inside it. It

@@ -1,7 +1,7 @@
 layout {
     cwd "/home/user/project"
     tab name="Tab #1" focus=true hide_floating_panes=true {
-        pane command="yazi" cwd="mnt/workbench/project/api" focus=true size="42%" {
+        pane command="yazi" cwd="home/user/project/api" focus=true size="42%" {
             start_suspended true
         }
         pane command="claude" name="claude" cwd="home/user" size="48%" {

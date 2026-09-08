@@ -1085,3 +1085,86 @@ func TestNoEditorScratchFileIsTracked(t *testing.T) {
 			strings.Join(found, "\n  "))
 	}
 }
+
+// Local names have reached public files four times: a remote host and a sibling
+// project in the tower fixtures, one path that survived the scrub of the layout
+// fixtures, and a project directory used as an example session name in the wiki.
+// Each was found by grepping after the fact. This looks before a release does.
+//
+// The words come from the machine the test runs on, so this file names nobody's
+// directories. A machine that yields none -- CI, a container, a checkout under a
+// generic path -- skips rather than passing quietly, because a guard that cannot
+// fail should say so.
+var genericPathWords = map[string]bool{
+	"backup": true, "backups": true, "cache": true, "code": true,
+	"config": true, "configs": true, "data": true, "desktop": true,
+	"docs": true, "documents": true, "downloads": true, "home": true,
+	"media": true, "project": true, "projects": true, "repos": true,
+	"root": true, "scripts": true, "share": true, "source": true,
+	"src": true, "state": true, "temp": true, "test": true, "tests": true,
+	"tmp": true, "user": true, "users": true, "work": true, "workspace": true,
+}
+
+// localWords is what this machine is called and where it keeps its work: the
+// account name, and the directory names around the checkout.
+func localWords(t *testing.T) []string {
+	t.Helper()
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Base(root)
+	seen := map[string]bool{repo: true}
+	var out []string
+	add := func(w string) {
+		l := strings.ToLower(w)
+		if len(l) < 4 || genericPathWords[l] || seen[l] || strings.HasPrefix(l, ".") {
+			return
+		}
+		seen[l] = true
+		out = append(out, l)
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		add(filepath.Base(home))
+	}
+	// The directories the checkout sits under, and the ones beside it: a
+	// sibling's name is what a pasted path or session name carries in.
+	for _, part := range strings.Split(filepath.Dir(root), string(filepath.Separator)) {
+		add(part)
+	}
+	if entries, err := os.ReadDir(filepath.Dir(root)); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				add(e.Name())
+			}
+		}
+	}
+	return out
+}
+
+func TestNoTrackedFileNamesThisMachine(t *testing.T) {
+	words := localWords(t)
+	if len(words) == 0 {
+		t.Skip("this machine's paths yield no distinctive words; nothing to assert")
+	}
+	out, err := exec.Command("git", "-C", "../..", "ls-files").Output()
+	if err != nil {
+		t.Skip("not a git checkout")
+	}
+	for _, f := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if f == "" || strings.HasPrefix(f, "vendor/") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join("../..", f))
+		if err != nil {
+			continue // a deleted-but-tracked path is not this test's business
+		}
+		lower := strings.ToLower(string(body))
+		for _, w := range words {
+			if strings.Contains(lower, w) {
+				t.Errorf("%s carries a name from this machine's directories; "+
+					"use the generic cast (api, notes, dev) instead", f)
+			}
+		}
+	}
+}
