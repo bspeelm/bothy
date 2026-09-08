@@ -53,22 +53,30 @@ argument it picks the session for the current directory.
 
 ### `bothy ls [--prune]`
 
-Which sessions are running, marking the one you are in — and which have stopped
-but are still kept:
+Which sessions are running, marking the one you are in and the ones nothing is
+looking at — and which have stopped but are still kept:
 
 ```
   bothy-api                  the one you are in
-  bothy-server_setup
+  bothy-server_setup         detached
 
-2 stopped, kept so they can be resurrected:
+1 stopped, kept so it can be resurrected:
   polite-galaxy
-  bothy-notes
 Clear them with 'bothy ls --prune'.
 ```
 
-A stopped session is not junk: attaching brings its layout back as it was. But
-nothing removes them either, so they accumulate. `--prune` deletes the stopped
-ones and refuses anything still running.
+**detached** means the session is running with no window on it. That happens
+when you detach with `Ctrl-o d`, which is the point of detaching. Closing a
+window ends its session instead, so it will not appear here at all. Nothing is
+said when the multiplexer will not answer: "could not ask" is not "nobody is
+looking".
+
+A **stopped** session is one whose server is gone but whose layout zellij kept —
+after a reboot or a crash, mostly, since the ordinary ways of ending a session
+remove it outright. Attaching brings the layout back, though not quite as it
+was: commands come back suspended behind "Waiting to run", and a profile changed
+since then is ignored. Nothing removes them on their own, so they accumulate.
+`--prune` deletes the stopped ones and refuses anything still running.
 
 ### `bothy kill [session]`
 
