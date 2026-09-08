@@ -94,16 +94,43 @@ differently. [All of them, and what checks what](https://github.com/bspeelm/both
 
 ## Commands
 
-Three of them matter:
+Four of them matter:
 
 | | |
 |---|---|
 | `bothy` | open the workspace |
+| `bothy tower` | watch every running agent in one window |
 | `bothy doctor` | what is wrong, and what to type (`--json` for machines) |
 | `bothy config set <key> <value>` | change a setting |
 
 There are eighteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
 [how to read a doctor report](https://github.com/bspeelm/bothy/wiki/The-doctor).
+
+## Watching several at once
+
+Several sessions open across several windows, each with an agent working, and no
+way to see them at once. `bothy tower` puts every running agent in one window.
+
+```
+$ bothy tower
+watching 3 agent(s), side by side; 2 pane(s) expanded to be worth reading
+```
+
+Each pane mirrors one agent. Move between them with `Alt+h/j/k/l`, and type a
+reply into the one that wants you — it goes to that agent as if you had typed it
+in its own window. The bottom rows of a mirror are yours, so a reply stays on
+screen while the agent above it keeps working.
+
+**The tower reads panes and sends nothing of its own.** It never composes a
+message, never answers on your behalf, and never sends anything on a timer.
+Everything an agent receives came from your keyboard. It also attaches to
+nothing, so watching a session cannot disturb it.
+
+It expands each watched agent pane to fill its window first, because a mirror
+can only show what its pane displays and a cockpit gives its agent about a
+quarter of the screen. Your panes are put back when the tower closes.
+[How it works, in
+full](https://github.com/bspeelm/bothy/wiki/Commands#bothy-tower---mirror-session---every-duration).
 
 ## Toolboxes
 
@@ -171,32 +198,6 @@ connection costs you the mount and not the session. Inside the workspace,
 It needs sshfs installed **on your own machine**, and bothy tells you the
 command if it is missing. [How it works, in
 full](https://github.com/bspeelm/bothy/wiki/Connecting).
-
-## Watching several at once
-
-Several sessions open across several windows, each with an agent working, and no
-way to see them at once. `bothy tower` puts every running agent in one window.
-
-```
-$ bothy tower
-watching 3 agent(s), side by side; 2 pane(s) expanded to be worth reading
-```
-
-Each pane mirrors one agent. Move between them with `Alt+h/j/k/l`, and type a
-reply into the one that wants you — it goes to that agent as if you had typed it
-in its own window. The bottom rows of a mirror are yours, so a reply stays on
-screen while the agent above it keeps working.
-
-**The tower reads panes and sends nothing of its own.** It never composes a
-message, never answers on your behalf, and never sends anything on a timer.
-Everything an agent receives came from your keyboard. It also attaches to
-nothing, so watching a session cannot disturb it.
-
-It expands each watched agent pane to fill its window first, because a mirror
-can only show what its pane displays and a cockpit gives its agent about a
-quarter of the screen. Your panes are put back when the tower closes.
-[How it works, in
-full](https://github.com/bspeelm/bothy/wiki/Commands#bothy-tower---mirror-session---every-duration).
 
 ## What it touches
 
