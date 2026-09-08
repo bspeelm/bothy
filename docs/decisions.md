@@ -1913,6 +1913,32 @@ is that case, and it fails when the second read is removed.
 cockpits as they are; `--restore` collapses expanded agent panes after a
 terminal was killed before the tower could put them back.
 
+**Amended again: a typed line reaches the agent it is typed at.** The original
+record said the tower originates no input. It still originates none. What it
+now does is carry a line from the keyboard to the pane the person is looking
+at, which is what makes the window worth having: seeing which agent is waiting
+and then having to go elsewhere to answer it is half a tool.
+
+The distinction is the whole of it. **bothy relays; it does not speak.** Every
+byte that reaches an agent came from the keyboard, unexamined and unprompted.
+bothy composes nothing, answers nothing on the person's behalf, and sends
+nothing on a timer. `TestTheTowerRelaysOnlyWhatWasTyped` holds it: there is
+exactly one call that sends, it passes the scanned line through, and that line
+comes from stdin.
+
+A relay that composed its own text would be an orchestrator, and PLAN §11's
+refusal would apply to it. One that carries a keystroke is a keyboard with a
+longer cable.
+
+**The refresh skips an unchanged screen, which is what makes typing possible.**
+A repaint clears the pane, so it would wipe a half-written reply. Rather than
+take the terminal into raw mode to know when someone is mid-line, the mirror
+simply does not repaint a screen that has not changed -- and an agent waiting
+for an answer draws a still screen, which is exactly when a reply is being
+typed. Measured: an idle agent pane's dump is byte-identical between refreshes,
+while a working one differs. The cost is honest and small: an agent that
+animates while idle would still repaint under a reply.
+
 **Why 7,800.** The tower is 190 lines: the pane lookup, the screen read, the
 layout, and the loop that reprints one pane. ADR-047 said the cap "stops being
 squeezed", and this is not a squeeze — 7,689 with 111 left, which is a budget

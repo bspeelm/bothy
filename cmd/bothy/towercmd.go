@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -49,15 +51,58 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	session string, every time.Duration) error {
 
 	agent := install.AgentBinary(cfg.Slots.Agent)
+	typed := make(chan string, 1)
+	go readLines(os.Stdin, typed)
+
+	tick := time.NewTicker(every)
+	defer tick.Stop()
+	last := ""
 	for {
-		screen, err := mirrorOnce(backend, bin, env, session, agent)
-		paint(os.Stdout, screen)
-		if err != nil {
-			// Reported in the pane, not returned: one session ending must not
-			// close a pane the other mirrors share a window with.
-			fmt.Printf("\n%s: %v\n", session, err)
+		select {
+		case line := <-typed:
+			relay(backend, bin, env, session, agent, line)
+			last = "" // the reply is about to change the screen; do not skip it
+		case <-tick.C:
+			screen, err := mirrorOnce(backend, bin, env, session, agent)
+			if err != nil {
+				// Reported in the pane, not returned: one session ending must
+				// not close a pane the other mirrors share a window with.
+				fmt.Printf("\n%s: %v\n", session, err)
+				continue
+			}
+			// Only when it changed: a repaint clears the screen and would wipe
+			// a half-typed reply. An agent waiting for one draws a still
+			// screen, so measured, an idle pane repaints never.
+			if screen != last {
+				paint(os.Stdout, screen)
+				last = screen
+			}
 		}
-		time.Sleep(every)
+	}
+}
+
+// readLines carries what someone typed to the loop that paints, from a
+// goroutine because the scanner blocks until Enter.
+func readLines(r io.Reader, out chan<- string) {
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		out <- sc.Text()
+	}
+}
+
+// relay hands a typed line to the agent this pane mirrors. It arrives from the
+// keyboard and is passed on unexamined: bothy relays, it does not speak.
+func relay(backend mux.Backend, bin string, env []string, session, agent, line string) {
+	panes, ok := backend.PanesOf(bin, session, env)
+	if !ok {
+		return
+	}
+	pane, found := agentPane(panes, agent)
+	if !found {
+		return
+	}
+	if err := backend.Send(bin, session, pane.Addr(), line, env); err != nil {
+		fmt.Printf("\n%s: %v\n", session, err)
 	}
 }
 

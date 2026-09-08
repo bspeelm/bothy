@@ -396,3 +396,13 @@ func (Zellij) Expand(bin, session, pane string, env []string) error {
 	_, err := sessionAction(bin, session, env, "toggle-fullscreen", "-p", pane)
 	return err
 }
+
+// Send types a line into a pane and presses return. Two calls because a newline
+// inside the text is not the return key: 13 is what a terminal sends for Enter.
+func (Zellij) Send(bin, session, pane, line string, env []string) error {
+	if _, err := sessionAction(bin, session, env, "write-chars", "-p", pane, line); err != nil {
+		return err
+	}
+	_, err := sessionAction(bin, session, env, "write", "-p", pane, "13")
+	return err
+}

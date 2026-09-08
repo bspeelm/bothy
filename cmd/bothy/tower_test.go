@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bspeelm/bothy/internal/mux"
 )
@@ -314,5 +315,47 @@ func TestARestoreSkipsASessionThatWentAway(t *testing.T) {
 	expanded := []mirror{{Session: "bothy-api", Pane: "terminal_1"}}
 	if got := collapsible(expanded, gone, "claude"); len(got) != 0 {
 		t.Errorf("collapsible = %+v for a session that is gone", got)
+	}
+}
+
+// Everything bothy sends to an agent came from the keyboard. A literal here
+// would be bothy speaking to the agent in its own voice, which is the line
+// ADR-048 draws and the difference between relaying and orchestrating.
+func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
+	body, err := os.ReadFile("towercmd.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+
+	if n := strings.Count(src, ".Send("); n != 1 {
+		t.Errorf("%d calls send to an agent; there is one, and it passes on a typed line", n)
+	}
+	// The line reaches Send as a parameter named for where it came from, and
+	// relay's only caller is the branch reading the typed channel.
+	if !strings.Contains(src, "backend.Send(bin, session, pane.Addr(), line, env)") {
+		t.Error("the sending call no longer passes the typed line through unexamined")
+	}
+	if !strings.Contains(src, "go readLines(os.Stdin, typed)") {
+		t.Error("the mirror no longer reads what to send from the keyboard")
+	}
+}
+
+// The scanner blocks until Enter, so it runs beside the paint loop rather than
+// in it. Without this the mirror would stop refreshing whenever someone rested
+// a hand on the keyboard.
+func TestTypedLinesArriveWithoutBlockingTheRefresh(t *testing.T) {
+	typed := make(chan string, 2)
+	go readLines(strings.NewReader("yes\n2\n"), typed)
+
+	for _, want := range []string{"yes", "2"} {
+		select {
+		case got := <-typed:
+			if got != want {
+				t.Errorf("read %q, want %q", got, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatalf("nothing arrived; expected %q", want)
+		}
 	}
 }
