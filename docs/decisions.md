@@ -1820,3 +1820,106 @@ binary cap is unmoved at 10 MB, which is the only budget a user can feel. And
 is written against the one place it is enforced, so no raise can be a quiet
 one.
 
+
+## ADR-048 — bothy watches panes and does not fly them, and the code cap rises to 7,800
+
+**Status:** accepted. Amends PLAN.md §11 and ADR-047.
+
+PLAN.md §11 refuses "parallel-agent orchestration — one agent pane per profile
+is the scope", and §12 names agent-manager apps as the weight-gain trajectory
+this project rejects. `bothy tower` opens one window showing every running
+agent, so the refusal has to be answered rather than stepped around.
+
+**The line it stays behind.** bothy reads panes and never writes to them. The
+tower originates no input to an agent, assigns no work, starts and stops
+nothing, and creates no session but its own. One agent pane per session is
+still the scope; this is a window onto sessions that already exist, and it goes
+away when you close it. `TestTheTowerOriginatesNoInput` is a fence over both
+tower files rather than a sentence here, because a sentence cannot fail.
+
+That distinction is the whole of the amendment. An orchestrator decides what
+agents do; this decides nothing.
+
+**What was measured first, and ruled out.** Two approaches were tried before
+this one and are recorded so they are not retried.
+
+Inferring agent state from the process table does not work. A busy agent and an
+idle one are both parked in `ep_poll` with state `S`, because an agent whose
+stdin is registered with an event loop never issues a blocking read — so
+`wchan` cannot distinguish "waiting for you" from "waiting for the model". CPU
+delta separates them by about five times with both under four per cent, which
+is not a signal to show anyone. macOS has no `/proc` and its equivalent reports
+`kevent`, the same non-answer.
+
+Classifying the agent's rendered output does work, and was still dropped. It
+means matching text the agent's authors change between releases, and the
+maintainer's own agent already reports its state properly through
+`claude agents` — including push notifications when it wants a decision, which
+bothy cannot better by reading a screen. So the tower shows the screen and
+interprets nothing. That also makes it work with any agent, which is the one
+thing a vendor's own view cannot do, and is this feature's whole justification.
+
+**Reading a pane needs no second client.** `dump-screen -p` returns a named
+pane's contents from outside the session, in about 11 ms, addressed with
+`--session`. Attaching instead would add a client and size the session to the
+smaller of the two windows, which is the warning
+`checkOneClientPerSession` already gives.
+
+**What the tower cannot do, and why the feature stops here.** Selecting a row
+cannot raise that session's window. GNOME's `GetWindows` answers
+`AccessDenied` and `Eval` is disabled, `wmctrl` and `xdotool` reach only
+XWayland, a shell extension is host modification (ADR-002), and a terminal's
+own IPC would tie this to one terminal and break the slot. Nor can bothy move a
+session into the tower's tabs — tabs belong to a session — or detach the other
+window's client, which ADR-042 already measured as impossible. Relaying the
+user's keystrokes to a watched pane is possible and is deliberately not built
+yet: it is a second feature, and the observing half is worth having on its own.
+
+**Amended: the tower expands the panes it watches.** The line above said the
+tower originates no input, assigns no work, and starts and stops nothing. It
+still does none of those. It does now make a watched agent pane fill its tab
+before it opens, which changes what a session looks like in its own window.
+
+The line, restated so the difference is not left to judgement: **the tower may
+change how a session is displayed; it may never change what an agent does.**
+Expanding sends no byte to the agent. The program receives SIGWINCH and
+redraws, which is the same thing that happens when a window is dragged wider.
+
+It is here because without it the feature does not work. What can be read out
+of a pane is exactly what that pane displays -- zellij's pty size and its
+on-screen content rectangle are the same number, verified against `stty` on the
+pane's own tty -- and a cockpit gives its agent 57 columns of 23 rows because
+the profile splits the window three ways. That is 1,311 cells of line
+fragments. The same pane filling its tab is 191 by 46: 8,786 cells, and 44
+lines of readable prose. Every other route to more content was measured and
+closed. Scrollback does not exist, because an agent drawing on the alternate
+screen banks none: the same pane returns 21 lines with `--full` and 21 without,
+while a shell pane beside it returns 13 and 51. Capturing the agent's output at
+launch would need a terminal emulator to read back, which PLAN §13 forbids, and
+`script(1)` is not installed on this project's own primary platform. Reading an
+agent's transcript is per-agent, which forfeits the one property this feature
+has that a vendor's own view cannot match.
+
+**Read the state, never toggle it blind, in both directions.** Zellij offers a
+toggle, so acting without looking would collapse a pane somebody had already
+expanded. `is_fullscreen` is read before expanding, and read *again* before
+collapsing on the way out -- because fullscreen is `Ctrl+P` then `f`, a binding
+bothy does not override, so a pane can be collapsed by hand while the tower is
+running. A restore that trusted what it remembered would expand that one,
+which is the opposite of restoring. `TestAPaneCollapsedByHandIsNotReExpanded`
+is that case, and it fails when the second read is removed.
+
+`--no-expand` declines the behaviour for someone who would rather keep their
+cockpits as they are; `--restore` collapses expanded agent panes after a
+terminal was killed before the tower could put them back.
+
+**Why 7,800.** The tower is 190 lines: the pane lookup, the screen read, the
+layout, and the loop that reprints one pane. ADR-047 said the cap "stops being
+squeezed", and this is not a squeeze — 7,689 with 111 left, which is a budget
+rather than a ceiling.
+
+The comment ratio is not raised. It reached 25.99% on the first draft, which
+passes only because the check truncates, and the answer was to write the
+comments plainly rather than to move a second budget for one feature. Trimming
+took them to 25.61% with room behind it. Two budgets moved for one feature is
+the recurring negotiation ADR-026 warns about.

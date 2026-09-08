@@ -102,7 +102,7 @@ Three of them matter:
 | `bothy doctor` | what is wrong, and what to type (`--json` for machines) |
 | `bothy config set <key> <value>` | change a setting |
 
-There are seventeen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
+There are eighteen. [All of them, with their flags](https://github.com/bspeelm/bothy/wiki/Commands), and
 [how to read a doctor report](https://github.com/bspeelm/bothy/wiki/The-doctor).
 
 ## Toolboxes

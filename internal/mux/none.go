@@ -40,3 +40,11 @@ func (None) Open(r Request) error {
 	}
 	return runReplacing(r.Env, cmd)
 }
+
+// Without a multiplexer there are no panes to describe and no screen to read,
+// so the tower has nothing to watch.
+func (None) PanesOf(string, string, []string) ([]PaneRef, bool) { return nil, false }
+func (None) Screen(string, string, string, []string) (string, error) {
+	return "", ErrUnsupported
+}
+func (None) Expand(string, string, string, []string) error { return ErrUnsupported }

@@ -169,6 +169,58 @@ Thirty checks against the workspace, each with a fix. This is the command
 the project is built around: [The doctor](The-doctor) explains the output,
 the severities and the capability grouping.
 
+### `bothy tower [--mirror session] [--every duration]`
+
+One window showing every running agent, so several open sessions can be watched
+from one place.
+
+```
+$ bothy tower
+watching 3 agent(s)
+```
+
+Each row mirrors one session's agent pane, refreshed every two seconds. Move
+between rows with `Alt+h/j/k/l`, the multiplexer's own pane navigation.
+
+The tower reads panes and writes nothing to them. It sends no input to an agent,
+starts and stops nothing, and creates no session but its own — so an agent
+cannot be disturbed by being watched. It also attaches to nothing: a second
+terminal attached to a session would size that session to the smaller of the two
+windows.
+
+A session is shown when it is running and has a live agent pane. A session whose
+agent has exited is skipped, because the pane outlives the agent and would show a
+frozen screen.
+
+`--mirror <session>` watches one session and nothing else. `--every` sets the
+refresh interval.
+
+**The tower expands each agent pane before it opens.** A mirror can only show
+what its pane displays, and a cockpit gives its agent about a quarter of the
+window — 57 columns by 23 rows, against 191 by 46 for the same pane filling its
+tab. So the tower makes each watched agent pane fullscreen in its own window,
+which is what makes a mirror worth reading.
+
+It reads the state before changing it, so a pane you had already expanded is
+left alone, and it puts back only the panes it expanded — checking again on the
+way out, because you may have collapsed one yourself in the meantime. Fullscreen
+is `Ctrl+P` then `f`, and that keeps working normally while the tower runs.
+
+`--no-expand` leaves your panes exactly as they are, at the cost of thin
+mirrors. `--restore` collapses expanded agent panes, for when a terminal was
+closed before the tower could put them back.
+
+Mirrors sit **side by side** when the window is wide enough to hold them all at
+their own width, and stack when it is not; `bothy tower` says which it chose.
+Stacked, each shows the bottom of its pane — enough to see which agent wants
+you — and the multiplexer's fullscreen binding on a tower pane then shows the
+whole thing.
+
+**It cannot bring a session's window to the front.** Selecting a row shows you
+which session wants attention; switching to it is yours to do. No Wayland
+compositor lets one application raise another's window, and bothy will not
+install a shell extension to get around that.
+
 ### `bothy tools`
 
 Which tools are in use, which version, where each came from — bothy's own copy

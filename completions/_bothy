@@ -30,6 +30,7 @@ _bothy() {
 		'outdated:which pinned tools have newer releases'
 		'theme:print a blank palette file to fill in'
 		'tools:show which tools are used and where they came from'
+		'tower:watch every running agent in one window'
 		'uninstall:remove bothy'\''s directory and its binary'
 		'upgrade:how to upgrade this copy of bothy'
 		'version:print the version'
@@ -85,6 +86,7 @@ _bothy() {
 		confine) _arguments '--print[show the recipe and the command, run neither]' ;;
 		desktop-entry) _arguments '--install[write the entry]' '--remove[delete a written entry]' ;;
 		uninstall) _arguments '--dry-run[say what would be removed]' '--keep-binary[leave the binary]' ;;
+		tower) _arguments '--mirror[watch one session'"'"'s agent pane]:session:' '--every[how often to refresh]:duration:' '--no-expand[leave watched panes at their current size]' '--restore[collapse expanded agent panes]' ;;
 		esac
 		;;
 	esac
