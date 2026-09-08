@@ -32,20 +32,34 @@ type mirror struct {
 	Fullscreen bool
 }
 
+// agentPaneName is what the profiles call the agent's pane, and what the
+// multiplexer reports as its title.
+const agentPaneName = "agent"
+
 // agentPane picks out the pane an agent is running in, by command rather than
 // position: the agent is terminal_1 only because of how the cockpit profile
 // splits. An exited pane is skipped, since the session outlives the agent.
+//
+// The title is the fallback, because the command is not always the agent's.
+// `bothy confine` runs it inside a container, so the pane reports podman and a
+// confined agent was invisible here; the pane is still named agent, which is
+// true of any wrapper rather than of that one.
 func agentPane(panes []mux.PaneRef, agentBin string) (mux.PaneRef, bool) {
 	want := filepath.Base(agentBin)
+	var titled mux.PaneRef
+	found := false
 	for _, p := range panes {
-		if p.Plugin || p.Exited || p.Command == "" {
+		if p.Plugin || p.Exited {
 			continue
 		}
-		if filepath.Base(p.Command) == want {
+		if p.Command != "" && filepath.Base(p.Command) == want {
 			return p, true
 		}
+		if p.Title == agentPaneName {
+			titled, found = p, true
+		}
 	}
-	return mux.PaneRef{}, false
+	return titled, found
 }
 
 // label names a row, from the working directory rather than the session name.
