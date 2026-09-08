@@ -65,18 +65,18 @@ func (Zellij) SessionName(dir string) string {
 // path is capped by sun_path: 104 bytes on macOS, 108 on Linux. macOS spends 49
 // of them putting $TMPDIR under /var/folders, leaving 24 for the name, so
 // `bothy connect user@host` overflowed and zellij exited before the workspace
-// opened. Linux's /tmp leaves room for 71, so a name that fits is never
-// rewritten and nothing there changes.
+// opened.
+//
+// The budget is only as good as the directory it is measured against, and
+// guessing that directory short is the failure it exists to prevent: it hands
+// back a name that then cannot bind.
 //
 // The hash is load-bearing rather than decoration: ADR-046 puts the host in the
 // name so a remote api and a local one stay two sessions, and truncating alone
 // would put them back together.
 func FitSocket(name string) string {
-	dir := os.Getenv("ZELLIJ_SOCKET_DIR") // zellij's own override, honoured first
-	if dir == "" {
-		dir = filepath.Join(os.TempDir(), "zellij-"+strconv.Itoa(os.Getuid()))
-	}
-	room := socketRoom(runtime.GOOS, dir)
+	room := socketRoom(runtime.GOOS, socketDir(os.Getenv("ZELLIJ_SOCKET_DIR"),
+		os.Getenv("XDG_RUNTIME_DIR"), os.TempDir(), os.Getuid()))
 	if len(name) <= room {
 		return name
 	}
@@ -91,6 +91,23 @@ func FitSocket(name string) string {
 
 // socketRoom is what is left for the name after the path zellij builds around
 // it. Split out from FitSocket so a test can ask about a platform it is not on.
+// socketDir is where zellij will bind, resolved the way zellij resolves it: its
+// own override first, then the runtime directory, then a temporary one.
+//
+// The middle rung was missing and the budget was measured against the last one,
+// which is five bytes shorter than $XDG_RUNTIME_DIR/zellij -- so FitSocket
+// returned names that were five bytes too long to bind. `bothy connect` builds
+// the longest names, so it would have surfaced there first.
+func socketDir(override, runtimeDir, tempDir string, uid int) string {
+	if override != "" {
+		return override
+	}
+	if runtimeDir != "" {
+		return filepath.Join(runtimeDir, "zellij")
+	}
+	return filepath.Join(tempDir, "zellij-"+strconv.Itoa(uid))
+}
+
 func socketRoom(goos, dir string) int {
 	limit := 107
 	if goos == "darwin" {
