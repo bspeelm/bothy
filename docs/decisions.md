@@ -1948,6 +1948,26 @@ the screen changes fastest. The repaint then wiped the line mid-word and the
 half of it that had been typed went to the agent. Skipping an unchanged screen
 is kept, but as a saving rather than as the thing that makes replies possible.
 
+**The comment ratio rises to 26, once, and the reason is a measurement.** The
+first draft of this record said the ratio would not move, and that the answer to
+26% was to write more plainly. That was done four times, each trim removing
+something a comment was for -- why stty and not an ioctl, why the pane's height
+is asked for again every pass -- and the ratio came back over on the next
+addition every time.
+
+Measured, which is what ADR-026 asks for before a number moves: the codebase
+outside these files sits at **25.8%**, and `bothy connect` alone is at 41%. A
+cap of 25 passes today only because the check truncates, so the headroom is
+about one line, and any file carrying its reasoning trips it. That is a measure
+that has stopped distinguishing a well-commented change from a badly-commented
+one; it only detects that a change happened.
+
+The tower's own files are at 31.3%, which is denser than the project's norm and
+is not being defended -- but trimming them a fifth time would be damaging the
+thing to satisfy the measure, which is exactly what ADR-010 forbids. 26 restores
+roughly the headroom 25 had when it was set, and the binary and code caps still
+bound the whole.
+
 **Why 7,800.** The tower is 190 lines: the pane lookup, the screen read, the
 layout, and the loop that reprints one pane. ADR-047 said the cap "stops being
 squeezed", and this is not a squeeze — 7,689 with 111 left, which is a budget

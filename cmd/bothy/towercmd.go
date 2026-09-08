@@ -69,6 +69,13 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			rows = paneRows()
 			replyPrompt(os.Stdout, rows)
 		case <-tick.C:
+			// Asked every pass, not once: fullscreening a mirror makes its pane
+			// taller, and a height read at startup leaves the rest of it dead
+			// with the reply line stranded where the bottom used to be.
+			if r := paneRows(); r != rows {
+				rows, last = r, ""
+				replyPrompt(os.Stdout, rows)
+			}
 			screen, err := mirrorOnce(backend, bin, env, session, agent)
 			if err != nil {
 				// Reported in the pane, not returned: one session ending must

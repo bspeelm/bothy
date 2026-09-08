@@ -405,3 +405,19 @@ func TestTypedLinesArriveWithoutBlockingTheRefresh(t *testing.T) {
 		}
 	}
 }
+
+// A short screen in a tall pane must clear the rows it does not fill, or what
+// the last frame left there stays on screen under the new one.
+func TestATallPaneIsClearedBelowTheContent(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "one\ntwo", 20)
+	out := b.String()
+
+	// Eighteen rows painted for a twenty-row pane, whatever the screen holds.
+	if n := strings.Count(out, "\033[K"); n != 18 {
+		t.Errorf("cleared %d rows of an 20-row pane reserving %d; want 18", n, replyRows)
+	}
+	if !strings.Contains(out, "one\033[K") || !strings.Contains(out, "two\033[K") {
+		t.Error("the content itself was not painted")
+	}
+}

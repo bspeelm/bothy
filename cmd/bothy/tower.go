@@ -184,9 +184,9 @@ func watchable(panesOf func(string) ([]mux.PaneRef, bool), agent string, live []
 // expandable is the mirrors whose pane does not already fill its tab.
 //
 // A pane sharing its window with a browser and a shell holds a quarter of what
-// the same pane holds alone -- 57x23 against 191x46, measured -- and what can be
-// read out of a pane is exactly what it displays. Already-expanded panes are
-// excluded because Expand toggles.
+// it holds alone -- 57x23 against 191x46, measured -- and a pane shows exactly
+// what can be read out of it. Already-expanded panes are excluded: Expand
+// toggles.
 func expandable(mirrors []mirror) []mirror {
 	var out []mirror
 	for _, m := range mirrors {
