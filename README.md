@@ -152,15 +152,15 @@ $ bothy box
   because   this project is recorded for it
 
 $ bothy box ls
-* dev                      running   bothy-api
+* dev                      22 busy   bothy-api
   docs                     exited
-  legacy                   running   bothy-legacy
+  legacy                   idle      bothy-legacy
 ```
 
 | | |
 |---|---|
 | `bothy box` | which toolbox this project uses, and why |
-| `bothy box ls` | every toolbox, whether it is running, and the sessions in it |
+| `bothy box ls` | every toolbox, how much is running in it, and the sessions it holds |
 | `bothy box use <name>` | move this project to a different toolbox |
 | `bothy box stop <name>` | stop a toolbox nothing is using |
 | `bothy box create <name>` | make one, and use it for this project |

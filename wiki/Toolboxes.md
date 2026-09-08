@@ -78,9 +78,9 @@ those cases nothing is recorded either.
 
 ```
 $ bothy box ls
-* dev                      running   bothy-api
+* dev                      22 busy   bothy-api
   docs                     exited
-  legacy                   running   bothy-legacy
+  legacy                   idle      bothy-legacy
   rust                     exited
   (the host)                         bothy-notes
 ```
@@ -88,6 +88,17 @@ $ bothy box ls
 The star marks this project's box. The sessions listed are where they actually
 are: bothy looks at the running processes rather than trusting its own record,
 so if a session ended up somewhere unexpected, you will see it there.
+
+A running box says how much is in it rather than only that it is running, which
+is nearly no information: a toolbox is running from the moment anything touched
+it and stays that way long after. `22 busy` is twenty-two processes; `idle` is
+none. The count comes from the container's own cgroup, and leaves out the
+process toolbox keeps in every box for its own housekeeping. A box that will not
+answer says `running`, as before — "could not ask" and "nothing in it" are not
+the same thing.
+
+`bothy box stop` says the same count before it stops anything, so what is about
+to end is visible while there is still time to reconsider.
 
 ## Moving a project
 

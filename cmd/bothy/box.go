@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -180,15 +182,44 @@ func confirmed(yes, tty bool, reply string) bool {
 // the box it is really in, read from the process table rather than from any
 // record, so a session somewhere unexpected is shown where it is. here is this
 // project's box, marked so the listing answers "and which one am I".
-func renderBoxes(boxes []toolbox, where map[string]string, here string) string {
+func renderBoxes(boxes []toolbox, where map[string]string, here string, busy map[string]int) string {
 	var b strings.Builder
 	for _, box := range boxes {
-		line(&b, markIf(box.Name == here), box.Name, box.State, sessionsIn(where, box.Name))
+		line(&b, markIf(box.Name == here), box.Name, boxState(box, busy), sessionsIn(where, box.Name))
 	}
 	if onHost := sessionsIn(where, ""); len(onHost) > 0 {
 		line(&b, markIf(here == ""), "(the host)", "", onHost)
 	}
 	return b.String()
+}
+
+// boxState is what a box is doing. "running" alone is nearly no information -- a
+// toolbox is running from the moment anything touched it and stays that way
+// long after -- so a running box says how much is in it instead.
+func boxState(box toolbox, busy map[string]int) string {
+	n, known := busy[box.Name]
+	if box.State != "running" || !known {
+		return box.State
+	}
+	if n == 0 {
+		return "idle"
+	}
+	return fmt.Sprintf("%d busy", n)
+}
+
+// busyIn counts what is in each running box. A box that will not answer is
+// left out rather than reported as empty, since empty is a claim.
+func busyIn(p platform.Info, boxes []toolbox) map[string]int {
+	out := map[string]int{}
+	for _, box := range boxes {
+		if box.State != "running" {
+			continue
+		}
+		if n, ok := busy(p, box.Name); ok {
+			out[box.Name] = n
+		}
+	}
+	return out
 }
 
 func line(b *strings.Builder, mark, name, state string, sessions []string) {
@@ -261,4 +292,64 @@ func shortHome(path, home string) string {
 		return "~" + path[len(home):]
 	}
 	return path
+}
+
+// procRoot and cgroupRoot are the two filesystems busy reads, as vars so a test
+// can hand it directories it built rather than needing a container.
+var (
+	procRoot   = "/proc"
+	cgroupRoot = "/sys/fs/cgroup"
+)
+
+// busy counts the processes inside a box, and reports false when it cannot.
+//
+// The count comes from the container's cgroup rather than from `podman top`,
+// which lists every process on the machine: a toolbox runs with PidMode=host,
+// so podman's idea of "in this container" is the whole system.
+//
+// The processes are one level below the scope podman names. The scope's own
+// cgroup.procs is empty -- measured: 0 there against 31 in container/ -- so
+// reading the obvious path reports every box as idle.
+func busy(p platform.Info, name string) (int, bool) {
+	cmd, err := podman(p, "inspect", name, "--format", "{{.State.CgroupPath}}")
+	if err != nil {
+		return 0, false
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, false
+	}
+	scope := strings.TrimSpace(string(out))
+	if scope == "" {
+		return 0, false
+	}
+	procs, err := os.ReadFile(procsPath(scope))
+	if err != nil {
+		return 0, false
+	}
+	return countWork(strings.Fields(string(procs))), true
+}
+
+// procsPath is where a container's processes actually are. One level below the
+// scope podman names: the scope's own cgroup.procs is empty, so reading the
+// obvious path reports every box as idle.
+func procsPath(scope string) string {
+	return filepath.Join(cgroupRoot, scope, "container", "cgroup.procs")
+}
+
+// countWork is the pids that are somebody's work. toolbox keeps an
+// init-container process in every box for its whole life; counting it would
+// report an untouched box as having something in it.
+func countWork(pids []string) int {
+	n := 0
+	for _, pid := range pids {
+		argv, err := os.ReadFile(filepath.Join(procRoot, pid, "cmdline"))
+		if err != nil {
+			continue // exited between the read and here, which is common
+		}
+		if !strings.Contains(strings.ReplaceAll(string(argv), "\x00", " "), "init-container") {
+			n++
+		}
+	}
+	return n
 }

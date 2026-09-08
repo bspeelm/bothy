@@ -70,7 +70,8 @@ func boxList(p platform.Info, cfg config.Config, dir string) error {
 		fmt.Println("no toolboxes on this machine")
 		return nil
 	}
-	fmt.Print(renderBoxes(boxes, whereSessionsAre(p, cfg), install.Resolve(p, cfg, dir).Name))
+	fmt.Print(renderBoxes(boxes, whereSessionsAre(p, cfg), install.Resolve(p, cfg, dir).Name,
+		busyIn(p, boxes)))
 	return nil
 }
 
@@ -226,6 +227,11 @@ func boxStop(p platform.Info, cfg config.Config, args []string) error {
 	if !stop {
 		fmt.Printf("%s is not running\n", name)
 		return nil
+	}
+	// What is about to end, before it ends. "is running" is true of a box
+	// nothing has touched in a week.
+	if n, ok := busy(p, name); ok && n > 0 {
+		fmt.Printf("%s has %d process(es) in it\n", name, n)
 	}
 	if err := stopBox(p, name); err != nil {
 		return err

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -49,7 +51,7 @@ func TestBoxLsNamesTheSessionsInEachBox(t *testing.T) {
 		"bothy-legacy": "dev",
 		"bothy-notes":  "",
 	}
-	out := renderBoxes(boxes, where, "dev")
+	out := renderBoxes(boxes, where, "dev", nil)
 
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	if len(lines) != 3 {
@@ -267,5 +269,65 @@ func TestBoxRmDelegatesAndNeverForces(t *testing.T) {
 		if slices.Contains(got, banned) {
 			t.Errorf("removeArgs() contains %q", banned)
 		}
+	}
+}
+
+// "running" is nearly no information: a toolbox is running from the moment
+// anything touched it and stays that way long after. A running box says how much
+// is in it instead.
+func TestARunningBoxSaysHowBusyItIs(t *testing.T) {
+	busy := map[string]int{"dev": 22, "docs": 0}
+	for _, tt := range []struct{ name, state, want string }{
+		{"dev", "running", "22 busy"},
+		{"docs", "running", "idle"},
+		// Not running: the count is meaningless and the state is the answer.
+		{"old", "exited", "exited"},
+		// Running but it would not say: left as it was rather than called idle,
+		// because idle is a claim and "could not ask" is not the same thing.
+		{"quiet", "running", "running"},
+	} {
+		if got := boxState(toolbox{Name: tt.name, State: tt.state}, busy); got != tt.want {
+			t.Errorf("%s (%s) shows %q, want %q", tt.name, tt.state, got, tt.want)
+		}
+	}
+}
+
+// The processes are one level below the scope podman names. Measured on a live
+// toolbox: the scope's own cgroup.procs held 0 pids and container/cgroup.procs
+// held 31, so reading the obvious path reports every box as idle.
+func TestTheProcessesAreBelowTheScopePodmanNames(t *testing.T) {
+	got := procsPath("/user.slice/libpod-abc.scope")
+	if !strings.HasSuffix(got, filepath.Join("container", "cgroup.procs")) {
+		t.Errorf("procsPath = %q; the scope's own cgroup.procs is empty", got)
+	}
+}
+
+// toolbox keeps an init-container process in every box for its whole life.
+// Counting it reports a box nobody has touched as having something in it.
+func TestTheToolboxInitProcessIsNotWork(t *testing.T) {
+	dir := t.TempDir()
+	restore := procRoot
+	t.Cleanup(func() { procRoot = restore })
+	procRoot = dir
+
+	for pid, argv := range map[string]string{
+		"100": "toolbox\x00--log-level\x00debug\x00init-container\x00--gid\x001000",
+		"200": "/bin/bash\x00-l",
+		"300": "yazi",
+	} {
+		if err := os.MkdirAll(filepath.Join(dir, pid), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, pid, "cmdline"), []byte(argv), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := countWork([]string{"100", "200", "300"}); n != 2 {
+		t.Errorf("counted %d processes, want 2 — init-container is not somebody's work", n)
+	}
+	// A pid that exited between listing and reading is not counted, and is not
+	// an error either: it is the common case on a busy box.
+	if n := countWork([]string{"200", "999999"}); n != 1 {
+		t.Errorf("counted %d with one pid gone, want 1", n)
 	}
 }
