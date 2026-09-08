@@ -214,8 +214,8 @@ not.
 The second folder is yours. Put it in git, clone it on the next machine, run
 `bothy`, and you have the same room.
 
-`bothy uninstall` removes the first folder and the binary, and names the three
-things it leaves rather than leaving you to find them.
+`bothy uninstall` removes the first folder and the binary, and names what it
+leaves rather than leaving you to find them.
 
 [Using your own tool config instead of bothy's](https://github.com/bspeelm/bothy/wiki/Swapping-parts-and-theming) ·
 [what uninstall leaves, and why](https://github.com/bspeelm/bothy/wiki/Installing#removing-it).
