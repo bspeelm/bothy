@@ -10,3 +10,9 @@
 # the repo and is not published, so a declaration here would claim conformance
 # nobody else could check.
 .agent-standard
+
+# Editor scratch files. One reached a commit and would have shipped in the
+# source tarball and the rpm.
+*.swp
+*.swo
+*~

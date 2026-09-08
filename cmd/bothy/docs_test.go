@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/bspeelm/bothy/internal/fetch"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -1068,5 +1069,19 @@ func TestEveryWikiAnchorTheReadmeLinksToExists(t *testing.T) {
 		if !hasHeading(t, page, m[2]) {
 			t.Errorf("the README links to %s#%s; that page has no heading with that anchor", m[1], m[2])
 		}
+	}
+}
+
+// A vim swap file reached main and would have shipped inside the source tarball
+// and the rpm. Nothing noticed, because nothing looks at what is tracked.
+func TestNoEditorScratchFileIsTracked(t *testing.T) {
+	out, err := exec.Command("git", "-C", "../..", "ls-files").Output()
+	if err != nil {
+		t.Skip("not a git checkout")
+	}
+	junk := regexp.MustCompile(`(?m)^.*(\.sw[a-p]|~|\.orig|\.rej|\.DS_Store)$`)
+	if found := junk.FindAllString(string(out), -1); found != nil {
+		t.Errorf("editor scratch files are tracked and would ship:\n  %s",
+			strings.Join(found, "\n  "))
 	}
 }
