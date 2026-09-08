@@ -112,14 +112,44 @@ func TestADeadSessionIsDroppedNotShownStale(t *testing.T) {
 	}
 }
 
-// Rows, not columns: an agent pane is about 55 columns, and three side by side
-// in one window wraps every line into noise.
+// A mirror is as wide as the pane it watches and no wider, so a wide window
+// should hold several of them side by side rather than one with two thirds of
+// the screen empty. Measured on a real cockpit: the agent pane is 57 columns,
+// because the profile splits the window three ways.
+func TestMirrorsSitAbreastWhenTheWindowIsWideEnough(t *testing.T) {
+	mirrors := []mirror{
+		{Session: "bothy-api", Pane: "terminal_1", Label: "api", Cols: 57},
+		{Session: "bothy-docs", Pane: "terminal_1", Label: "docs", Cols: 57},
+		{Session: "bothy-srv", Pane: "terminal_1", Label: "srv", Cols: 57},
+	}
+	prof := towerProfile(mirrors, "/usr/bin/bothy", 200)
+	if len(prof.Rows) != 1 || len(prof.Rows[0].Panes) != 3 {
+		t.Fatalf("got %d rows; three 57-column mirrors fit a 200-column window", len(prof.Rows))
+	}
+}
+
+// One column short is not nearly enough: every line of every mirror wraps, and
+// stacked is better than that.
+func TestMirrorsStackWhenTheWindowIsTooNarrow(t *testing.T) {
+	mirrors := []mirror{
+		{Session: "bothy-api", Pane: "terminal_1", Label: "api", Cols: 57},
+		{Session: "bothy-docs", Pane: "terminal_1", Label: "docs", Cols: 57},
+	}
+	if prof := towerProfile(mirrors, "/usr/bin/bothy", 100); len(prof.Rows) != 2 {
+		t.Errorf("%d rows in a 100-column window; two 57-column mirrors do not fit abreast", len(prof.Rows))
+	}
+	// An unmeasured width is not an invitation to assume.
+	if prof := towerProfile(mirrors, "/usr/bin/bothy", 0); len(prof.Rows) != 2 {
+		t.Errorf("%d rows with no measured width; stacking is the safe answer", len(prof.Rows))
+	}
+}
+
 func TestTheTowerStacksMirrorsOneToARow(t *testing.T) {
 	mirrors := []mirror{
-		{Session: "bothy-api", Pane: "terminal_1", Label: "api"},
-		{Session: "bothy-docs", Pane: "terminal_1", Label: "docs"},
+		{Session: "bothy-api", Pane: "terminal_1", Label: "api", Cols: 57},
+		{Session: "bothy-docs", Pane: "terminal_1", Label: "docs", Cols: 57},
 	}
-	prof := towerProfile(mirrors, "/usr/bin/bothy")
+	prof := towerProfile(mirrors, "/usr/bin/bothy", 0)
 	if len(prof.Rows) != 2 {
 		t.Fatalf("%d rows for 2 mirrors, want 2", len(prof.Rows))
 	}
@@ -188,9 +218,9 @@ func TestTheWatchingMethodsAreQueries(t *testing.T) {
 func TestTheTowerLayoutRendersForTheMultiplexer(t *testing.T) {
 	mirrors := []mirror{
 		{Session: "bothy-api", Pane: "terminal_1", Label: "api"},
-		{Session: "bothy-abbey-srv", Pane: "terminal_2", Label: "srv"},
+		{Session: "bothy-abbey-srv", Pane: "terminal_2", Label: "srv", Cols: 57},
 	}
-	out, err := mux.Zellij{}.Preview(towerProfile(mirrors, "/usr/bin/bothy"), nil)
+	out, err := mux.Zellij{}.Preview(towerProfile(mirrors, "/usr/bin/bothy", 0), nil)
 	if err != nil {
 		t.Fatalf("the tower's layout does not render: %v", err)
 	}
@@ -203,5 +233,27 @@ func TestTheTowerLayoutRendersForTheMultiplexer(t *testing.T) {
 	// not need the slot table. A pane resolved through a slot would error here.
 	if strings.Contains(out, "slot") {
 		t.Errorf("a tower pane went through a slot:\n%s", out)
+	}
+}
+
+// A frame that ends in a newline pushes the one before it into scrollback. The
+// tower reached 1,382 lines of history in a few minutes of watching before this
+// was fixed, which is visible in the pane's scroll indicator.
+func TestPaintLeavesNothingInScrollback(t *testing.T) {
+	var b strings.Builder
+	paint(&b, "one\ntwo\nthree\n")
+	out := b.String()
+
+	if strings.HasSuffix(out, "\n") {
+		t.Error("the frame ends in a newline, which scrolls the previous one away")
+	}
+	if !strings.HasPrefix(out, "\033[H") {
+		t.Error("the frame does not home the cursor, so it draws below the last one")
+	}
+	if !strings.HasSuffix(out, "\033[J") {
+		t.Error("the frame does not wipe what a taller previous frame left below it")
+	}
+	if n := strings.Count(out, "\033[K"); n != 3 {
+		t.Errorf("%d lines cleared for a 3-line screen; a shorter line leaves the old one behind", n)
 	}
 }

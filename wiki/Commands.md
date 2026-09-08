@@ -195,10 +195,15 @@ frozen screen.
 `--mirror <session>` watches one session and nothing else. `--every` sets the
 refresh interval.
 
-Rows are full width and stacked rather than side by side: an agent pane is about
-55 columns, and several of those in a row wrap into noise. Each mirror shows the
-bottom of its pane, which is where an agent says what it is doing or what it is
-waiting for. Zoom a row with the multiplexer's fullscreen binding to read more.
+**A mirror is exactly as wide and as tall as the pane it watches.** `dump-screen`
+returns that pane's grid with the text already wrapped, so a 57-column agent pane
+stays 57 columns however large the tower window is, and making a mirror fullscreen
+shows no more than it did before. This is why the cockpit's agent pane is small in
+the first place: the profile splits the window three ways.
+
+So mirrors sit **side by side** when the window is wide enough to hold them all at
+their own width, and stack when it is not. `bothy tower` says which it chose. A
+wider cockpit window gives a wider agent pane, and so a richer mirror.
 
 **It cannot bring a session's window to the front.** Selecting a row shows you
 which session wants attention; switching to it is yours to do. No Wayland

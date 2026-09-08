@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -47,7 +49,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	agent := install.AgentBinary(cfg.Slots.Agent)
 	for {
 		screen, err := mirrorOnce(backend, bin, env, session, agent)
-		fmt.Print(clearScreen, screen)
+		paint(os.Stdout, screen)
 		if err != nil {
 			// Reported in the pane, not returned: one session ending must not
 			// close a pane the other mirrors share a window with.
@@ -85,10 +87,34 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 		return fmt.Errorf("no sessions with an agent to watch\n" +
 			"      the tower shows agent panes of running sessions; 'bothy ls' lists them")
 	}
-	fmt.Printf("watching %d agent(s)\n", len(mirrors))
+	prof := towerProfile(mirrors, self, envInt(env, "COLUMNS"))
+	// Which arrangement it chose. A mirror cannot be made wider than the pane
+	// it watches, so stacking is what a window too narrow to hold them all
+	// looks like, and saying so beats leaving it to be guessed at.
+	shape := "stacked"
+	if len(prof.Rows) == 1 {
+		shape = "side by side"
+	}
+	fmt.Printf("watching %d agent(s), %s\n", len(mirrors), shape)
 	return backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: towerSession, Dir: p.Home,
-		Profile: towerProfile(mirrors, self), Commands: install.Commands(cfg),
-		Env: env, Live: live,
+		Profile: prof, Commands: install.Commands(cfg), Env: env, Live: live,
 	})
+}
+
+// envInt reads a numeric variable out of the session environment, 0 when it is
+// absent. COLUMNS is unset rather than guessed when nothing could be measured
+// (ADR-022's neighbour in SessionEnv), and 0 is what the layout treats as
+// "do not assume it fits".
+func envInt(env []string, key string) int {
+	for _, kv := range env {
+		if v, ok := strings.CutPrefix(kv, key+"="); ok {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return 0
+			}
+			return n
+		}
+	}
+	return 0
 }

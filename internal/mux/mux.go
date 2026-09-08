@@ -100,6 +100,7 @@ type PaneRef struct {
 	Command string `json:"pane_command"`
 	Title   string `json:"title"`
 	Dir     string `json:"pane_cwd"`
+	Cols    int    `json:"pane_columns"`
 	Exited  bool   `json:"exited"`
 }
 
