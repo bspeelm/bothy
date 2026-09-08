@@ -178,7 +178,7 @@ func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	forbidden := []string{
 		"write-chars", "send-keys", "\"write\"", "paste",
 		"switch-session", "focus-pane", "new-pane", "close-pane",
-		"Kill(", "Discard(", "detach",
+		"Discard(", "detach",
 	}
 	both := ""
 	for _, f := range []string{"tower.go", "towercmd.go"} {
@@ -197,6 +197,15 @@ func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	// multiplexer cannot be handed a different meaning for it.
 	if !strings.Contains(both, "backend.Expand(") {
 		t.Error("the tower no longer expands panes through the backend seam")
+	}
+	// Ending a session is permitted for exactly one session: the tower's own,
+	// which holds nothing but mirrors of elsewhere. An agent's session is never
+	// the tower's to end.
+	if n := strings.Count(both, ".Kill("); n != 1 {
+		t.Errorf("%d calls end a session; there is one, and it ends the tower's own", n)
+	}
+	if !strings.Contains(both, "backend.Kill(bin, env, towerSession)") {
+		t.Error("a session other than the tower's own is being ended")
 	}
 }
 

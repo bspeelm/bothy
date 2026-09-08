@@ -48,8 +48,7 @@ func agentPane(panes []mux.PaneRef, agentBin string) (mux.PaneRef, bool) {
 	return mux.PaneRef{}, false
 }
 
-// label names a row. The working directory rather than the session name, which
-// says the same thing twice for a local project.
+// label names a row, from the working directory rather than the session name.
 func label(session, dir string) string {
 	if dir != "" {
 		return filepath.Base(dir)
@@ -59,7 +58,7 @@ func label(session, dir string) string {
 
 // mirrorCommand is what one tower pane runs: this binary, in the mode that
 // prints another pane repeatedly. By absolute path, because the copy on PATH
-// may not be the copy that built this window.
+// may not be the one that built this window.
 func mirrorCommand(self string, m mirror) string {
 	return fmt.Sprintf("%s tower --mirror %s", self, m.Session)
 }
@@ -201,10 +200,9 @@ func expandable(mirrors []mirror) []mirror {
 // collapsible is what to put back when the tower closes: panes the tower
 // expanded that are still expanded now.
 //
-// The state is read again rather than remembered. Fullscreen is Ctrl+P then f,
-// an ordinary binding bothy's config does not override, so a pane can be
-// collapsed by hand at any point while the tower runs -- and toggling that one
-// on the way out would expand it, which is the opposite of restoring.
+// Read again rather than remembered: fullscreen is Ctrl+P then f, so a pane can
+// be collapsed by hand while the tower runs, and toggling it again on the way
+// out would expand it.
 func collapsible(expanded []mirror, panesOf func(string) ([]mux.PaneRef, bool), agent string) []mirror {
 	var out []mirror
 	for _, m := range expanded {

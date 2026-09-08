@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -141,6 +142,14 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	if len(mirrors) == 0 {
 		return fmt.Errorf("no sessions with an agent to watch\n" +
 			"      the tower shows agent panes of running sessions; 'bothy ls' lists them")
+	}
+
+	// A tower already running is stale: its panes mirror what was there when it
+	// opened, and Open would attach to that rather than build the layout just
+	// computed. Nothing in a tower is worth keeping, so it is replaced.
+	if slices.Contains(live, towerSession) {
+		_ = backend.Kill(bin, env, towerSession)
+		live = backend.Live(bin, env)
 	}
 
 	if restore {
