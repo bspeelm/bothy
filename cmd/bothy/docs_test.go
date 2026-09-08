@@ -1043,3 +1043,30 @@ func TestTheDocumentedCommandCountMatchesTheDispatch(t *testing.T) {
 		}
 	}
 }
+
+// A deep link into the wiki is written as a full URL, so the relative-link test
+// never sees it and its anchor goes unchecked. Anchors come from heading text,
+// which means renaming a heading silently breaks every link into it -- and the
+// README's links are the ones a stranger follows first.
+func TestEveryWikiAnchorTheReadmeLinksToExists(t *testing.T) {
+	root := "../.."
+	body, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deep := regexp.MustCompile(`https://github\.com/bspeelm/bothy/wiki/([A-Za-z-]+)#([a-z0-9-]+)`)
+	found := deep.FindAllStringSubmatch(string(body), -1)
+	if len(found) == 0 {
+		t.Fatal("no wiki deep links in the README; this test is asserting nothing")
+	}
+	for _, m := range found {
+		page := filepath.Join(root, "wiki", m[1]+".md")
+		if _, err := os.Stat(page); err != nil {
+			t.Errorf("the README links to wiki page %q, which does not exist", m[1])
+			continue
+		}
+		if !hasHeading(t, page, m[2]) {
+			t.Errorf("the README links to %s#%s; that page has no heading with that anchor", m[1], m[2])
+		}
+	}
+}
