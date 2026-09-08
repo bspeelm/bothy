@@ -169,6 +169,42 @@ Thirty checks against the workspace, each with a fix. This is the command
 the project is built around: [The doctor](The-doctor) explains the output,
 the severities and the capability grouping.
 
+### `bothy tower [--mirror session] [--every duration]`
+
+One window showing every running agent, so several open sessions can be watched
+from one place.
+
+```
+$ bothy tower
+watching 3 agent(s)
+```
+
+Each row mirrors one session's agent pane, refreshed every two seconds. Move
+between rows with `Alt+h/j/k/l`, the multiplexer's own pane navigation.
+
+The tower reads panes and writes nothing to them. It sends no input to an agent,
+starts and stops nothing, and creates no session but its own — so an agent
+cannot be disturbed by being watched. It also attaches to nothing: a second
+terminal attached to a session would size that session to the smaller of the two
+windows.
+
+A session is shown when it is running and has a live agent pane. A session whose
+agent has exited is skipped, because the pane outlives the agent and would show a
+frozen screen.
+
+`--mirror <session>` watches one session and nothing else. `--every` sets the
+refresh interval.
+
+Rows are full width and stacked rather than side by side: an agent pane is about
+55 columns, and several of those in a row wrap into noise. Each mirror shows the
+bottom of its pane, which is where an agent says what it is doing or what it is
+waiting for. Zoom a row with the multiplexer's fullscreen binding to read more.
+
+**It cannot bring a session's window to the front.** Selecting a row shows you
+which session wants attention; switching to it is yours to do. No Wayland
+compositor lets one application raise another's window, and bothy will not
+install a shell extension to get around that.
+
 ### `bothy tools`
 
 Which tools are in use, which version, where each came from — bothy's own copy

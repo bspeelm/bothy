@@ -38,7 +38,7 @@ Two directories, and it is worth knowing which is which:
 
 ## Using it
 
-- **[Commands](Commands)** — all seventeen, with their flags.
+- **[Commands](Commands)** — all eighteen, with their flags.
 - **[The doctor](The-doctor)** — how to read a report, and why a capability can
   come back unavailable rather than broken.
 - **[Installing](Installing)** — every channel, what each one checks, and the

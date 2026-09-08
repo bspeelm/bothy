@@ -23,8 +23,8 @@ _bothy() {
 	# 'lock' is absent on purpose: it is a maintainer command, kept out of
 	# `bothy help` for the same reason, and offering it here would put it back.
 	local commands='attach box confine config connect desktop-entry doctor
-		help install keys kill layout ls outdated theme tools uninstall
-		upgrade version'
+		help install keys kill layout ls outdated theme tools tower
+		uninstall upgrade version'
 
 	# A directory is the only argument bothy takes that the shell can complete
 	# better than bothy could.
@@ -88,6 +88,7 @@ _bothy() {
 	confine) flags='--print' ;;
 	desktop-entry) flags='--install --remove' ;;
 	uninstall) flags='--dry-run --keep-binary' ;;
+	tower) flags='--mirror --every' ;;
 	esac
 	[[ -n $flags ]] && COMPREPLY=($(compgen -W "$flags" -- "$cur"))
 }

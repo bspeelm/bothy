@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/layout"
@@ -79,6 +80,36 @@ type Backend interface {
 	// profile. A query, not a file read: `list-panes` for tmux, `action
 	// dump-layout` for zellij, whose session_info cache is private.
 	Panes(bin, session string, env []string) (int, bool)
+
+	// PanesOf describes a session's panes, asked from outside it, false when the
+	// backend cannot say. The tower needs to know which pane holds the agent,
+	// and the position does not answer that.
+	PanesOf(bin, session string, env []string) ([]PaneRef, bool)
+
+	// Screen is a pane's rendered contents, addressed by pane so a session can
+	// be watched without attaching: a second client would resize it to the
+	// smaller of the two windows.
+	Screen(bin, session, pane string, env []string) (string, error)
+}
+
+// PaneRef is a pane of a running session: enough to find the agent's and no
+// more.
+type PaneRef struct {
+	ID      int    `json:"id"`
+	Plugin  bool   `json:"is_plugin"`
+	Command string `json:"pane_command"`
+	Title   string `json:"title"`
+	Dir     string `json:"pane_cwd"`
+	Exited  bool   `json:"exited"`
+}
+
+// Addr is how an action addresses this pane. Terminal and plugin ids each start
+// at zero, so the kind is part of the address.
+func (p PaneRef) Addr() string {
+	if p.Plugin {
+		return "plugin_" + strconv.Itoa(p.ID)
+	}
+	return "terminal_" + strconv.Itoa(p.ID)
 }
 
 // Request is everything Open needs that is not the backend's own business.
@@ -93,8 +124,6 @@ type Request struct {
 	Live     []string
 }
 
-// runReplacing hands stdio to the multiplexer. A non-zero exit is the
-// multiplexer's status, not a bothy error.
 // withPWD makes PWD name the directory the workspace is opening in.
 //
 // The variable is inherited from wherever bothy was typed, and chdir does not
@@ -112,6 +141,8 @@ func withPWD(env []string, dir string) []string {
 	return append(out, "PWD="+dir)
 }
 
+// runReplacing hands stdio to the multiplexer. A non-zero exit is the
+// multiplexer's status, not a bothy error.
 func runReplacing(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env

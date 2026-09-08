@@ -979,7 +979,7 @@ func TestTheCompletionsOfferEveryFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 	set := regexp.MustCompile(`flag\.NewFlagSet\("([a-z-]+)"`)
-	decl := regexp.MustCompile(`fs\.(?:String|Bool|Int)\("([a-z-]+)"`)
+	decl := regexp.MustCompile(`fs\.(?:String|Bool|Int|Duration|Float64)\("([a-z-]+)"`)
 
 	found := 0
 	for _, f := range files {
@@ -1013,5 +1013,33 @@ func TestTheCompletionsOfferEveryFlag(t *testing.T) {
 	// The parser has to keep finding flags, or this passes by seeing none.
 	if found < 10 {
 		t.Fatalf("found %d flags across the command files; the parser has rotted", found)
+	}
+}
+
+// The command count is written in prose in two files and derived from the
+// dispatch switch in a third. Adding `bothy tower` left both prose copies saying
+// seventeen, and nothing failed -- the equivalent check for install channels
+// already existed, so this was a gap rather than a decision.
+func TestTheDocumentedCommandCountMatchesTheDispatch(t *testing.T) {
+	n := len(dispatched(t))
+	// `version` and `help` dispatch but are not counted as commands: the prose
+	// count has always excluded them, and they are the two nobody looks up.
+	n -= 2
+	words := map[int]string{
+		15: "fifteen", 16: "sixteen", 17: "seventeen", 18: "eighteen",
+		19: "nineteen", 20: "twenty",
+	}
+	word, ok := words[n]
+	if !ok {
+		t.Fatalf("%d commands; this test does not know that number in words", n)
+	}
+	for _, f := range []string{"../../README.md", "../../wiki/Home.md"} {
+		body, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), word) {
+			t.Errorf("there are %d commands; %s does not say %q", n, filepath.Base(f), word)
+		}
 	}
 }

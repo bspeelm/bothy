@@ -70,7 +70,7 @@ manifest of files scattered across your home.
    providers described by data. Adding a provider must not require core changes.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
-6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 7,500 lines, comments ≤ 25% of
+6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 7,800 lines, comments ≤ 25% of
    code — all three asserted in CI, as failing checks in the `Makefile`.
    Workspace idle RSS ≤ 200 MB excluding the agent is a design target and is
    **not** measured; saying otherwise claimed a check that does not exist.
@@ -264,7 +264,9 @@ renumbering the architecture over.
 - Managing your dotfiles, your editor config, or your global git config
 - LSP/debugger management, background services, auto-updaters, telemetry, accounts
 - Managing the agent's config, keys, MCP servers, or hooks
-- Parallel-agent orchestration — one agent pane per profile is the scope
+- Parallel-agent orchestration — one agent pane per profile is the scope.
+  `bothy tower` watches agent panes and sends them nothing; ADR-048 draws that
+  line and a test holds it
 
 Which platforms and which multiplexer are not on this list. That scope is the
 table of stacks CI tests, not a refusal — ADR-012 and ADR-018, with the table

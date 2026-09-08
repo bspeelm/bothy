@@ -2,6 +2,7 @@ package mux
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -350,4 +351,41 @@ func (Zellij) countPanes(kdl string) (int, bool) {
 		return 0, false
 	}
 	return count, true
+}
+
+// sessionAction runs a read-only action against a session this process is not
+// attached to.
+//
+// The name goes in --session, not ZELLIJ_SESSION_NAME: the environment form
+// never returns for a dead session -- measured at four seconds and still
+// waiting -- and a watcher polling several sessions would hang on one stale
+// name.
+func sessionAction(bin, session string, env []string, action ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	argv := append([]string{"--session", session, "action"}, action...)
+	cmd := exec.CommandContext(ctx, bin, argv...)
+	cmd.Env = env
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+// PanesOf lists a session's panes. `-a` flattens every tab into one array, so
+// the reply is a flat list rather than a list per tab.
+func (Zellij) PanesOf(bin, session string, env []string) ([]PaneRef, bool) {
+	out, err := sessionAction(bin, session, env, "list-panes", "-a", "-j")
+	if err != nil {
+		return nil, false
+	}
+	var panes []PaneRef
+	if json.Unmarshal([]byte(out), &panes) != nil {
+		return nil, false
+	}
+	return panes, true
+}
+
+// Screen is what a pane is showing. Without -p this returns whichever pane is
+// focused, which is the user's business rather than the watcher's.
+func (Zellij) Screen(bin, session, pane string, env []string) (string, error) {
+	return sessionAction(bin, session, env, "dump-screen", "-p", pane, "--ansi")
 }
