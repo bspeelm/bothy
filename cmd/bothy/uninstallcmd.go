@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"path/filepath"
 
 	"github.com/bspeelm/bothy/internal/install"
 )
@@ -50,6 +51,13 @@ func cmdUninstall(args []string) error {
 	// image: what bothy puts outside its tree it says on the way out.
 	if entry := desktopEntryPath(p.DataDir); fileExists(entry) {
 		fmt.Printf("  kept %s — remove with 'bothy desktop-entry --remove'\n", tilde(entry, p.Home))
+	}
+	for shell, where := range completionShells {
+		f := filepath.Join(p.DataDir, where.Dir, where.Name)
+		if fileExists(f) {
+			fmt.Printf("  kept %s — remove with 'bothy completion %s --remove'\n",
+				tilde(f, p.Home), shell)
+		}
 	}
 	return nil
 }

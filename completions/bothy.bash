@@ -22,8 +22,8 @@ _bothy() {
 
 	# 'lock' is absent on purpose: it is a maintainer command, kept out of
 	# `bothy help` for the same reason, and offering it here would put it back.
-	local commands='attach box confine config connect desktop-entry doctor
-		help install keys kill layout ls outdated theme tools tower
+	local commands='attach box completion confine config connect desktop-entry
+		doctor help install keys kill layout ls outdated theme tools tower
 		uninstall upgrade version'
 
 	# A directory is the only argument bothy takes that the shell can complete
@@ -56,6 +56,11 @@ _bothy() {
 		use) COMPREPLY=($(compgen -W 'host --yes' -- "$cur")) ;;
 		rm) COMPREPLY=($(compgen -W '--yes' -- "$cur")) ;;
 		esac
+		return
+		;;
+	completion)
+		[[ $COMP_CWORD -eq 2 ]] &&
+			COMPREPLY=($(compgen -W 'bash zsh --install --remove' -- "$cur"))
 		return
 		;;
 	config)

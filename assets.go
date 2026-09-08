@@ -27,6 +27,16 @@ var Profiles embed.FS
 //go:embed slots
 var Slots embed.FS
 
+// Completions holds the shell completion scripts. Embedded because an installed
+// bothy has no repository to read them from, and the packages that place these
+// files do not reach the install script, `go install`, or Homebrew.
+//
+// The all: prefix is required: go:embed skips files whose names begin with an
+// underscore, and zsh insists its script be called _bothy.
+//
+//go:embed all:completions
+var Completions embed.FS
+
 // lockFile pins the version and checksum of every tool bothy may install. It
 // is embedded because an installed bothy has no repository to read it from,
 // and the pins are part of what a given bothy release is.

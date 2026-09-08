@@ -161,24 +161,27 @@ Tab.
 | bash | `/usr/share/bash-completion/completions/bothy` |
 | zsh | `/usr/share/zsh/site-functions/_bothy` |
 
-**From the install script, Homebrew or `go install`, copy it once.** No package
-manager ran, so nothing placed it, and bothy does not place it itself — a file
-outside its own tree is a file `bothy uninstall` would have to name, and
-completion is not worth that. Both files are in the release archive and in the
-repository:
+**From the install script, Homebrew or `go install`, ask for it once.** No
+package manager ran, so nothing placed it:
 
 ```sh
-mkdir -p ~/.local/share/bash-completion/completions
-curl -fsSL -o ~/.local/share/bash-completion/completions/bothy \
-  https://raw.githubusercontent.com/bspeelm/bothy/main/completions/bothy.bash
+bothy completion bash --install
+bothy completion zsh --install
 ```
 
-bash finds that path on its own. For zsh, put `_bothy` in any directory on your
-`fpath` — zsh has no per-user default the way bash does, so this is the one that
-needs a line in your `~/.zshrc`:
+Without `--install` it prints the script instead, so you can put it wherever you
+keep such things.
+
+This writes outside bothy's own directory, because the shell has to find it
+there — the same exception the desktop entry makes. `bothy uninstall` names the
+file rather than removing it, and `bothy completion bash --remove` undoes it.
+
+bash searches that directory on its own. zsh has no per-user default, so it
+needs one line in your `~/.zshrc`, before `compinit` — the command prints it
+with the path filled in:
 
 ```sh
-fpath=(~/.zsh/completions $fpath)
+fpath=(~/.local/share/zsh/site-functions $fpath)
 ```
 
 Completion works inside a bothy session too, with nothing extra: the shell pane

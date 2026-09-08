@@ -310,6 +310,28 @@ necessity, so `bothy uninstall` names it rather than removing it.
 
 ## The rest
 
+### `bothy completion <bash|zsh> [--install] [--remove]`
+
+Prints the completion script for a shell. With `--install`, writes it where that
+shell looks for it.
+
+```
+$ bothy completion bash --install
+wrote ~/.local/share/bash-completion/completions/bothy
+this is outside bothy's tree -- 'bothy uninstall' will not remove it,
+but 'bothy completion bash --remove' will.
+```
+
+You need this only if bothy came from the install script, Homebrew or
+`go install`. dnf, apt, pacman and the AUR place these files themselves.
+
+The file goes outside bothy's directory because the shell has to find it there,
+which is the same exception the desktop entry makes. `bothy uninstall` names it
+on the way out rather than removing it.
+
+zsh has no per-user directory it reads by default, so `--install` prints the one
+`fpath` line to add to your `~/.zshrc`. bash needs nothing.
+
 ### `bothy confine`
 
 Runs the agent pane in a rootless podman container, with the project directory

@@ -16,6 +16,7 @@ _bothy() {
 	commands=(
 		'attach:reattach to this project'\''s session'
 		'box:the toolbox this project uses, and the rest'
+		'completion:the completion script for a shell'
 		'confine:run the agent walled off from the rest of $HOME'
 		'config:read and change settings'
 		'connect:open the workspace against another machine'
@@ -67,6 +68,10 @@ _bothy() {
 				rm) _arguments '--yes[do not ask]' ;;
 				esac
 			fi
+			;;
+		completion)
+			_values 'shell' 'bash[bash completion]' 'zsh[zsh completion]'
+			_arguments '--install[write it]' '--remove[delete a written one]'
 			;;
 		config)
 			_values 'config command' \
