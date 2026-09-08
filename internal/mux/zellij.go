@@ -389,3 +389,10 @@ func (Zellij) PanesOf(bin, session string, env []string) ([]PaneRef, bool) {
 func (Zellij) Screen(bin, session, pane string, env []string) (string, error) {
 	return sessionAction(bin, session, env, "dump-screen", "-p", pane, "--ansi")
 }
+
+// Expand makes a pane fill its tab, or returns it to the layout if it already
+// does. The reply is discarded: the action reports success by exiting zero.
+func (Zellij) Expand(bin, session, pane string, env []string) error {
+	_, err := sessionAction(bin, session, env, "toggle-fullscreen", "-p", pane)
+	return err
+}

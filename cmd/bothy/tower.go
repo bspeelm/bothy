@@ -22,12 +22,14 @@ import (
 const towerSession = "bothy-tower"
 
 // mirror is one agent being watched. Cols is the width of the pane it watches,
-// which is also the width of the mirror.
+// which is also the width of the mirror; Fullscreen is whether that pane
+// already fills its tab.
 type mirror struct {
-	Session string
-	Pane    string
-	Label   string
-	Cols    int
+	Session    string
+	Pane       string
+	Label      string
+	Cols       int
+	Fullscreen bool
 }
 
 // agentPane picks out the pane an agent is running in, by command rather than
@@ -148,8 +150,48 @@ func watchable(panesOf func(string) ([]mux.PaneRef, bool), agent string, live []
 			continue
 		}
 		out = append(out, mirror{
-			Session: s, Pane: pane.Addr(), Label: label(s, pane.Dir), Cols: pane.Cols,
+			Session: s, Pane: pane.Addr(), Label: label(s, pane.Dir),
+			Cols: pane.Cols, Fullscreen: pane.Fullscreen,
 		})
+	}
+	return out
+}
+
+// expandable is the mirrors whose pane does not already fill its tab.
+//
+// A pane sharing its window with a browser and a shell holds a quarter of what
+// the same pane holds alone -- 57x23 against 191x46, measured -- and what can be
+// read out of a pane is exactly what it displays. Already-expanded panes are
+// excluded because Expand toggles.
+func expandable(mirrors []mirror) []mirror {
+	var out []mirror
+	for _, m := range mirrors {
+		if !m.Fullscreen {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// collapsible is what to put back when the tower closes: panes the tower
+// expanded that are still expanded now.
+//
+// The state is read again rather than remembered. Fullscreen is Ctrl+P then f,
+// an ordinary binding bothy's config does not override, so a pane can be
+// collapsed by hand at any point while the tower runs -- and toggling that one
+// on the way out would expand it, which is the opposite of restoring.
+func collapsible(expanded []mirror, panesOf func(string) ([]mux.PaneRef, bool), agent string) []mirror {
+	var out []mirror
+	for _, m := range expanded {
+		panes, ok := panesOf(m.Session)
+		if !ok {
+			continue
+		}
+		pane, found := agentPane(panes, agent)
+		if !found || !pane.Fullscreen {
+			continue
+		}
+		out = append(out, mirror{Session: m.Session, Pane: pane.Addr(), Label: m.Label})
 	}
 	return out
 }

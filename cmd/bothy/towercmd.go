@@ -21,6 +21,8 @@ func cmdTower(args []string) error {
 	fs := flag.NewFlagSet("tower", flag.ExitOnError)
 	one := fs.String("mirror", "", "watch one session's agent pane and nothing else")
 	every := fs.Duration("every", 2*time.Second, "how often to refresh")
+	flat := fs.Bool("no-expand", false, "leave the watched panes at the size they are")
+	restore := fs.Bool("restore", false, "collapse expanded agent panes, and open nothing")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -38,7 +40,7 @@ func cmdTower(args []string) error {
 	if *one != "" {
 		return runMirror(backend, bin, env, cfg, *one, *every)
 	}
-	return openTower(p, cfg, backend, bin, env)
+	return openTower(p, cfg, backend, bin, env, !*flat, *restore)
 }
 
 // runMirror prints one session's agent pane until the window closes. The pane
@@ -73,7 +75,8 @@ func mirrorOnce(backend mux.Backend, bin string, env []string, session, agent st
 }
 
 // openTower builds the window and launches it.
-func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin string, env []string) error {
+func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin string,
+	env []string, expand, restore bool) error {
 	self, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("tower: cannot find this binary to run it again: %w", err)
@@ -82,10 +85,28 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	panesOf := func(session string) ([]mux.PaneRef, bool) {
 		return backend.PanesOf(bin, session, env)
 	}
-	mirrors := watchable(panesOf, install.AgentBinary(cfg.Slots.Agent), live)
+	agent := install.AgentBinary(cfg.Slots.Agent)
+	mirrors := watchable(panesOf, agent, live)
 	if len(mirrors) == 0 {
 		return fmt.Errorf("no sessions with an agent to watch\n" +
 			"      the tower shows agent panes of running sessions; 'bothy ls' lists them")
+	}
+
+	if restore {
+		fmt.Printf("collapsed %d pane(s)\n", toggle(backend, bin, env, collapsible(mirrors, panesOf, agent)))
+		return nil
+	}
+
+	// Expanded before the layout is built, because what a mirror can show is
+	// exactly what its pane displays and expanding changes that: 57 columns
+	// against 191, measured. The sizes are read again afterwards so the layout
+	// is decided on what the mirrors will actually be.
+	var expanded []mirror
+	if expand {
+		if expanded = expandable(mirrors); len(expanded) > 0 {
+			toggle(backend, bin, env, expanded)
+			mirrors = watchable(panesOf, agent, live)
+		}
 	}
 	prof := towerProfile(mirrors, self, envInt(env, "COLUMNS"))
 	// Which arrangement it chose. A mirror cannot be made wider than the pane
@@ -95,11 +116,27 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	if len(prof.Rows) == 1 {
 		shape = "side by side"
 	}
-	fmt.Printf("watching %d agent(s), %s\n", len(mirrors), shape)
-	return backend.Open(mux.Request{
+	fmt.Printf("watching %d agent(s), %s; %d pane(s) expanded to be worth reading\n",
+		len(mirrors), shape, len(expanded))
+	err = backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: towerSession, Dir: p.Home,
 		Profile: prof, Commands: install.Commands(cfg), Env: env, Live: live,
 	})
+	toggle(backend, bin, env, collapsible(expanded, panesOf, agent))
+	return err
+}
+
+// toggle flips each pane's fullscreen state and counts the ones that took it.
+// Errors are dropped: a session that ended while the tower was open is the
+// common case, and it is not worth a message on the way out.
+func toggle(backend mux.Backend, bin string, env []string, panes []mirror) int {
+	n := 0
+	for _, m := range panes {
+		if backend.Expand(bin, m.Session, m.Pane, env) == nil {
+			n++
+		}
+	}
+	return n
 }
 
 // envInt reads a numeric variable out of the session environment, 0 when it is
@@ -109,10 +146,9 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 func envInt(env []string, key string) int {
 	for _, kv := range env {
 		if v, ok := strings.CutPrefix(kv, key+"="); ok {
-			n, err := strconv.Atoi(v)
-			if err != nil {
-				return 0
-			}
+			// A value that is not a number reads as 0, the same as absent:
+			// either way the width is unknown and nothing is assumed to fit.
+			n, _ := strconv.Atoi(v)
 			return n
 		}
 	}

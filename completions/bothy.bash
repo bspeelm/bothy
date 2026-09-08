@@ -88,7 +88,7 @@ _bothy() {
 	confine) flags='--print' ;;
 	desktop-entry) flags='--install --remove' ;;
 	uninstall) flags='--dry-run --keep-binary' ;;
-	tower) flags='--mirror --every' ;;
+	tower) flags='--mirror --every --no-expand --restore' ;;
 	esac
 	[[ -n $flags ]] && COMPREPLY=($(compgen -W "$flags" -- "$cur"))
 }

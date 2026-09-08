@@ -86,7 +86,7 @@ _bothy() {
 		confine) _arguments '--print[show the recipe and the command, run neither]' ;;
 		desktop-entry) _arguments '--install[write the entry]' '--remove[delete a written entry]' ;;
 		uninstall) _arguments '--dry-run[say what would be removed]' '--keep-binary[leave the binary]' ;;
-		tower) _arguments '--mirror[watch one session'"'"'s agent pane]:session:' '--every[how often to refresh]:duration:' ;;
+		tower) _arguments '--mirror[watch one session'"'"'s agent pane]:session:' '--every[how often to refresh]:duration:' '--no-expand[leave watched panes at their current size]' '--restore[collapse expanded agent panes]' ;;
 		esac
 		;;
 	esac

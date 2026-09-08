@@ -90,6 +90,15 @@ type Backend interface {
 	// be watched without attaching: a second client would resize it to the
 	// smaller of the two windows.
 	Screen(bin, session, pane string, env []string) (string, error)
+
+	// Expand toggles a pane between filling its tab and its place in the
+	// layout. A watched pane is worth expanding because what can be read out of
+	// it is exactly what it displays: a pane sharing its window two ways holds
+	// a quarter of what the same pane holds alone.
+	//
+	// It changes what a session looks like and nothing about what runs in it.
+	// The program inside receives SIGWINCH and redraws (ADR-048).
+	Expand(bin, session, pane string, env []string) error
 }
 
 // PaneRef is a pane of a running session: enough to find the agent's and no
@@ -98,10 +107,12 @@ type PaneRef struct {
 	ID      int    `json:"id"`
 	Plugin  bool   `json:"is_plugin"`
 	Command string `json:"pane_command"`
-	Title   string `json:"title"`
 	Dir     string `json:"pane_cwd"`
 	Cols    int    `json:"pane_columns"`
 	Exited  bool   `json:"exited"`
+	// Fullscreen is read before it is changed. Expand toggles, so acting
+	// without looking would collapse a pane that was already expanded.
+	Fullscreen bool `json:"is_fullscreen"`
 }
 
 // Addr is how an action addresses this pane. Terminal and plugin ids each start

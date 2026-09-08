@@ -195,15 +195,26 @@ frozen screen.
 `--mirror <session>` watches one session and nothing else. `--every` sets the
 refresh interval.
 
-**A mirror is exactly as wide and as tall as the pane it watches.** `dump-screen`
-returns that pane's grid with the text already wrapped, so a 57-column agent pane
-stays 57 columns however large the tower window is, and making a mirror fullscreen
-shows no more than it did before. This is why the cockpit's agent pane is small in
-the first place: the profile splits the window three ways.
+**The tower expands each agent pane before it opens.** A mirror can only show
+what its pane displays, and a cockpit gives its agent about a quarter of the
+window — 57 columns by 23 rows, against 191 by 46 for the same pane filling its
+tab. So the tower makes each watched agent pane fullscreen in its own window,
+which is what makes a mirror worth reading.
 
-So mirrors sit **side by side** when the window is wide enough to hold them all at
-their own width, and stack when it is not. `bothy tower` says which it chose. A
-wider cockpit window gives a wider agent pane, and so a richer mirror.
+It reads the state before changing it, so a pane you had already expanded is
+left alone, and it puts back only the panes it expanded — checking again on the
+way out, because you may have collapsed one yourself in the meantime. Fullscreen
+is `Ctrl+P` then `f`, and that keeps working normally while the tower runs.
+
+`--no-expand` leaves your panes exactly as they are, at the cost of thin
+mirrors. `--restore` collapses expanded agent panes, for when a terminal was
+closed before the tower could put them back.
+
+Mirrors sit **side by side** when the window is wide enough to hold them all at
+their own width, and stack when it is not; `bothy tower` says which it chose.
+Stacked, each shows the bottom of its pane — enough to see which agent wants
+you — and the multiplexer's fullscreen binding on a tower pane then shows the
+whole thing.
 
 **It cannot bring a session's window to the front.** Selecting a row shows you
 which session wants attention; switching to it is yours to do. No Wayland

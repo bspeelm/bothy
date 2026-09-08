@@ -14,11 +14,11 @@ import (
 // exist because an earlier draft of this feature hardcoded that number.
 func cockpitPanes() []mux.PaneRef {
 	return []mux.PaneRef{
-		{ID: 0, Plugin: true, Title: "zellij:tab-bar"},
-		{ID: 1, Plugin: true, Title: "zellij:status-bar"},
-		{ID: 0, Command: "yazi", Title: "Yazi: shanty", Dir: "/w/shanty"},
-		{ID: 1, Command: "claude", Title: "agent", Dir: "/w/shanty"},
-		{ID: 2, Command: "/bin/bash", Title: "side", Dir: "/w/shanty"},
+		{ID: 0, Plugin: true},
+		{ID: 1, Plugin: true},
+		{ID: 0, Command: "yazi", Dir: "/w/shanty"},
+		{ID: 1, Command: "claude", Dir: "/w/shanty"},
+		{ID: 2, Command: "/bin/bash", Dir: "/w/shanty"},
 	}
 }
 
@@ -36,8 +36,8 @@ func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
 
 	// Reordered, so position cannot be what found it.
 	shuffled := []mux.PaneRef{
-		{ID: 1, Plugin: true, Title: "zellij:status-bar"},
-		{ID: 0, Command: "claude", Title: "agent"},
+		{ID: 1, Plugin: true},
+		{ID: 0, Command: "claude"},
 		{ID: 1, Command: "yazi"},
 	}
 	got, ok = agentPane(shuffled, "claude")
@@ -168,26 +168,34 @@ func TestTheTowerStacksMirrorsOneToARow(t *testing.T) {
 	}
 }
 
-// ADR-048 draws the line this feature stays behind: bothy watches panes and
-// never originates input to an agent. The line is worth nothing if a later
-// change can cross it quietly, so it is a fence over the source rather than a
-// sentence in a document.
-func TestTheTowerOriginatesNoInput(t *testing.T) {
+// ADR-048's line, as a fence rather than a sentence: the tower may change how a
+// session is displayed and never what an agent does. Expanding a pane is the one
+// permitted mutation -- no byte reaches the agent, which receives SIGWINCH and
+// redraws. Everything that would reach the agent, or start and stop one, stays
+// out.
+func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	forbidden := []string{
 		"write-chars", "send-keys", "\"write\"", "paste",
 		"switch-session", "focus-pane", "new-pane", "close-pane",
 		"Kill(", "Discard(", "detach",
 	}
+	both := ""
 	for _, f := range []string{"tower.go", "towercmd.go"} {
 		body, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
 		}
+		both += string(body)
 		for _, bad := range forbidden {
 			if strings.Contains(string(body), bad) {
-				t.Errorf("%s contains %q; the tower observes and sends nothing", f, bad)
+				t.Errorf("%s contains %q; the tower changes display, not behaviour", f, bad)
 			}
 		}
+	}
+	// And the permitted one is reached through the backend, so a second
+	// multiplexer cannot be handed a different meaning for it.
+	if !strings.Contains(both, "backend.Expand(") {
+		t.Error("the tower no longer expands panes through the backend seam")
 	}
 }
 
@@ -255,5 +263,56 @@ func TestPaintLeavesNothingInScrollback(t *testing.T) {
 	}
 	if n := strings.Count(out, "\033[K"); n != 3 {
 		t.Errorf("%d lines cleared for a 3-line screen; a shorter line leaves the old one behind", n)
+	}
+}
+
+// Expand toggles, so acting without looking collapses a pane that was already
+// filling its tab -- the opposite of what the tower wants, on exactly the pane
+// someone had already set up to be read.
+func TestOnlyUnexpandedPanesAreExpanded(t *testing.T) {
+	got := expandable([]mirror{
+		{Session: "bothy-api", Fullscreen: false},
+		{Session: "bothy-docs", Fullscreen: true},
+	})
+	if len(got) != 1 || got[0].Session != "bothy-api" {
+		t.Errorf("expandable = %+v, want only bothy-api", got)
+	}
+}
+
+// A pane the maintainer had already expanded before the tower started is not
+// the tower's to collapse.
+func TestOnlyPanesTheTowerExpandedAreRestored(t *testing.T) {
+	panes := func(string) ([]mux.PaneRef, bool) {
+		return []mux.PaneRef{{ID: 1, Command: "claude", Fullscreen: true}}, true
+	}
+	// bothy-docs was already fullscreen, so it was never in the expanded set.
+	expanded := []mirror{{Session: "bothy-api", Pane: "terminal_1"}}
+	got := collapsible(expanded, panes, "claude")
+	if len(got) != 1 || got[0].Session != "bothy-api" {
+		t.Errorf("collapsible = %+v, want only the pane the tower expanded", got)
+	}
+}
+
+// Fullscreen is Ctrl+P then f, a binding bothy does not override, so a pane can
+// be collapsed by hand while the tower is running. Toggling it again on the way
+// out would expand it -- the opposite of restoring. The state is therefore read
+// again rather than remembered, which is the case a remembered-state
+// implementation gets wrong.
+func TestAPaneCollapsedByHandIsNotReExpanded(t *testing.T) {
+	collapsedByHand := func(string) ([]mux.PaneRef, bool) {
+		return []mux.PaneRef{{ID: 1, Command: "claude", Fullscreen: false}}, true
+	}
+	expanded := []mirror{{Session: "bothy-api", Pane: "terminal_1"}}
+	if got := collapsible(expanded, collapsedByHand, "claude"); len(got) != 0 {
+		t.Errorf("collapsible = %+v; a pane collapsed by hand would be re-expanded", got)
+	}
+}
+
+// A session that ended while the tower was open has no panes to put back.
+func TestARestoreSkipsASessionThatWentAway(t *testing.T) {
+	gone := func(string) ([]mux.PaneRef, bool) { return nil, false }
+	expanded := []mirror{{Session: "bothy-api", Pane: "terminal_1"}}
+	if got := collapsible(expanded, gone, "claude"); len(got) != 0 {
+		t.Errorf("collapsible = %+v for a session that is gone", got)
 	}
 }
