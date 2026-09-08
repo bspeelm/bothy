@@ -192,6 +192,9 @@ A session is shown when it is running and has a live agent pane. A session whose
 agent has exited is skipped, because the pane outlives the agent and would show a
 frozen screen.
 
+An agent walled off with `bothy confine` is watched like any other. Its pane runs
+podman rather than the agent, so it is found by the pane's name instead.
+
 `--mirror <session>` watches one session and nothing else. `--every` sets the
 refresh interval.
 

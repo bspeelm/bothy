@@ -5,3 +5,8 @@
 
 # local scratch
 /.scratch/
+
+# The development standard this project declares itself against lives outside
+# the repo and is not published, so a declaration here would claim conformance
+# nobody else could check.
+.agent-standard

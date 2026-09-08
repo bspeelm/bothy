@@ -421,3 +421,35 @@ func TestATallPaneIsClearedBelowTheContent(t *testing.T) {
 		t.Error("the content itself was not painted")
 	}
 }
+
+// `bothy confine` runs the agent inside a container, so the pane's command is
+// podman and a confined agent was invisible to the tower -- with only confined
+// sessions running it reported nothing to watch, which reads as the tower being
+// broken. The pane is still named agent, and that is true of any wrapper.
+func TestTheTowerFindsAWrappedAgent(t *testing.T) {
+	confined := []mux.PaneRef{
+		{ID: 0, Command: "yazi", Title: "Yazi: api"},
+		{ID: 1, Command: "podman", Title: agentPaneName},
+		{ID: 2, Command: "/bin/bash", Title: "side"},
+	}
+	got, ok := agentPane(confined, "claude")
+	if !ok {
+		t.Fatal("a confined agent is invisible to the tower")
+	}
+	if got.Addr() != "terminal_1" {
+		t.Errorf("found %s, want the pane named %q", got.Addr(), agentPaneName)
+	}
+}
+
+// The command is the stronger signal and is preferred: a pane merely named
+// agent must not win over the one actually running it.
+func TestTheRunningAgentBeatsAPaneMerelyNamedAgent(t *testing.T) {
+	panes := []mux.PaneRef{
+		{ID: 0, Command: "/bin/bash", Title: agentPaneName},
+		{ID: 1, Command: "claude", Title: "somethingelse"},
+	}
+	got, ok := agentPane(panes, "claude")
+	if !ok || got.Addr() != "terminal_1" {
+		t.Errorf("found %q/%v, want the pane running claude", got.Addr(), ok)
+	}
+}
