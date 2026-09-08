@@ -50,6 +50,7 @@ Usage:
   bothy theme   example         print a blank palette file to fill in
   bothy tools                   show which tools are used and where they came from
   bothy tower                   watch every running agent in one window
+  bothy completion <bash|zsh>   the completion script (--install to write it)
   bothy desktop-entry           print a .desktop launcher (--install to write it)
   bothy uninstall [--dry-run]   remove bothy's directory and its binary
   bothy upgrade                 how to upgrade this copy of bothy
@@ -123,6 +124,8 @@ func main() {
 		err = cmdKill(args)
 	case "lock":
 		err = cmdLock(args)
+	case "completion":
+		err = cmdCompletion(args)
 	case "tower":
 		err = cmdTower(args)
 	case "tools":
