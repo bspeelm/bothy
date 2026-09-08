@@ -1143,6 +1143,13 @@ func localWords(t *testing.T) []string {
 }
 
 func TestNoTrackedFileNamesThisMachine(t *testing.T) {
+	// A checkout on a build machine sits under that machine's own directories
+	// -- /home/runner/work on GitHub's -- and those words are all over the
+	// workflow files legitimately. The leak starts where the names are real, so
+	// this runs there: `make check` before a commit, not the CI job after it.
+	if os.Getenv("CI") != "" {
+		t.Skip("the words here describe the build machine, not the author's")
+	}
 	words := localWords(t)
 	if len(words) == 0 {
 		t.Skip("this machine's paths yield no distinctive words; nothing to assert")
