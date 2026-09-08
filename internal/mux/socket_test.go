@@ -6,11 +6,36 @@ import (
 	"testing"
 )
 
+// zellij binds under $XDG_RUNTIME_DIR/zellij when it is set, which it is on
+// every desktop Linux. The budget was measured against /tmp/zellij-<uid>
+// instead -- five bytes shorter -- so FitSocket handed back names too long to
+// bind, and `bothy connect` builds the longest ones.
+func TestTheSocketDirectoryIsTheOneZellijWillUse(t *testing.T) {
+	if got := socketDir("", "/run/user/1000", "/tmp", 1000); got != "/run/user/1000/zellij" {
+		t.Errorf("socketDir = %q; zellij binds under the runtime directory", got)
+	}
+	// Its own override wins, as zellij's does.
+	if got := socketDir("/somewhere/else", "/run/user/1000", "/tmp", 1000); got != "/somewhere/else" {
+		t.Errorf("socketDir = %q, want the override", got)
+	}
+	// Only with no runtime directory does the temporary one apply.
+	if got := socketDir("", "", "/tmp", 1000); got != "/tmp/zellij-1000" {
+		t.Errorf("socketDir = %q, want the temporary fallback", got)
+	}
+	// The budget must shrink accordingly: the runtime path is the longer one,
+	// and measuring against the shorter is what allowed unbindable names.
+	runtime := socketRoom("linux", socketDir("", "/run/user/1000", "/tmp", 1000))
+	temp := socketRoom("linux", socketDir("", "", "/tmp", 1000))
+	if runtime >= temp {
+		t.Errorf("room under the runtime dir (%d) is not less than under /tmp (%d)", runtime, temp)
+	}
+}
+
 // The condition this fix was accepted under: Linux keeps the names it has.
-// /tmp leaves room for 71 and every name bothy builds is shorter, so the
-// shortening is macOS's long $TMPDIR and nothing else.
+// The runtime directory leaves room for 66 and every name bothy builds is
+// shorter, so the shortening is macOS's long $TMPDIR and nothing else.
 func TestLinuxSessionNamesAreNeverRewritten(t *testing.T) {
-	room := socketRoom("linux", "/tmp/zellij-1000")
+	room := socketRoom("linux", "/run/user/1000/zellij")
 	for _, n := range []string{"bothy-<client>", "bothy-longishaccountname-203-0-113-42"} {
 		if len(n) > room {
 			t.Errorf("%q (%d bytes) would be rewritten on Linux, which has room for %d", n, len(n), room)

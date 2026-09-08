@@ -1978,3 +1978,47 @@ passes only because the check truncates, and the answer was to write the
 comments plainly rather than to move a second budget for one feature. Trimming
 took them to 25.61% with room behind it. Two budgets moved for one feature is
 the recurring negotiation ADR-026 warns about.
+
+## ADR-049 — The code cap rises to 8,000, for three issues already agreed
+
+**Status:** accepted. Amends ADR-048.
+
+0.12.0 is held until #249, #251 and #220 are done, which is the maintainer's
+call and the reason this number moves. The work is decided rather than
+speculative, which is what ADR-026 asks a raise to name:
+
+- **#251** resolves zellij's socket directory the way zellij resolves it. The
+  budget for a session name was measured against `/tmp/zellij-<uid>` while
+  zellij binds under `$XDG_RUNTIME_DIR/zellij` -- 71 bytes of assumed room
+  against 66 actual, so `FitSocket` returned names five bytes too long to bind.
+  `bothy connect` builds the longest names and would have met it first.
+- **#249** gives the install script, `go install` and Homebrew the completion
+  that only package users get today.
+- **#220** makes `box use` and `box stop` say how busy a box is.
+
+**The fat, as ADR-026 requires it be found first.** The audit this round was
+taken rather than asserted, and it came out of the tower work: `PaneRef.Title`
+was removed when nothing read it and returned only when #254 needed it,
+`envInt` stopped handling an error by returning the value it would have returned
+anyway, and the comments were trimmed four times before the conclusion that the
+ratio rather than the prose was wrong. A scan for unreferenced exported
+functions is dominated by methods called on values and reports nothing usable,
+which is a limit of the scan and not a finding; ADR-047's exhaustive pass is the
+last one that counted, and it found none.
+
+**Why 8,100.** The first draft of this record said 8,000, on an estimate of
+about 80 lines for the three. Two of them came to 95 before the third was
+started -- #251 at six lines and #249 at eighty-nine, the latter because a
+command that writes outside bothy's tree has to say what it is doing, be
+undoable, and be named by uninstall, which is three times the code of printing a
+file. The number is corrected here rather than raised again in a fortnight,
+which is what ADR-026 means by a cap that is not a recurring negotiation.
+
+8,100 leaves about seventy after #220, which is a budget rather than a ceiling.
+Estimating low twice in one record is worth noting: both misses were the same
+shape, counting the feature and not the apparatus around it.
+
+This is the second raise on this arc, after ADR-048 took it to 7,900 for the
+tower. Two raises in one release is worth saying out loud rather than letting
+the numbers drift quietly, and the reason both happened is that a tower plus
+three fixes is simply more work than 7,500 was ever meant to hold.
