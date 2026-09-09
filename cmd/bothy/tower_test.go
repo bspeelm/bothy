@@ -176,7 +176,10 @@ func TestTheTowerStacksMirrorsOneToARow(t *testing.T) {
 // out.
 func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	forbidden := []string{
-		"write-chars", "send-keys", "\"write\"", "paste",
+		// The paste markers rather than the word: bracketed paste is how the
+		// backend sends a multi-line reply, and the tower must not reach for it
+		// itself. Banning "paste" caught the word in a comment.
+		"write-chars", "send-keys", "\"write\"", `\x1b[200~`,
 		"switch-session", "focus-pane", "new-pane", "close-pane",
 		"Discard(", "detach",
 	}
@@ -382,7 +385,7 @@ func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
 	if !strings.Contains(src, "backend.Send(bin, session, pane.Addr(), line, env)") {
 		t.Error("the sending call no longer passes the typed line through unexamined")
 	}
-	if !strings.Contains(src, "go readLines(os.Stdin, typed)") {
+	if !strings.Contains(src, "readLines(os.Stdin, typed)") {
 		t.Error("the mirror no longer reads what to send from the keyboard")
 	}
 }
@@ -451,5 +454,109 @@ func TestTheRunningAgentBeatsAPaneMerelyNamedAgent(t *testing.T) {
 	got, ok := agentPane(panes, "claude")
 	if !ok || got.Addr() != "terminal_1" {
 		t.Errorf("found %q/%v, want the pane running claude", got.Addr(), ok)
+	}
+}
+
+// A Scanner caps a line at 64KB and then stops scanning, so one oversized paste
+// ended replies for the rest of the mirror's life and reported nothing. The
+// short line after it was lost too, which is what makes this silent rather than
+// merely lossy.
+func TestALongPasteDoesNotEndTheTowersInput(t *testing.T) {
+	in := strings.Repeat("x", 70*1024) + "\nstill here\n"
+	got := collect(t, in)
+	if len(got) != 2 {
+		t.Fatalf("delivered %d messages, want 2 (the long one and the one after it)", len(got))
+	}
+	if len(got[0]) != 70*1024 {
+		t.Errorf("the long message arrived %d bytes, want %d", len(got[0]), 70*1024)
+	}
+	if got[1] != "still here" {
+		t.Errorf("the line after the long one arrived %q", got[1])
+	}
+}
+
+// Shift+Enter cannot reach a canonical-mode reader, so a trailing backslash is
+// how a message spans lines.
+func TestABackslashHoldsTheMessageOpen(t *testing.T) {
+	got := collect(t, "first\\\nsecond\\\nthird\n")
+	if len(got) != 1 {
+		t.Fatalf("delivered %d messages, want 1", len(got))
+	}
+	if got[0] != "first\nsecond\nthird" {
+		t.Errorf("joined to %q, want the three lines with newlines between", got[0])
+	}
+}
+
+// The escape goes on the rare case: a message that has to end in a backslash
+// doubles it, which is the shell's rule and the one people already know.
+func TestADoubledBackslashEndsTheMessageAndSendsOne(t *testing.T) {
+	got := collect(t, "C:\\\\\nnext\n")
+	if len(got) != 2 {
+		t.Fatalf("delivered %d messages, want 2", len(got))
+	}
+	if got[0] != "C:\\" {
+		t.Errorf("first message %q, want a single trailing backslash", got[0])
+	}
+}
+
+// A bare Enter is a message: it is how a prompt's default is accepted. Input
+// closing is not, or the mirror presses Enter at the agent on its way out.
+func TestABareEnterSendsAndAClosedInputDoesNot(t *testing.T) {
+	if got := collect(t, "\n"); len(got) != 1 || got[0] != "" {
+		t.Errorf("a bare Enter delivered %#v, want one empty message", got)
+	}
+	if got := collect(t, ""); len(got) != 0 {
+		t.Errorf("closing with nothing typed delivered %#v, want nothing", got)
+	}
+	if got := collect(t, "no newline at the end"); len(got) != 1 {
+		t.Errorf("a last line without Enter delivered %#v, want it sent", got)
+	}
+}
+
+// collect runs readLines over a string and returns every message it delivered.
+func collect(t *testing.T, in string) []string {
+	t.Helper()
+	out := make(chan string, 16)
+	done := make(chan struct{})
+	var got []string
+	go func() {
+		for m := range out {
+			got = append(got, m)
+		}
+		close(done)
+	}()
+	_ = readLines(strings.NewReader(in), out) // the error is the end of input
+	close(out)
+	<-done
+	return got
+}
+
+// A message with newlines must arrive as one message. A bare newline reaching a
+// program is Enter, so a three-line reply sent raw would submit three times.
+// Measured against readline: raw, `echo AAA` ran and `echo BBB` was left at the
+// prompt; wrapped, both sat in the buffer until one Enter ran them together.
+func TestAMultiLineReplyGoesAsOnePaste(t *testing.T) {
+	body, err := os.ReadFile("../../internal/mux/zellij.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	send := string(body)
+	i := strings.Index(send, "func (Zellij) Send(")
+	if i < 0 {
+		t.Fatal("Send is gone; this test names the wrong function")
+	}
+	send = send[i:]
+	if j := strings.Index(send, "\n}"); j > 0 {
+		send = send[:j]
+	}
+	for _, want := range []string{`\x1b[200~`, `\x1b[201~`, `strings.Contains(line, "\n")`} {
+		if !strings.Contains(send, want) {
+			t.Errorf("Send no longer uses %s; a multi-line reply submits once per line without it", want)
+		}
+	}
+	// The single-line path must stay exactly what it was: bracketed paste needs
+	// the receiving program to understand it, and most replies are one line.
+	if !strings.Contains(send, `"write-chars", "-p", pane, line`) {
+		t.Error("the plain write-chars path is gone; a one-line reply should not need paste support")
 	}
 }

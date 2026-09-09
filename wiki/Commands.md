@@ -246,9 +246,29 @@ The bottom two rows of a mirror are yours. Nothing the mirror draws reaches
 them, so a reply stays on screen while the agent above it keeps working — you
 can type at an agent mid-thought, which is when you most often want to.
 
-This sends a line of text. It does not send arrows, tab, or Ctrl-C, so a
-question that has to be answered by moving a selection still needs its own
-window.
+**A message can span lines.** End a line with a backslash and the next line
+joins it; the message goes when a line does not end in one:
+
+```
+> the failing test is in tower_test.go \
+> and the fixture it reads is list-panes.json \
+> can you check the field names
+```
+
+Shift+Enter does not do this, and cannot. The tower reads your typing the way a
+shell prompt does, where the terminal ends the line when you press Enter — so
+there is no key that means "newline, but keep going". The backslash is the
+shell's answer to the same problem. To send a message that really ends in a
+backslash, type two.
+
+A multi-line message arrives as one message rather than one per line, so the
+agent sees it whole.
+
+This sends text. It does not send arrows, tab, or Ctrl-C, so a question that has
+to be answered by moving a selection still needs its own window.
+
+If a reply cannot be delivered — the session went away, or its agent pane did —
+the mirror says so where you typed it, rather than letting the line vanish.
 
 **It cannot bring a session's window to the front.** Selecting a row shows you
 which session wants attention; switching to it is yours to do. No Wayland
