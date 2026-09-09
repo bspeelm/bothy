@@ -160,6 +160,26 @@ func paint(w io.Writer, screen string, rows int) {
 	fmt.Fprint(w, "\0338")
 }
 
+// continues reports whether a line asks for the next one, and returns it with
+// the continuation backslash removed. A trailing backslash is how a message
+// spans lines, because the terminal cannot offer anything better: the tower
+// reads stdin in canonical mode, where the line discipline ends a line on CR or
+// LF, so Shift+Enter cannot mean "insert a newline and keep reading" whatever
+// the terminal sends for it.
+//
+// Backslashes pair off, so a message that has to end in one doubles it. Odd
+// means the last is the marker; even means they are all literal.
+func continues(line string) (string, bool) {
+	n := 0
+	for n < len(line) && line[len(line)-1-n] == '\\' {
+		n++
+	}
+	if n == 0 {
+		return line, false
+	}
+	return line[:len(line)-n] + strings.Repeat(`\`, n/2), n%2 == 1
+}
+
 // replyPrompt puts the cursor on the reply line and marks it, so there is
 // somewhere obvious to type and the mirror above never reaches it.
 func replyPrompt(w io.Writer, rows int) {

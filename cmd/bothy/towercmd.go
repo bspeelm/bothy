@@ -54,7 +54,8 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 
 	agent := install.AgentBinary(cfg.Slots.Agent)
 	typed := make(chan string, 1)
-	go readLines(os.Stdin, typed)
+	closed := make(chan error, 1)
+	go func() { closed <- readLines(os.Stdin, typed) }()
 
 	tick := time.NewTicker(every)
 	defer tick.Stop()
@@ -63,6 +64,11 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	last := ""
 	for {
 		select {
+		case err := <-closed:
+			// Watching continues; only replying has stopped. A nil channel
+			// blocks forever, which says this once rather than every pass.
+			fmt.Printf("\n%s: replies are closed (%v); still watching\n", session, err)
+			closed = nil
 		case line := <-typed:
 			relay(backend, bin, env, session, agent, line)
 			last = "" // the reply is about to change the screen; do not skip it
@@ -97,22 +103,52 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 
 // readLines carries what someone typed to the loop that paints, from a
 // goroutine because the scanner blocks until Enter.
-func readLines(r io.Reader, out chan<- string) {
-	sc := bufio.NewScanner(r)
-	for sc.Scan() {
-		out <- sc.Text()
+// readLines delivers what someone typed, one message per Enter, joining the
+// lines of a message held open with a trailing backslash.
+//
+// A Reader rather than a Scanner: a Scanner caps a line at 64KB and then stops
+// scanning at all, so one oversized paste ended replies for the rest of the
+// mirror's life without saying so. Measured: a 70KB line through a Scanner
+// delivered zero lines, the short line after it included.
+func readLines(r io.Reader, out chan<- string) error {
+	br := bufio.NewReader(r)
+	var held []string
+	for {
+		line, err := br.ReadString('\n')
+		line = strings.TrimRight(line, "\r\n")
+		trimmed, more := continues(line)
+		switch {
+		case err != nil && line == "" && len(held) == 0:
+			// Input closed with nothing typed. Sending here would press Enter
+			// at the agent on the way out.
+		case more && err == nil:
+			held = append(held, trimmed)
+		default:
+			// A bare Enter sends an empty message on purpose: it is how a
+			// prompt's default is accepted.
+			out <- strings.Join(append(held, trimmed), "\n")
+			held = nil
+		}
+		if err != nil {
+			return err
+		}
 	}
 }
 
 // relay hands a typed line to the agent this pane mirrors. It arrives from the
 // keyboard and is passed on unexamined: bothy relays, it does not speak.
 func relay(backend mux.Backend, bin string, env []string, session, agent, line string) {
+	// Both refusals are reported. A reply that vanishes silently reads as an
+	// agent ignoring you, and the pane is the only place the person who typed
+	// it is looking.
 	panes, ok := backend.PanesOf(bin, session, env)
 	if !ok {
+		fmt.Printf("\n%s: cannot read the session's panes; nothing was sent\n", session)
 		return
 	}
 	pane, found := agentPane(panes, agent)
 	if !found {
+		fmt.Printf("\n%s: no live agent pane; nothing was sent\n", session)
 		return
 	}
 	if err := backend.Send(bin, session, pane.Addr(), line, env); err != nil {

@@ -71,7 +71,7 @@ manifest of files scattered across your home.
    providers described by data. Adding a provider must not require core changes.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
-6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 8,100 lines, comments ≤ 26% of
+6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 8,150 lines, comments ≤ 26% of
    code — all three asserted in CI, as failing checks in the `Makefile`.
    Workspace idle RSS ≤ 200 MB excluding the agent is a design target and is
    **not** measured; saying otherwise claimed a check that does not exist.

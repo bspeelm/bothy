@@ -394,12 +394,31 @@ func (Zellij) PanesOf(bin, session string, env []string) ([]PaneRef, bool) {
 	if err != nil {
 		return nil, false
 	}
+	return decodePanes([]byte(out))
+}
+
+// decodePanes reads a list-panes reply, false when bothy cannot make sense of
+// it.
+//
+// The field names are zellij's, and a rename is not a decode error: Unmarshal
+// succeeds and leaves every field zero. The tower would then read "no agent
+// here" out of a reply it cannot parse, and Expand -- which toggles -- would
+// collapse a pane whose Fullscreen came back false for the same reason. Every
+// pane carries a title, plugins included, so none carrying one means the shape
+// moved. An empty list stays an answer: a session may have nothing to report.
+func decodePanes(body []byte) ([]PaneRef, bool) {
 	var panes []PaneRef
-	if json.Unmarshal([]byte(out), &panes) != nil {
+	if json.Unmarshal(body, &panes) != nil {
+		return nil, false
+	}
+	if len(panes) > 0 && !slices.ContainsFunc(panes, legible) {
 		return nil, false
 	}
 	return panes, true
 }
+
+// legible reports whether a decoded pane carries anything the tower reads.
+func legible(p PaneRef) bool { return p.Title != "" || p.Command != "" }
 
 // Screen is what a pane is showing. Without -p this returns whichever pane is
 // focused, which is the user's business rather than the watcher's.
@@ -414,9 +433,21 @@ func (Zellij) Expand(bin, session, pane string, env []string) error {
 	return err
 }
 
-// Send types a line into a pane and presses return. Two calls because a newline
-// inside the text is not the return key: 13 is what a terminal sends for Enter.
+// Send types a message into a pane and presses return. Two calls because a
+// newline inside the text is not the return key: 13 is what a terminal sends
+// for Enter.
+//
+// A message with newlines in it goes as a bracketed paste, because a bare
+// newline reaching a program is Enter. Measured against readline: `echo AAA` and
+// `echo BBB` sent raw ran the first and left the second at the prompt, and the
+// same two wrapped in the paste markers sat in the buffer as two lines until one
+// Enter ran both. Single-line messages take the plain path, which is every
+// message the tower sent before this and needs no support from the program
+// receiving it.
 func (Zellij) Send(bin, session, pane, line string, env []string) error {
+	if strings.Contains(line, "\n") {
+		line = "\x1b[200~" + line + "\x1b[201~"
+	}
 	if _, err := sessionAction(bin, session, env, "write-chars", "-p", pane, line); err != nil {
 		return err
 	}

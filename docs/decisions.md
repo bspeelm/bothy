@@ -2075,3 +2075,59 @@ accepted the same thing for the launching window, on the grounds that bothy
 refuses a second launch into a live session so being in that position is
 deliberate. Attaching is that deliberate act, and closing the window is a
 reasonable way to say the workspace is finished.
+
+## ADR-051 — The code cap rises to 8,150, for the tower's input path
+
+**Status:** accepted. Amends ADR-049.
+
+`bothy tower` accepted replies through a `bufio.Scanner`, which caps a line at
+64KB and then stops scanning. Measured: a 70KB paste delivered zero lines --
+the short line after it included -- and `sc.Err()` was discarded, so a mirror
+silently stopped accepting replies for the rest of its life. Three faults in
+one path, each silent:
+
+- **One oversized paste ended replies.** A Reader replaces the Scanner.
+- **A multi-line paste submitted once per line.** A bare newline reaching a
+  program is Enter, so three lines pasted were three half-formed messages at
+  the agent. Multi-line messages now go as a bracketed paste.
+- **`relay` refused silently.** A reply that vanishes reads as an agent
+  ignoring you; both refusals now say so in the pane.
+
+The decode guard travels with them. `json.Unmarshal` into `[]PaneRef` succeeds
+when a field is renamed upstream and leaves every field zero, so the tower would
+read "no agent here" out of a reply it cannot parse, and `Expand` -- which
+toggles -- would collapse a pane whose `Fullscreen` came back false the same
+way. `slots/zellij.toml` sets a floor of 0.45.1 and no ceiling, so a reused
+system zellij can be newer than the one bothy pins.
+
+**Shift+Enter is not what shipped, and cannot be.** The ask was a newline in the
+input. The tower reads stdin in canonical mode, where the line discipline ends a
+line on CR or LF, so no byte a terminal sends for Shift+Enter can mean "insert a
+newline and keep reading". Delivering it means raw mode, the Kitty keyboard
+protocol, confirming zellij passes it through, and then hand-written line
+editing -- backspace, cursor, history -- inside a two-row strip. A trailing
+backslash holds a message open instead: no terminal support, no multiplexer
+support, and the shell's own rule for the same problem.
+
+**The fat, as ADR-026 requires it be found first.** Nothing usable again, and
+for the reason ADR-049 already recorded: a scan for unreferenced functions is
+dominated by test helpers and reports them all as unused. That is a limit of the
+scan. ADR-047's exhaustive pass remains the last one that counted.
+
+**Why 8,150.** 8,127 is measured, not estimated -- +10 in `zellij.go`, +10 in
+`tower.go`, +20 in `towercmd.go`. The remaining 23 lines are margin, named as
+margin: ADR-049 was raised twice in one record for estimating low, and the
+correction there was to state the number after building rather than before.
+Anything past this gets its own record.
+
+**Comments are at the ceiling.** 26% of code against a budget of 26%, which
+means the next comment fails the build rather than the next line of code. Three
+of the four faults above were silent failures, and a silent failure is exactly
+the kind whose reason has to be written down where the code is. That tension is
+worth naming here rather than discovering it in a fortnight.
+
+**Three raises in one release.** ADR-048 took it to 7,900 for the tower,
+ADR-049 to 8,100 for three fixes, this to 8,150 for the tower's input. The
+pattern says more about 7,500 as a baseline than about any of the three
+features, and the honest reading is that a tower plus a release of fixes is
+simply larger than that number was set to hold.
