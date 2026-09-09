@@ -1339,6 +1339,9 @@ func TestTheDocumentedCheckCountMatchesTheRegistry(t *testing.T) {
 // tool count comes from the lock, the command count from the dispatch, the check
 // count from the registry and the budgets from the Makefile; these are the rest,
 // and both were true when this was written.
+//
+// The box rules are read from Toolboxes.md, which owns them: Commands.md
+// restated them in prose and now links instead.
 func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
 	root := "../.."
 	// Resolve returns one Box per rule plus a fallback carrying only a reason.
@@ -1356,7 +1359,7 @@ func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
 		want       int
 	}{
 		{"README.md", "slots", len(config.SlotNames())},
-		{filepath.Join("wiki", "Commands.md"), "rules", rules},
+		{filepath.Join("wiki", "Toolboxes.md"), "rules", rules},
 	} {
 		word, ok := spelled[c.want]
 		if !ok {
@@ -1369,5 +1372,36 @@ func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
 		if want := word + " " + c.noun; !strings.Contains(flowed(body), want) {
 			t.Errorf("%s does not say %q; the code has %d", c.file, want, c.want)
 		}
+	}
+}
+
+// A group heading in Commands.md must have a command under it. `## Answering
+// from the tower` was 43 lines of prose with no `###` of its own, so the four
+// entries that followed -- tools, outdated, layout, version -- became its
+// children in the outline: unrelated commands filed as sub-topics of the
+// tower's reply feature. The page read as disorganised because it was.
+func TestEveryCommandsHeadingHasACommandUnderIt(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "wiki", "Commands.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	group, held, groups := "", false, 0
+	for _, line := range strings.Split(string(body), "\n") {
+		switch {
+		case strings.HasPrefix(line, "## "):
+			if group != "" && !held {
+				t.Errorf("%q has no command under it; the entries after it read as its children", group)
+			}
+			group, held = strings.TrimPrefix(line, "## "), false
+			groups++
+		case strings.HasPrefix(line, "### `bothy"):
+			held = true
+		}
+	}
+	if group != "" && !held {
+		t.Errorf("%q has no command under it", group)
+	}
+	if groups < 3 {
+		t.Fatalf("found %d group headings; the page shape has changed", groups)
 	}
 }

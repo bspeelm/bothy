@@ -236,15 +236,4 @@ command can touch it. See [Walling off the agent](Walling-off-the-agent).
 A confined agent does open in this project's box, because `bothy confine`
 launches the same way `bothy` does.
 
-## Commands
-
-| | |
-|---|---|
-| `bothy box` | which box this project uses, and which rule chose it |
-| `bothy box ls` | every box, whether it is running, and the sessions in it |
-| `bothy box use <name>` | move this project to another box (`host` for none) |
-| `bothy box stop <name>` | stop a box nothing is using |
-| `bothy box create <name>` | make one, use it for this project, offer to install the tools |
-| `bothy box rm <name>` | delete one, and say where its projects open now |
-
 [All commands](Commands) · [Walling off the agent](Walling-off-the-agent)
