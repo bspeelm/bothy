@@ -495,28 +495,61 @@ var retiredUninstallClaims = []string{
 	"the three things it leaves",
 }
 
-func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
+// proseSurfaces is every file whose prose someone relies on -- users mostly,
+// maintainers for the packaging runbook -- in one place rather than appended to
+// each guard that needs it. Both prose guards
+// grew their file lists by hand and both had holes: one skipped _test.go, the
+// other skipped the release footer, and the uninstall claim then survived in a
+// third place neither read -- the rpm %description, which is what `dnf info`
+// prints.
+func proseSurfaces(t *testing.T) []string {
+	t.Helper()
 	root := "../.."
 	files, err := filepath.Glob(filepath.Join(root, "docs", "*.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	files = append(files, filepath.Join(root, "README.md"),
-		filepath.Join(root, "CONTRIBUTING.md"), filepath.Join(root, "SECURITY.md"))
-	// The help text carried this one too, so the source is in scope -- and so
-	// is the release footer, which is where the claim survived longest: it is
-	// prose, on the busiest surface, in a file no prose check was reading.
-	files = append(files, filepath.Join(root, "cmd", "bothy", "main.go"),
-		filepath.Join(root, ".goreleaser.yaml"))
+	for _, f := range []string{
+		"README.md", "CONTRIBUTING.md", "SECURITY.md",
+		// The help text is prose that ships in the binary.
+		filepath.Join("cmd", "bothy", "main.go"),
+		// The release page footer and the deb description live here, and the
+		// second survived a fix to the first.
+		".goreleaser.yaml",
+		// What `dnf info` and `pacman -Si` print.
+		filepath.Join("packaging", "bothy.spec"),
+		filepath.Join("packaging", "aur", "PKGBUILD"),
+		filepath.Join("packaging", "README.md"),
+		filepath.Join("packaging", "aur", "README.md"),
+		// What the install script tells someone while it runs.
+		filepath.Join("bootstrap", "install.sh"),
+	} {
+		files = append(files, filepath.Join(root, f))
+	}
+	wiki, err := filepath.Glob(filepath.Join(root, "wiki", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return append(files, wiki...)
+}
 
-	for _, f := range files {
+// flowed folds every run of whitespace to one space, so a claim that wraps
+// across lines still matches. The deb description said "removes that one\n
+// directory" and a substring check read straight past it, in the same file
+// whose footer had just been corrected.
+func flowed(body []byte) string {
+	return strings.Join(strings.Fields(strings.ToLower(string(body))), " ")
+}
+
+func TestNoDocRepeatsARetiredUninstallClaim(t *testing.T) {
+	for _, f := range proseSurfaces(t) {
 		body, err := os.ReadFile(f)
 		if err != nil {
 			continue
 		}
-		lower := strings.ToLower(string(body))
+		text := flowed(body)
 		for _, claim := range retiredUninstallClaims {
-			if strings.Contains(lower, claim) {
+			if strings.Contains(text, claim) {
 				t.Errorf("%s says %q; uninstall removes the tree and the binary "+
 					"and names what it leaves", filepath.Base(f), claim)
 			}
@@ -1183,5 +1216,77 @@ func TestNoTrackedFileNamesThisMachine(t *testing.T) {
 					"use the generic cast (api, notes, dev) instead", f)
 			}
 		}
+	}
+}
+
+// notProse is every file the discovery below finds and proseSurfaces leaves
+// out, with the reason. A file is in one list or the other, so a new one fails
+// this test until someone says which -- which is the only part of #271 that
+// stops a third hole appearing. Both earlier holes were file lists grown by
+// hand, and neither list said what it was leaving out.
+var notProse = map[string]string{
+	// Generated from wiki/ by the wiki workflow; the source is in scope.
+	"docs/images":            "images",
+	"docs/history":           "a frozen record of what was planned, not a claim about what is",
+	"CHANGELOG.md":           "generated from commits",
+	".github/ISSUE_TEMPLATE": "prompts for a human, not statements about bothy",
+	"CLAUDE.md":              "instructions to whoever is working here, not a claim to a user",
+}
+
+// TestEveryProseFileIsClassified fails on a prose file that no list mentions.
+// Discovery is deliberately wider than proseSurfaces: the point is to notice a
+// surface nobody has thought about, which is how the uninstall claim reached
+// the rpm description and the wiki.
+func TestEveryProseFileIsClassified(t *testing.T) {
+	root := "../.."
+	out, err := exec.Command("git", "-C", root, "ls-files").Output()
+	if err != nil {
+		t.Skip("not a git checkout")
+	}
+	known := map[string]bool{}
+	for _, f := range proseSurfaces(t) {
+		rel, err := filepath.Rel(root, f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		known[filepath.ToSlash(rel)] = true
+	}
+
+	excused := func(f string) bool {
+		for prefix := range notProse {
+			if f == prefix || strings.HasPrefix(f, prefix+"/") {
+				return true
+			}
+		}
+		return false
+	}
+
+	found := 0
+	for _, f := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if f == "" || strings.HasPrefix(f, "vendor/") {
+			continue
+		}
+		// Markdown is prose by definition. The rest are the file types that
+		// have actually carried a user-facing claim: packaging metadata, the
+		// install script, and the release configuration.
+		if strings.HasSuffix(f, "_test.go") {
+			continue // code; TestNoTrackedFileNamesThisMachine reads these
+		}
+		prose := strings.HasSuffix(f, ".md") ||
+			strings.HasPrefix(f, "packaging/") ||
+			strings.HasPrefix(f, "bootstrap/") ||
+			f == ".goreleaser.yaml"
+		if !prose {
+			continue
+		}
+		found++
+		if known[f] || excused(f) {
+			continue
+		}
+		t.Errorf("%s carries prose and is in neither proseSurfaces nor notProse; "+
+			"add it to the guards' list, or say why it is exempt", f)
+	}
+	if found == 0 {
+		t.Fatal("discovery found no prose files at all; this test is asserting nothing")
 	}
 }

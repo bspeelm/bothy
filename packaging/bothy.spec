@@ -35,8 +35,9 @@ BuildRequires:  git-core
 bothy launches a persistent terminal layout — a file browser, an agent and a
 shell — and tells you what is broken and how to fix it. It installs any tool
 you are missing into its own directory, writes its own configs there, and
-leaves your dotfiles alone: everything it manages lives under
-~/.local/share/bothy, and `bothy uninstall` removes that one directory.
+leaves your dotfiles alone: its own things live under ~/.local/share/bothy and
+your settings under ~/.config/bothy, and `bothy uninstall` removes the tree and
+the binary, naming what it leaves.
 
 %prep
 %autosetup -n %{name}-%{version}

@@ -381,6 +381,6 @@ it does not upgrade.
 
 ### `bothy uninstall [--dry-run]`
 
-Removes bothy's tree and the binary, and names the three things it leaves: your
-settings, the container image if you confined the agent, and the desktop entry
-if you added one. `--dry-run` shows what would go.
+Removes bothy's tree and the binary, and names what it leaves: your settings,
+the container image if you confined the agent, the desktop entry if you added
+one, and any completion script it installed. `--dry-run` shows what would go.
