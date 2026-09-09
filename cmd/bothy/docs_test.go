@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/bspeelm/bothy/internal/fetch"
 	"os"
 	"os/exec"
@@ -1288,5 +1289,47 @@ func TestEveryProseFileIsClassified(t *testing.T) {
 	}
 	if found == 0 {
 		t.Fatal("discovery found no prose files at all; this test is asserting nothing")
+	}
+}
+
+// The doctor's check count was stated in four wiki pages and enforced nowhere.
+// It is now stated once and read from the registry, so adding a check fails here
+// rather than making four pages wrong.
+func TestTheDocumentedCheckCountMatchesTheRegistry(t *testing.T) {
+	root := "../.."
+	reg, err := os.ReadFile(filepath.Join(root, "internal", "doctor", "doctor.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := len(regexp.MustCompile(`\{ID: "`).FindAll(reg, -1))
+	if n == 0 {
+		t.Fatal("no checks found in the registry; this test is asserting nothing")
+	}
+	page := filepath.Join(root, "wiki", "The-doctor.md")
+	body, err := os.ReadFile(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := fmt.Sprintf("%d checks", n); !strings.Contains(string(body), want) {
+		t.Errorf("The-doctor.md does not say %q; the registry holds %d", want, n)
+	}
+	// And nowhere else states a count, or this drifts again.
+	others, err := filepath.Glob(filepath.Join(root, "wiki", "*.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := regexp.MustCompile(`(?i)\b(thirty|forty|\d\d)[ -]?\w* checks\b`)
+	for _, f := range others {
+		if filepath.Base(f) == "The-doctor.md" {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		if m := count.Find(b); m != nil {
+			t.Errorf("%s states a check count (%q); the count lives in The-doctor.md alone",
+				filepath.Base(f), m)
+		}
 	}
 }

@@ -178,7 +178,7 @@ bothy leaves them alone.
 
 ### `bothy doctor [--json]`
 
-Thirty checks against the workspace, each with a fix. This is the command
+Checks the workspace, each with a fix. This is the command
 the project is built around: [The doctor](The-doctor) explains the output,
 the severities and the capability grouping.
 

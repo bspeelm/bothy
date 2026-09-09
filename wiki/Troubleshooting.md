@@ -1,6 +1,6 @@
 # Troubleshooting
 
-**Run `bothy doctor` first.** Thirty checks, each carrying the command
+**Run `bothy doctor` first.** Every check carries the command
 that fixes it — a test fails if any check reports a failure without one. This
 page is the handful people actually hit, by symptom.
 
