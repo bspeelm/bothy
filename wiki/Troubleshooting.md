@@ -56,9 +56,9 @@ your setup is untouched. To use yours instead:
 passthrough = ["browser"]
 ```
 
-Name the slot, not the program. To adjust bothy's rather than replace it, drop
-a file in `~/.config/bothy/overrides/<tool>/<file>` — it is appended, so yours
-wins. See [Swapping parts](Swapping-parts-and-theming).
+Name the slot, not the program. See
+[Swapping parts](Swapping-parts-and-theming#using-your-own-tool-config-instead),
+which also covers adjusting bothy's config rather than replacing it.
 
 ## Yazi behaves oddly, or keys do nothing
 
@@ -78,32 +78,28 @@ $ bothy box
   because   bothy installed its tools there
 ```
 
-That reason is the last resort — it means nothing else had an answer, so bothy
-fell back to wherever it installed its own tools. `bothy box use <name>` sets
-the right one for this project and remembers it.
-
-If the reason is *bothy is already running in that box*, you launched from
-inside a box, and that always wins. Open the project from a terminal outside
-any box and it will use its own.
+`bothy box use <name>` sets the right one for this project and remembers it.
+The reason names which rule answered, and
+[Toolboxes](Toolboxes#which-box-a-project-opens-in) says what each one means.
 
 If a pane dies with "command not found" after moving, run `bothy doctor` inside
 the new box: tools bothy reused from the system exist in some boxes and not
-others. [Toolboxes](Toolboxes) explains all of it.
+others.
 
 ## `bothy confine` fails
 
 It needs rootless podman, and an image you build once. `bothy confine` with no
-image prints the two commands. Inside a Toolbx, podman is on the *host* —
-bothy handles that itself, but your own `podman build` needs
-`flatpak-spawn --host`. See [Walling off the agent](Walling-off-the-agent).
+image prints the two commands. Inside a Toolbx your own `podman build` needs a
+hop to the host, which
+[Walling off the agent](Walling-off-the-agent#inside-a-toolbox) spells out.
 
 With no podman at all it fails and says so; it never silently runs unconfined.
 
 ## macOS refuses to run it
 
 Gatekeeper, because bothy is unsigned. `xattr -dr com.apple.quarantine "$(which
-bothy)"` clears it, and the doctor prints that with your path filled in. The
-Homebrew cask does it during install. See [Installing](Installing#macos-gatekeeper).
+bothy)"` clears it, and the doctor prints that with your path filled in. See
+[Installing](Installing#macos-gatekeeper).
 
 ## Something else
 

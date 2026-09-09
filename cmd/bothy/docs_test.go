@@ -1339,6 +1339,9 @@ func TestTheDocumentedCheckCountMatchesTheRegistry(t *testing.T) {
 // tool count comes from the lock, the command count from the dispatch, the check
 // count from the registry and the budgets from the Makefile; these are the rest,
 // and both were true when this was written.
+//
+// The box rules are read from Toolboxes.md, which owns them: Commands.md
+// restated them in prose and now links instead.
 func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
 	root := "../.."
 	// Resolve returns one Box per rule plus a fallback carrying only a reason.
@@ -1356,7 +1359,7 @@ func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
 		want       int
 	}{
 		{"README.md", "slots", len(config.SlotNames())},
-		{filepath.Join("wiki", "Commands.md"), "rules", rules},
+		{filepath.Join("wiki", "Toolboxes.md"), "rules", rules},
 	} {
 		word, ok := spelled[c.want]
 		if !ok {
@@ -1369,5 +1372,77 @@ func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
 		if want := word + " " + c.noun; !strings.Contains(flowed(body), want) {
 			t.Errorf("%s does not say %q; the code has %d", c.file, want, c.want)
 		}
+	}
+}
+
+// A group heading in Commands.md must have a command under it. `## Answering
+// from the tower` was 43 lines of prose with no `###` of its own, so the four
+// entries that followed -- tools, outdated, layout, version -- became its
+// children in the outline: unrelated commands filed as sub-topics of the
+// tower's reply feature. The page read as disorganised because it was.
+func TestEveryCommandsHeadingHasACommandUnderIt(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "wiki", "Commands.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	group, held, groups := "", false, 0
+	for _, line := range strings.Split(string(body), "\n") {
+		switch {
+		case strings.HasPrefix(line, "## "):
+			if group != "" && !held {
+				t.Errorf("%q has no command under it; the entries after it read as its children", group)
+			}
+			group, held = strings.TrimPrefix(line, "## "), false
+			groups++
+		case strings.HasPrefix(line, "### `bothy"):
+			held = true
+		}
+	}
+	if group != "" && !held {
+		t.Errorf("%q has no command under it", group)
+	}
+	if groups < 3 {
+		t.Fatalf("found %d group headings; the page shape has changed", groups)
+	}
+}
+
+// A wiki page links to another by bare name, and to a section by an anchor
+// derived from its heading text. Nothing checked either except Home's own
+// links, so 23 of the 38 were unverified -- and moving a section between pages
+// is exactly when they break. Renaming a heading breaks an anchor silently,
+// because the published wiki has no redirects and returns a 404.
+func TestEveryWikiLinkResolves(t *testing.T) {
+	pages, err := filepath.Glob(filepath.Join("..", "..", "wiki", "*.md"))
+	if err != nil || len(pages) == 0 {
+		t.Fatal("no wiki pages; this test is asserting nothing")
+	}
+	exists := map[string]string{}
+	for _, p := range pages {
+		exists[strings.TrimSuffix(filepath.Base(p), ".md")] = p
+	}
+	// A bare-name target: [text](Page) or [text](Page#section). An http link is
+	// somebody else's to keep working.
+	link := regexp.MustCompile(`\]\(([A-Z][A-Za-z-]*)(?:#([a-z0-9-]+))?\)`)
+	found := 0
+	for _, p := range pages {
+		body, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range link.FindAllStringSubmatch(string(body), -1) {
+			found++
+			target, ok := exists[m[1]]
+			if !ok {
+				t.Errorf("%s links to %q, which is not a wiki page", filepath.Base(p), m[1])
+				continue
+			}
+			if m[2] != "" && !hasHeading(t, target, m[2]) {
+				t.Errorf("%s links to %s#%s; that page has no heading with that anchor",
+					filepath.Base(p), m[1], m[2])
+			}
+		}
+	}
+	if found < 20 {
+		t.Fatalf("found %d wiki links; the parser has rotted", found)
 	}
 }

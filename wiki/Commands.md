@@ -1,10 +1,11 @@
 # Commands
 
-Fifteen, and you need three of them. `bothy` opens the workspace, `bothy
-doctor` says what is wrong, `bothy config set` changes a setting. The rest are
-for a specific afternoon.
+One entry per command: what it does, and its flags. Anything with a page of its
+own is linked from its entry rather than explained twice.
 
-`bothy --help` prints the same list; this page says what each one actually does.
+`bothy` opens the workspace, `bothy tower` watches every agent at once, and
+`bothy doctor` says what is wrong. The rest are for a specific afternoon.
+`bothy --help` prints the same list.
 
 ## Opening the workspace
 
@@ -92,6 +93,31 @@ refuses the session you are currently in, because that is what `Ctrl-q` is for,
 and refuses one that has already stopped, because that is what
 `bothy ls --prune` is for.
 
+### `bothy keys`
+
+The bindings worth knowing on a first day. They are Zellij's, not bothy's —
+bothy leaves them alone.
+
+## Watching several at once
+
+### `bothy tower [--mirror session] [--every duration]`
+
+One window showing every running agent, so several sessions can be watched from
+one place. Each row mirrors one session's agent pane; type into a mirror and the
+line goes to that agent. The tower reads panes and sends nothing of its own.
+
+| flag | |
+|---|---|
+| `--mirror <session>` | watch one session and nothing else |
+| `--every <duration>` | the refresh interval |
+| `--no-expand` | leave your panes as they are, at the cost of thin mirrors |
+| `--restore` | collapse agent panes a closed terminal left expanded |
+
+[The tower](The-tower) — reading a mirror, answering an agent, and why it
+expands the panes it watches.
+
+## Where it opens
+
 ### `bothy box [ls|use|stop|create|rm]`
 
 Which toolbox this project opens in, and why:
@@ -103,49 +129,24 @@ $ bothy box
   because   this project is recorded for it
 ```
 
-The reason matters as much as the name: four rules can decide it, and the one
-that answered is the one to change. `bothy box ls` shows every box on the
-machine and the sessions really in each, marking this project's:
+The reason matters as much as the name: several rules can decide it, and the one
+that answered is the one to change.
 
-```
-* dev                      running   bothy-api
-  docs                     exited
-  legacy                   running   bothy-legacy
-  rust                     exited
-```
+| | |
+|---|---|
+| `bothy box` | which box this project uses, and which rule chose it |
+| `bothy box ls` | every box, whether it is running, and the sessions in it |
+| `bothy box use <name>` | move this project to another box (`host` for none) |
+| `bothy box stop <name>` | stop a box nothing is using |
+| `bothy box create <name>` | make one, use it, offer to install the tools |
+| `bothy box rm <name>` | delete one, and say where its projects open now |
 
 Sessions are read from the process table, not from bothy's record, so a session
-somewhere unexpected is listed where it actually is.
+somewhere unexpected is listed where it actually is. `use` and `rm` end a
+running session first and say so; `--yes` answers for you.
 
-`bothy box use <name>` moves this project to another box, and `bothy box use
-host` moves it out of every box. The session has to end first — the multiplexer
-server runs *inside* the container, so there is no carrying a running one
-across — so it says what will end and asks:
-
-```
-$ bothy box use rust
-bothy-api is running and has to end before this project can move to rust.
-end it? [y/N]
-```
-
-`--yes` answers for you; without a terminal and without `--yes` it refuses,
-which is the opposite of every other prompt in bothy and deliberate: refusing a
-download costs a download, and refusing this costs a running session.
-
-`bothy box stop <name>` stops a box nothing is using. It **stops** it — the
-container and everything installed in it are still there, and the next
-`toolbox run` starts it again. It refuses a box with a live session in it and
-names the session. This is a `podman stop` under a nicer name: toolbox has no
-stop of its own, and from inside a box you have no podman either.
-
-`bothy box create <name>` hands the work to `toolbox create` and then does the
-two things toolbox cannot — record that this project belongs in the new box,
-and offer to install bothy's tools inside it, which is where the missing-tool
-trap starts. `bothy box rm <name>` is the other end of that: `toolbox rm`, and
-then every project that pointed at the box is told where it opens now.
-
-[Toolboxes](Toolboxes) has the rules, the first-run prompt, and what happens on
-a machine with no toolboxes.
+[Toolboxes](Toolboxes#which-box-a-project-opens-in) has the rules, the
+first-run prompt, and what happens on a machine with no toolboxes.
 
 ### `bothy connect [edit] <host>`
 
@@ -169,10 +170,13 @@ Inside the workspace, `on <command>` runs something on that machine in the
 right directory — the agent needs it because the paths on the two machines
 differ. [Connecting](Connecting) explains all of it.
 
-### `bothy keys`
+### `bothy confine`
 
-The bindings worth knowing on a first day. They are Zellij's, not bothy's —
-bothy leaves them alone.
+Runs the agent pane in a rootless podman container, with the project directory
+and the agent's credentials mounted and nothing else from `$HOME`. Opt-in;
+there is no setting that turns it on. See
+[Walling off the agent](Walling-off-the-agent) — including what it deliberately
+does not stop.
 
 ## Finding out what is wrong
 
@@ -181,99 +185,6 @@ bothy leaves them alone.
 Checks the workspace, each with a fix. This is the command
 the project is built around: [The doctor](The-doctor) explains the output,
 the severities and the capability grouping.
-
-### `bothy tower [--mirror session] [--every duration]`
-
-One window showing every running agent, so several open sessions can be watched
-from one place.
-
-```
-$ bothy tower
-watching 3 agent(s)
-```
-
-Each row mirrors one session's agent pane, refreshed every two seconds. Move
-between rows with `Alt+h/j/k/l`, the multiplexer's own pane navigation.
-
-The tower reads panes and writes nothing to them. It sends no input to an agent,
-starts and stops nothing, and creates no session but its own — so an agent
-cannot be disturbed by being watched. It also attaches to nothing: a second
-terminal attached to a session would size that session to the smaller of the two
-windows.
-
-A session is shown when it is running and has a live agent pane. A session whose
-agent has exited is skipped, because the pane outlives the agent and would show a
-frozen screen.
-
-An agent walled off with `bothy confine` is watched like any other. Its pane runs
-podman rather than the agent, so it is found by the pane's name instead.
-
-`--mirror <session>` watches one session and nothing else. `--every` sets the
-refresh interval.
-
-**The tower expands each agent pane before it opens.** A mirror can only show
-what its pane displays, and a cockpit gives its agent about a quarter of the
-window — 57 columns by 23 rows, against 191 by 46 for the same pane filling its
-tab. So the tower makes each watched agent pane fullscreen in its own window,
-which is what makes a mirror worth reading.
-
-It reads the state before changing it, so a pane you had already expanded is
-left alone, and it puts back only the panes it expanded — checking again on the
-way out, because you may have collapsed one yourself in the meantime. Fullscreen
-is `Ctrl+P` then `f`, and that keeps working normally while the tower runs.
-
-`--no-expand` leaves your panes exactly as they are, at the cost of thin
-mirrors. `--restore` collapses expanded agent panes, for when a terminal was
-closed before the tower could put them back.
-
-Mirrors sit **side by side** when the window is wide enough to hold them all at
-their own width, and stack when it is not; `bothy tower` says which it chose.
-Stacked, each shows the bottom of its pane — enough to see which agent wants
-you — and the multiplexer's fullscreen binding on a tower pane then shows the
-whole thing.
-
-## Answering from the tower
-
-Type into a mirror and press Enter, and the line goes to the agent that mirror
-is watching, as if you had typed it in that agent's own window. Move between
-mirrors with `Alt+h/j/k/l` first, so the reply goes where you are looking.
-
-**bothy relays; it does not speak.** Everything that reaches an agent came from
-your keyboard. bothy composes nothing, answers nothing on your behalf, and
-sends nothing on a timer.
-
-The bottom two rows of a mirror are yours. Nothing the mirror draws reaches
-them, so a reply stays on screen while the agent above it keeps working — you
-can type at an agent mid-thought, which is when you most often want to.
-
-**A message can span lines.** End a line with a backslash and the next line
-joins it; the message goes when a line does not end in one:
-
-```
-> the failing test is in tower_test.go \
-> and the fixture it reads is list-panes.json \
-> can you check the field names
-```
-
-Shift+Enter does not do this, and cannot. The tower reads your typing the way a
-shell prompt does, where the terminal ends the line when you press Enter — so
-there is no key that means "newline, but keep going". The backslash is the
-shell's answer to the same problem. To send a message that really ends in a
-backslash, type two.
-
-A multi-line message arrives as one message rather than one per line, so the
-agent sees it whole.
-
-This sends text. It does not send arrows, tab, or Ctrl-C, so a question that has
-to be answered by moving a selection still needs its own window.
-
-If a reply cannot be delivered — the session went away, or its agent pane did —
-the mirror says so where you typed it, rather than letting the line vanish.
-
-**It cannot bring a session's window to the front.** Selecting a row shows you
-which session wants attention; switching to it is yours to do. No Wayland
-compositor lets one application raise another's window, and bothy will not
-install a shell extension to get around that.
 
 ### `bothy tools`
 
@@ -292,19 +203,10 @@ published, so the release cannot have been changed after publication.
 of what bothy downloaded on the day it was pinned. Neither says the release
 itself is good; see [Security](Security).
 
-### `bothy outdated [--json]`
-
-Which pinned tools have newer releases upstream. Reports; it does not upgrade.
-The pins live in [`bothy.lock`](https://github.com/bspeelm/bothy/blob/main/bothy.lock).
-
 ### `bothy layout [--profile P]`
 
 Prints the Zellij layout bothy would launch, generated from the profile. For
 when you doubt what it is about to do.
-
-### `bothy version`
-
-The version, and whether it is a release or a source build.
 
 ## Changing things
 
@@ -335,13 +237,7 @@ Every generated file says it is bothy's and names where to put your own changes.
 Prints a blank eleven-token palette to fill in. Point bothy at the result with
 `bothy config set theme.palette <path>`.
 
-### `bothy desktop-entry [--install]`
-
-Prints a `.desktop` launcher that opens the workspace in a directory.
-`--install` writes it; `--remove` deletes it. It lands outside bothy's tree by
-necessity, so `bothy uninstall` names it rather than removing it.
-
-## The rest
+## Files outside bothy's tree
 
 ### `bothy completion <bash|zsh> [--install] [--remove]`
 
@@ -358,20 +254,25 @@ but 'bothy completion bash --remove' will.
 You need this only if bothy came from the install script, Homebrew or
 `go install`. dnf, apt, pacman and the AUR place these files themselves.
 
-The file goes outside bothy's directory because the shell has to find it there,
-which is the same exception the desktop entry makes. `bothy uninstall` names it
-on the way out rather than removing it.
+[Installing](Installing#tab-completion) covers the zsh `fpath` line and why the
+file sits outside bothy's tree.
 
-zsh has no per-user directory it reads by default, so `--install` prints the one
-`fpath` line to add to your `~/.zshrc`. bash needs nothing.
+### `bothy desktop-entry [--install]`
 
-### `bothy confine`
+Prints a `.desktop` launcher that opens the workspace in a directory.
+`--install` writes it; `--remove` deletes it. It lands outside bothy's tree by
+necessity, so `bothy uninstall` names it rather than removing it.
 
-Runs the agent pane in a rootless podman container, with the project directory
-and the agent's credentials mounted and nothing else from `$HOME`. Opt-in;
-there is no setting that turns it on. See
-[Walling off the agent](Walling-off-the-agent) — including what it deliberately
-does not stop.
+## Upgrading and removing
+
+### `bothy version`
+
+The version, and whether it is a release or a source build.
+
+### `bothy outdated [--json]`
+
+Which pinned tools have newer releases upstream. Reports; it does not upgrade.
+The pins live in [`bothy.lock`](https://github.com/bspeelm/bothy/blob/main/bothy.lock).
 
 ### `bothy upgrade`
 
@@ -381,6 +282,7 @@ it does not upgrade.
 
 ### `bothy uninstall [--dry-run]`
 
-Removes bothy's tree and the binary, and names what it leaves: your settings,
-the container image if you confined the agent, the desktop entry if you added
-one, and any completion script it installed. `--dry-run` shows what would go.
+Removes bothy's tree and the binary, and names what it leaves rather than
+leaving you to find them. `--dry-run` shows what would go.
+
+[Installing](Installing#removing-it) lists what stays behind, and why.

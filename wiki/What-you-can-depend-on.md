@@ -31,3 +31,5 @@ there is a reason.
 [ADR-036](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-036--what-stable-obliges-and-why-the-config-schema-warns)
 records what this obliges and why a config from a newer bothy warns rather than
 refuses.
+
+[The doctor](The-doctor) · [All commands](Commands)
