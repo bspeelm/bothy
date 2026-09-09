@@ -88,6 +88,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"image-previews":        doctor.Pass, // no graphics terminal and no preview block: they agree
 	"profile-renders":       doctor.Pass,
 	"layout-built":          doctor.Skip, // only meaningful inside a live zellij session
+	"pane-fields":           doctor.Skip, // same: there are no panes to describe
 	"one-client":            doctor.Skip, // same: there is no session to count clients on
 	"terminal-capability":   doctor.Warn, // nothing here can draw images: the one expected warning
 	"passthrough":           doctor.Skip, // none configured
