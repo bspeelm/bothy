@@ -39,6 +39,8 @@ Two directories, and it is worth knowing which is which:
 ## Using it
 
 - **[Commands](Commands)** — all nineteen, with their flags.
+- **[The tower](The-tower)** — every running agent in one window, and
+  answering one without leaving it.
 - **[The doctor](The-doctor)** — how to read a report, and why a capability can
   come back unavailable rather than broken.
 - **[Installing](Installing)** — every channel, what each one checks, and the

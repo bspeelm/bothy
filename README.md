@@ -129,8 +129,8 @@ nothing, so watching a session cannot disturb it.
 It expands each watched agent pane to fill its window first, because a mirror
 can only show what its pane displays and a cockpit gives its agent about a
 quarter of the screen. Your panes are put back when the tower closes.
-[How it works, in
-full](https://github.com/bspeelm/bothy/wiki/Commands#bothy-tower---mirror-session---every-duration).
+[The tower, in
+full](https://github.com/bspeelm/bothy/wiki/The-tower#why-it-expands-the-panes-it-watches).
 
 ## Toolboxes
 
