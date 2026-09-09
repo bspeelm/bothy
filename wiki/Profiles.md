@@ -77,3 +77,5 @@ reports `panes` as available when the profile renders and the multiplexer
 builds what it describes; a two-pane profile of your own is fine, and `bothy
 doctor` will tell you what it got
 ([ADR-017](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-017--the-invariant-is-three-panes-everything-else-is-a-provider)).
+
+[Swapping parts, and theming](Swapping-parts-and-theming) · [All commands](Commands)

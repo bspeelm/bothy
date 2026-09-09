@@ -1,9 +1,8 @@
 # Walling off the agent
 
 `bothy confine` runs the agent pane in a rootless podman container. What it
-stops and what it deliberately does not is in the
-[README](https://github.com/bspeelm/bothy#walling-off-the-agent); this page is
-the setup.
+stops and what it deliberately does not is in
+[Security](Security#the-wall-around-the-agent); this page is the setup.
 
 ## Three commands, once
 

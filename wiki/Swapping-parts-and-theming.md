@@ -2,6 +2,8 @@
 
 Every part can be changed. Most of it needn't be, and most of it won't be.
 
+## The five slots
+
 | part | default | alternatives |
 |---|---|---|
 | terminal | ghostty | kitty, wezterm — none of which bothy installs |
@@ -18,19 +20,14 @@ bothy config set slots.editor helix
 Most people change the editor and nothing else. The others change everything,
 once, and then also nothing else.
 
-Three layouts come with bothy, and are called profiles because everything
-has to be called something. `cockpit` is the default: files on top, agent and
-shell beneath — the screenshot, and the reason any of this exists. `editor`
-puts an editor, an agent and a shell side by side, for people who would
-rather type than watch. `minimal` is an agent and a shell and nothing else,
-for small screens and for being somewhere else over SSH.
+The layout is separate from the parts, and is called a profile. Three ship, and
+`cockpit` is the default.
 
 ```sh
 bothy config set profile minimal
 ```
 
-Profiles are short TOML files. Write your own and put it in
-`~/.config/bothy/profiles/`.
+[Profiles](Profiles) describes each one and how to write your own.
 
 ## Theming
 

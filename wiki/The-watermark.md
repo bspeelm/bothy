@@ -60,3 +60,5 @@ background-image-opacity = 0.12
 because Ghostty says nothing about a `background-image` it cannot find. It
 draws nothing, which looks identical to "the opacity is too low" and sends you
 tuning a setting that was never the problem.
+
+[Swapping parts, and theming](Swapping-parts-and-theming) · [Profiles](Profiles)

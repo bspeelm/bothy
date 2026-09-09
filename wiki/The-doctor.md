@@ -66,10 +66,8 @@ quarantined.
 ## `--json`, and what it promises
 
 `--json` exists so something other than a person can read the report. Its shape
-is a stability surface: check IDs keep their meaning, and new checks are
-additive, so parse defensively and ignore what you do not recognise. See
-*What you can depend on* in the
-[README](https://github.com/bspeelm/bothy#what-you-can-depend-on) and
+is a stability surface, and what that obliges is set out in
+[What you can depend on](What-you-can-depend-on) and
 [ADR-036](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-036--what-stable-obliges-and-why-the-config-schema-warns).
 
 The IDs are the ones listed in `Checks()` in
