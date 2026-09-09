@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/bspeelm/bothy/internal/config"
 	"github.com/bspeelm/bothy/internal/fetch"
 	"os"
 	"os/exec"
@@ -1330,6 +1331,43 @@ func TestTheDocumentedCheckCountMatchesTheRegistry(t *testing.T) {
 		if m := count.Find(b); m != nil {
 			t.Errorf("%s states a check count (%q); the count lives in The-doctor.md alone",
 				filepath.Base(f), m)
+		}
+	}
+}
+
+// The counts in prose that had no enforcer, which a sweep found to be two. The
+// tool count comes from the lock, the command count from the dispatch, the check
+// count from the registry and the budgets from the Makefile; these are the rest,
+// and both were true when this was written.
+func TestTheRemainingProseCountsMatchTheCode(t *testing.T) {
+	root := "../.."
+	// Resolve returns one Box per rule plus a fallback carrying only a reason.
+	tools, err := os.ReadFile(filepath.Join(root, "internal", "install", "tools.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	all := len(regexp.MustCompile(`return Box\{`).FindAll(tools, -1))
+	fallback := len(regexp.MustCompile(`return Box\{Reason:`).FindAll(tools, -1))
+	rules := all - fallback
+
+	spelled := map[int]string{2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+	for _, c := range []struct {
+		file, noun string
+		want       int
+	}{
+		{"README.md", "slots", len(config.SlotNames())},
+		{filepath.Join("wiki", "Commands.md"), "rules", rules},
+	} {
+		word, ok := spelled[c.want]
+		if !ok {
+			t.Fatalf("%s: %d has no spelling here; add it", c.file, c.want)
+		}
+		body, err := os.ReadFile(filepath.Join(root, c.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := word + " " + c.noun; !strings.Contains(flowed(body), want) {
+			t.Errorf("%s does not say %q; the code has %d", c.file, want, c.want)
 		}
 	}
 }
