@@ -28,16 +28,6 @@ and no checksum can.
 proves you got the bytes bothy expected — it does not prove those bytes are
 good. bothy does not sign what it did not build.
 
-**What that comparison is worth, precisely.** The published file sits in the
-same release as the asset, so whoever can replace one can replace the other. It
-rules out a substitution *after* publication, and a download corrupted or
-intercepted on the way. It does not rule out a compromised release pipeline,
-and no checksum can.
-
-**The limit, stated plainly:** these are other projects' releases. A checksum
-proves you got the bytes bothy expected — it does not prove those bytes are
-good. bothy does not sign what it did not build.
-
 ## What bothy itself is signed with
 
 Nothing you have to trust a key for. Release artifacts are signed by the GitHub
