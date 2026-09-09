@@ -33,41 +33,37 @@ Two directories, and it is worth knowing which is which:
 
 ## Start here
 
-- **[Your first session](Your-first-session)** — opening the room, what the
-  three panes are for, moving between them, and leaving without losing them.
+- **[Your first session](Your-first-session)** — the room, and leaving without losing it.
+- **[Installing](Installing)** — every channel, and what each one checks.
 
-## Using it
+## Doing the work
 
 - **[Commands](Commands)** — all nineteen, with their flags.
-- **[The tower](The-tower)** — every running agent in one window, and
-  answering one without leaving it.
-- **[The doctor](The-doctor)** — how to read a report, and why a capability can
-  come back unavailable rather than broken.
-- **[Installing](Installing)** — every channel, what each one checks, and the
-  two platforms with edges.
-- **[Security](Security)** — what bothy verifies, what it deliberately does
-  not, and where the wall around the agent ends.
-- **[Troubleshooting](Troubleshooting)** — the failures people actually hit,
-  by symptom.
-- **[What happens when you type bothy](What-happens-when-you-type-bothy)** —
-  the run in order, with the reason for the order.
+- **[The tower](The-tower)** — every running agent in one window, and answering one.
+- **[Toolboxes](Toolboxes)** — which box a project opens in, and managing the ones you have.
+- **[Connecting](Connecting)** — a workspace on another machine, with nothing installed on it.
 
-## Fitting it to your machine
+## When it goes wrong
 
-- **[Toolboxes](Toolboxes)** — which box a project opens in, how bothy decides,
-  and the commands for the boxes you already have.
-- **[Connecting](Connecting)** — opening the workspace against another machine
-  over SSH, without putting anything on it.
-- **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy
-  confine`, the toolbox case, and removing it.
+- **[The doctor](The-doctor)** — reading a report, and why a capability comes back unavailable.
+- **[Troubleshooting](Troubleshooting)** — the failures people actually hit, by symptom.
+
+## Making it yours
+
 - **[Profiles](Profiles)** — the three layouts that ship, and writing your own.
-- **[The watermark](The-watermark)** — an image behind the terminal, off unless
-  you point at one.
-- **[Swapping parts, and theming](Swapping-parts-and-theming)** — the five
-  slots and the palette.
-- **[Where it runs](Where-it-runs)** — which terminals, which stacks, and what
-  is advised but untested.
+- **[Swapping parts, and theming](Swapping-parts-and-theming)** — the five slots and the palette.
+- **[The watermark](The-watermark)** — an image behind the terminal, off unless you ask.
+
+## Trust, and its limits
+
+- **[Security](Security)** — what bothy verifies, and what it deliberately does not.
+- **[Walling off the agent](Walling-off-the-agent)** — setting up `bothy confine`.
 - **[What you can depend on](What-you-can-depend-on)** — the stability contract.
+- **[Where it runs](Where-it-runs)** — which terminals and stacks, and what is untested.
+
+## How it works
+
+- **[What happens when you type bothy](What-happens-when-you-type-bothy)** — the run, in order.
 
 ## Why it is like this
 

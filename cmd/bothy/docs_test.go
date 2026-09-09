@@ -1405,3 +1405,44 @@ func TestEveryCommandsHeadingHasACommandUnderIt(t *testing.T) {
 		t.Fatalf("found %d group headings; the page shape has changed", groups)
 	}
 }
+
+// A wiki page links to another by bare name, and to a section by an anchor
+// derived from its heading text. Nothing checked either except Home's own
+// links, so 23 of the 38 were unverified -- and moving a section between pages
+// is exactly when they break. Renaming a heading breaks an anchor silently,
+// because the published wiki has no redirects and returns a 404.
+func TestEveryWikiLinkResolves(t *testing.T) {
+	pages, err := filepath.Glob(filepath.Join("..", "..", "wiki", "*.md"))
+	if err != nil || len(pages) == 0 {
+		t.Fatal("no wiki pages; this test is asserting nothing")
+	}
+	exists := map[string]string{}
+	for _, p := range pages {
+		exists[strings.TrimSuffix(filepath.Base(p), ".md")] = p
+	}
+	// A bare-name target: [text](Page) or [text](Page#section). An http link is
+	// somebody else's to keep working.
+	link := regexp.MustCompile(`\]\(([A-Z][A-Za-z-]*)(?:#([a-z0-9-]+))?\)`)
+	found := 0
+	for _, p := range pages {
+		body, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range link.FindAllStringSubmatch(string(body), -1) {
+			found++
+			target, ok := exists[m[1]]
+			if !ok {
+				t.Errorf("%s links to %q, which is not a wiki page", filepath.Base(p), m[1])
+				continue
+			}
+			if m[2] != "" && !hasHeading(t, target, m[2]) {
+				t.Errorf("%s links to %s#%s; that page has no heading with that anchor",
+					filepath.Base(p), m[1], m[2])
+			}
+		}
+	}
+	if found < 20 {
+		t.Fatalf("found %d wiki links; the parser has rotted", found)
+	}
+}
