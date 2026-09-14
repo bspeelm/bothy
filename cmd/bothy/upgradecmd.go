@@ -10,6 +10,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/fetch"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
 )
 
 // `bothy upgrade` -- how to upgrade this copy, and nothing else. It does not
@@ -36,7 +37,7 @@ func cmdUpgrade(args []string) error {
 	case lookupErr != nil:
 		fmt.Printf("bothy %s is installed. Could not reach GitHub to check for a newer one.\n", here)
 	case fetch.IsSourceBuild(here):
-		fmt.Printf("bothy %s is a source build, ahead of %s.\n", here, latest)
+		fmt.Printf("bothy %s is %s.\n", here, sourceStanding(here, latest))
 	case fetch.VersionFromTag(latest) == fetch.VersionFromTag(here):
 		fmt.Printf("bothy %s is the latest release.\n", here)
 	default:
@@ -52,6 +53,27 @@ func cmdUpgrade(args []string) error {
 	}
 	// Being out of date is a fact, not a failure -- see `bothy outdated`.
 	return nil
+}
+
+// sourceStanding places a source build against the latest release. A describe
+// string names the tag it was cut from -- v0.12.0-3-gabc1234 was built past
+// v0.12.0 -- so ordering that against the release is the whole comparison.
+//
+// Saying "ahead" without asking told anyone who built, waited for a release and
+// ran this afterwards that they were current when they were behind, which is
+// the one answer that stops someone upgrading.
+func sourceStanding(here, latest string) string {
+	built, hereErr := probe.ParseVersion(here)
+	released, latestErr := probe.ParseVersion(latest)
+	if hereErr != nil || latestErr != nil {
+		// "dev", or the bare SHA a clone with no tags describes to. Claiming
+		// either direction here would be the same fault in a new place.
+		return "a source build; " + fetch.VersionFromTag(latest) + " is the latest release"
+	}
+	if built.Less(released) {
+		return "a source build from before " + latest
+	}
+	return "a source build, past " + latest
 }
 
 // upgradeMethod works out how this copy was installed and what would replace
