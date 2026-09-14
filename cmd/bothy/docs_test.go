@@ -1148,6 +1148,10 @@ var genericPathWords = map[string]bool{
 	"root": true, "scripts": true, "share": true, "source": true,
 	"src": true, "state": true, "temp": true, "test": true, "tests": true,
 	"tmp": true, "user": true, "users": true, "work": true, "workspace": true,
+	// Every CI system has secrets; `secrets.GITHUB_TOKEN` is three workflows'
+	// ordinary vocabulary, and a directory of that name beside the checkout
+	// failed a build that had not touched them.
+	"secrets": true,
 }
 
 // localWords is what this machine is called and where it keeps its work: the
