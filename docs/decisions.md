@@ -2131,3 +2131,48 @@ ADR-049 to 8,100 for three fixes, this to 8,150 for the tower's input. The
 pattern says more about 7,500 as a baseline than about any of the three
 features, and the honest reading is that a tower plus a release of fixes is
 simply larger than that number was set to hold.
+
+## ADR-052 — The code cap rises to 8,175, and this is the fifth time
+
+**Status:** accepted. Amends ADR-051.
+
+`bothy upgrade` told every source build it was "ahead of" the latest release
+without comparing anything (#278). A build three commits past `v0.12.0`, with
+`v0.12.1` out, was told it led the release it was an ancestor of. Being told you
+are current is the one answer that stops someone upgrading, so this is a fix
+worth twelve lines.
+
+**Twelve is measured, not estimated.** `upgradecmd.go` goes from 81 to 93 code
+lines; the total is 8,162 against a cap of 8,150. The remaining thirteen are
+margin, named as margin. ADR-049 had to correct its own number mid-record for
+estimating low twice, and the correction there was to state the figure after
+building rather than before.
+
+**The fix needed no new machinery**, which is the reason it is twelve lines and
+not fifty. `probe.ParseVersion` already pulls the first dotted version out of
+any string -- it was written for `--version` output and takes a describe string
+without noticing -- and `probe.Version.Less` already orders numerically, which
+is what keeps 0.9.0 behind 0.12.1. The comparison is composed, not written.
+
+**The fat, as ADR-026 requires it be found first.** Empty again. No function
+exceeds eighty lines, the threshold ADR-026 used; the longest is `main` at 71.
+No unexported function in shipping code is referenced only by tests. That
+emptiness is what makes a threshold move legitimate rather than an excuse, and
+it is the third consecutive audit to find nothing.
+
+**This is the fifth raise: 5,000, 6,000, 7,800, 8,100, 8,150, and now.** ADR-026
+set the standard this fails -- *"a cap that has to be raised again in two
+milestones is not a cap, it is a recurring negotiation"* -- and 6,000 was
+explicitly "chosen to be argued once". It has been argued four times since.
+Recording that here rather than letting the numbers drift quietly is the only
+honest thing available at this size of change.
+
+**Two facts belong beside it.** The binary cap has never moved: 10 MB, and the
+binary is at 89% with 1.1 MB spare. ADR-026 called it "the limit a user can
+actually feel", and it is the one budget that has never needed arguing. And the
+test suite is 10,613 lines against 8,150 of shipping code -- larger than the
+thing it tests, and counted by no budget at all.
+
+Neither observation is acted on here. A change to what the budgets measure is
+its own decision, and making it inside a twelve-line bug fix would be exactly
+the quiet threshold move ADR-010 refused.

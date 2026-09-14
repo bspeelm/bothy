@@ -64,3 +64,37 @@ func TestDescribeInstallDoesNotTellASourceBuildToRunTheScript(t *testing.T) {
 		t.Errorf("a source build was told to run the install script: %q", how)
 	}
 }
+
+// `bothy upgrade` called every source build "ahead of" the latest release
+// without comparing anything, so a build from before a release was told it led
+// it. The shapes below are the ones `git describe --tags --always --dirty`
+// actually produces, enumerated in TestIsSourceBuildKnowsWhichVersionsAreAhead.
+func TestASourceBuildIsPlacedAgainstTheRelease(t *testing.T) {
+	for _, c := range []struct {
+		name, here, latest, want string
+	}{
+		// The reported case: three commits past v0.12.0, with v0.12.1 out.
+		{"behind the release", "v0.12.0-3-g4eb1a87", "v0.12.1", "from before v0.12.1"},
+		{"past the release", "v0.12.1-3-g4eb1a87", "v0.12.1", "past v0.12.1"},
+		{"past a newer tag", "v0.13.0-2-gabc1234", "v0.12.1", "past v0.12.1"},
+		{"dirty at the release", "v0.12.1-dirty", "v0.12.1", "past v0.12.1"},
+		{"dirty behind it", "v0.12.0-dirty", "v0.12.1", "from before v0.12.1"},
+		// Numeric, not lexical: 0.9.0 is behind 0.12.1 though "9" > "1".
+		{"double-digit minor", "v0.9.0-1-gabc1234", "v0.12.1", "from before v0.12.1"},
+		// Nothing to parse: it must not claim a direction either way.
+		{"no tag to describe from", "abc1234", "v0.12.1", "is the latest release"},
+		{"dev build", "dev", "v0.12.1", "is the latest release"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got := sourceStanding(c.here, c.latest)
+			if !strings.Contains(got, c.want) {
+				t.Errorf("sourceStanding(%q, %q) = %q, want it to contain %q",
+					c.here, c.latest, got, c.want)
+			}
+			// The old bug in one assertion: never "ahead" of something newer.
+			if c.want == "from before v0.12.1" && strings.Contains(got, "ahead") {
+				t.Errorf("sourceStanding(%q, %q) = %q; it is behind", c.here, c.latest, got)
+			}
+		})
+	}
+}
