@@ -15,15 +15,15 @@ linux_x86_64 = '761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7
 
 [[tool]]
 name = 'fzf'
-tag = 'v0.74.3'
-version = '0.74.3'
+tag = 'v0.74.4'
+version = '0.74.4'
 verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
-darwin_aarch64 = '1f8501cea4f9c0c2d6110d0ff75d0ec9451cd9d7524d9a26244a154ea89f3bd5'
-darwin_x86_64 = 'b8a231250eedec244539ade3dc437bcd60e545a099c6cc0c8a11bdbd8574b9bc'
-linux_aarch64 = '4a17a17b46bd0c4873e995533de508995c11572c0be0664a5dbcf13f60463046'
-linux_x86_64 = '3501a595e4b5c40a6b047340a0e8f805c46fd4e61ef95ef8a136ba8c61cf6f22'
+darwin_aarch64 = '4f6a113bfc0c7959e0005c78d566a51afc4fcefc956f43735c62a9deb19e92ae'
+darwin_x86_64 = '2d392b50be66e2ab104ccd52a6072df692b1f9b9c5b449a9c098de885f32c4c5'
+linux_aarch64 = '5d673b849f494f0d64ec471d8640b153ca8849e3846a31da17abdcfce8df6b46'
+linux_x86_64 = '05e6813a337cc722c3ed07e54a764b75cc5d671e2e60459db0ba696ee5fa7504'
 
 [[tool]]
 name = 'jq'
@@ -39,15 +39,15 @@ linux_x86_64 = 'b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f
 
 [[tool]]
 name = 'lazygit'
-tag = 'v0.65.0'
-version = '0.65.0'
+tag = 'v0.65.1'
+version = '0.65.1'
 verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
-darwin_aarch64 = 'd8ea1cade9e4279e45cbb58652e84edb07e98a9f8ec0604099c8b0a8f709e63a'
-darwin_x86_64 = '3848033450205f975aa6a587e76f01c9796bff3a3cc0e32060ac77b9423264e3'
-linux_aarch64 = 'd954a09c128bd37b2bd0d254308474e87de3729cfe0e37f5b46a49357a4fe257'
-linux_x86_64 = '44d8e7dd1484b4a66e191bd4ab25a71e8b4b3a65ab122f838e65677ef58c5506'
+darwin_aarch64 = '65a367c6ea9a88efebaaf7998a6835eedb987e04916cef677264ff9b31b1b13e'
+darwin_x86_64 = 'fde13daf583511aa24c42ca154911643231a5af784c7cdd8117264b2fc035b33'
+linux_aarch64 = '49abecdf6adf4f2dfdb11bf7b9bfada267ea523612ed809d1c6d87f6c04000a7'
+linux_x86_64 = '02beacbcda0fa342e50ae3480ba8147307353af3fb28e1d5f790e02329c201a6'
 
 [[tool]]
 name = 'ripgrep'
