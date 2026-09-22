@@ -454,3 +454,20 @@ func (Zellij) Send(bin, session, pane, line string, env []string) error {
 	_, err := sessionAction(bin, session, env, "write", "-p", pane, "13")
 	return err
 }
+
+// Join attaches a client to session from inside whatever pane this process
+// owns, and returns when it goes.
+//
+// Not sessionAction: this is the session itself, not an instruction about one,
+// so it takes the terminal. Not runReplacing either -- that exits the process,
+// and the mirror has to carry on watching afterwards.
+//
+// zellij notices it is running inside a pane of another session and routes keys
+// to this one; the config sets nested_session_handling so it zooms rather than
+// asking. A non-zero exit is the attach failing, which the caller reports.
+func (Zellij) Join(bin, session string, env []string) error {
+	cmd := exec.Command(bin, "attach", session)
+	cmd.Env = env
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}

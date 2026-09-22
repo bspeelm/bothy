@@ -49,3 +49,4 @@ func (None) Screen(string, string, string, []string) (string, error) {
 }
 func (None) Expand(string, string, string, []string) error       { return ErrUnsupported }
 func (None) Send(string, string, string, string, []string) error { return ErrUnsupported }
+func (None) Join(string, string, []string) error                 { return ErrUnsupported }

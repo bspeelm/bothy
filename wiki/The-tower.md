@@ -8,6 +8,10 @@ $ bothy tower
 watching 3 agent(s), side by side; 2 pane(s) expanded to be worth reading
 ```
 
+Three things you can do from there, in order of how much they ask of you: read
+what each agent is doing, type a reply to one, or take a session over and work
+in it directly.
+
 ## Reading the mirrors
 
 Each row mirrors one session's agent pane, refreshed every two seconds. Move
@@ -51,19 +55,59 @@ shell's answer to the same problem.
 If a reply cannot be delivered — the session went away, or its agent pane did —
 the mirror says so where you typed it, rather than letting the line vanish.
 
+## Taking over a session
+
+A mirror is a picture, and a picture cannot answer a menu. When an agent asks
+for something a sentence cannot give it — a numbered choice, a y/n, anything you
+would answer with the arrow keys — take the session over:
+
+```
+> /take
+```
+
+The pane stops mirroring and **becomes** that session. Not a better picture of
+it: the session itself, with your keyboard on it. Arrows, Esc, Tab, Ctrl-C, the
+agent's own bindings, its scrollback, all of it, because you are in it rather
+than looking at it. The other mirrors carry on behind you.
+
+`Ctrl-o d` — the way you leave any session — puts the pane back to mirroring.
+
+| | |
+|---|---|
+| `/take` | hand this pane to the session it is watching |
+| `Ctrl-o d` | give it back and return to mirroring |
+| `//take` | send the word `/take` to the agent instead |
+
+**`Ctrl-q` ends the session you are in**, exactly as it would in that session's
+own window. While you are taken over the keys are the session's, so bothy cannot
+catch that one for you. `Ctrl-o d` is the way out.
+
+### What it does to the windows
+
+The pane is made full size before the session arrives and put back when you
+leave, because a session running inside a pane takes its size once, on the way
+in, and never asks again.
+
+While you are in, that session has two windows — its own and this one — and it
+is sized to fit both. If its own window is open elsewhere it may shrink there
+for as long as you stay, and grow back when you leave. That is the cost of being
+in one session from two places, and the reason the tower mirrors rather than
+attaching the rest of the time.
+
 ## What it will not do
 
 **bothy relays; it does not speak.** Everything that reaches an agent came from
 your keyboard. bothy composes nothing, answers nothing on your behalf, and
-sends nothing on a timer.
+sends nothing on a timer. During a take-over it is not even relaying: the
+session has your keyboard directly, and bothy is not in between.
 
 Beyond the line you type, the tower reads panes and writes nothing to them. It
 starts and stops nothing, and creates no session but its own, so an agent cannot
-be disturbed by being watched. It also attaches to nothing: a second terminal
-attached to a session would size that session to the smaller of the two windows.
+be disturbed by being watched. It attaches to nothing unless you ask it to with
+`/take`, because a second window on a session resizes it.
 
-It sends text, and only text. Not arrows, not tab, not Ctrl-C — so a question
-that has to be answered by moving a selection still needs its own window.
+A relayed reply is text, and only text — not arrows, not tab, not Ctrl-C. A
+question that has to be answered by moving a selection is what `/take` is for.
 
 **It cannot bring a session's window to the front.** Selecting a row shows you
 which session wants attention; switching to it is yours to do. No Wayland

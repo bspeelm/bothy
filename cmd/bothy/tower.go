@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/layout"
@@ -178,6 +179,52 @@ func continues(line string) (string, bool) {
 		return line, false
 	}
 	return line[:len(line)-n] + strings.Repeat(`\`, n/2), n%2 == 1
+}
+
+// terminalPanes counts the panes that hold a mirror. One of them already fills
+// the tower, so expanding it changes no size and there would be nothing to wait
+// for.
+func terminalPanes(panes []mux.PaneRef) int {
+	n := 0
+	for _, p := range panes {
+		if !p.Plugin {
+			n++
+		}
+	}
+	return n
+}
+
+// ownPane finds this process's own pane among its session's. ZELLIJ_PANE_ID is
+// a bare number where Addr spells the same pane terminal_N.
+func ownPane(panes []mux.PaneRef, id string) (mux.PaneRef, bool) {
+	for _, p := range panes {
+		if !p.Plugin && strconv.Itoa(p.ID) == id {
+			return p, true
+		}
+	}
+	return mux.PaneRef{}, false
+}
+
+// takeOver is the word that hands a mirror over to a real client of the session
+// it watches. A reserved line rather than a keypress, because a single key
+// needs raw mode, and raw mode means writing the line editor -- backspace,
+// kill-line, cursor -- that the kernel gives for free in canonical mode.
+// ADR-051 declined that trade for Shift+Enter and it is still the wrong one.
+//
+// Doubling the slash sends the word itself, the same pairing rule the trailing
+// backslash uses to hold a message open.
+const takeOver = "/take"
+
+// command reports whether a typed line asks to take the session over, and
+// returns what to relay when it does not.
+func command(line string) (bool, string) {
+	if line == takeOver {
+		return true, ""
+	}
+	if line == "/"+takeOver {
+		return false, takeOver
+	}
+	return false, line
 }
 
 // replyPrompt puts the cursor on the reply line and marks it, so there is

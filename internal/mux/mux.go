@@ -104,6 +104,16 @@ type Backend interface {
 	// agent rather than whichever pane the session has focused. What bothy may
 	// send is only what someone typed; it originates nothing (ADR-048).
 	Send(bin, session, pane, line string, env []string) error
+
+	// Join hands this terminal to a real client of another session and returns
+	// when that client goes. It is how the tower stops mirroring and steps
+	// aside: while it runs, bothy is not in the input path at all, so every key
+	// works because the person is in the session rather than looking at it.
+	//
+	// The caller's stdio is the client's. Measured: the inner session receives
+	// Ctrl-o d and detaches, leaving the outer one untouched, so the host needs
+	// no mode change to get its keys through.
+	Join(bin, session string, env []string) error
 }
 
 // PaneRef is a pane of a running session: enough to find the agent's and no
@@ -115,7 +125,11 @@ type PaneRef struct {
 	Title   string `json:"title"`
 	Dir     string `json:"pane_cwd"`
 	Cols    int    `json:"pane_columns"`
-	Exited  bool   `json:"exited"`
+	// Rows is read to tell a pane that has been told to resize from one that
+	// has finished: the fullscreen flag flips when the toggle registers, the
+	// geometry a client negotiates against arrives after it.
+	Rows   int  `json:"pane_rows"`
+	Exited bool `json:"exited"`
 	// Fullscreen is read before it is changed. Expand toggles, so acting
 	// without looking would collapse a pane that was already expanded.
 	Fullscreen bool `json:"is_fullscreen"`

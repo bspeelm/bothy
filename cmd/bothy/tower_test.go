@@ -169,19 +169,26 @@ func TestTheTowerStacksMirrorsOneToARow(t *testing.T) {
 	}
 }
 
-// ADR-048's line, as a fence rather than a sentence: the tower may change how a
-// session is displayed and never what an agent does. Expanding a pane is the one
-// permitted mutation -- no byte reaches the agent, which receives SIGWINCH and
-// redraws. Everything that would reach the agent, or start and stop one, stays
-// out.
+// ADR-048's line, restated now that the tower can step aside: it originates no
+// input, composes nothing, and creates no session. It may change how a session
+// is displayed -- expanding a pane, or handing its own pane to a real client of
+// that session -- and it may carry a keystroke from the keyboard to an agent. It
+// may never generate one.
+//
+// Handing the pane over is the safest of the three: while a client is attached,
+// bothy is not in the input path at all.
 func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	forbidden := []string{
-		// The paste markers rather than the word: bracketed paste is how the
-		// backend sends a multi-line reply, and the tower must not reach for it
-		// itself. Banning "paste" caught the word in a comment.
-		"write-chars", "send-keys", "\"write\"", `\x1b[200~`,
+		// Quoted where the bare word is also prose. "write" was already quoted
+		// for that reason; "detach" joined it when a comment describing what the
+		// person does to come back failed this test. The paste markers rather
+		// than the word, for the same reason.
+		"write-chars", "send-keys", "\"write\"", "\"detach\"", `\x1b[200~`,
 		"switch-session", "focus-pane", "new-pane", "close-pane",
-		"Discard(", "detach",
+		"Discard(",
+		// The tower may join a session that exists. Bringing one into being is
+		// how a watcher becomes a launcher.
+		"--create",
 	}
 	both := ""
 	for _, f := range []string{"tower.go", "towercmd.go"} {
@@ -209,6 +216,13 @@ func TestTheTowerChangesDisplayAndNeverBehaviour(t *testing.T) {
 	}
 	if !strings.Contains(both, "backend.Kill(bin, env, towerSession)") {
 		t.Error("a session other than the tower's own is being ended")
+	}
+	// Stepping aside goes through the seam too, and only ever to the session
+	// this mirror was already watching -- never to a name that arrived in the
+	// input it relays.
+	if strings.Contains(both, "backend.Join(") &&
+		!strings.Contains(both, "backend.Join(bin, session, env)") {
+		t.Error("the tower joins a session other than the one it watches")
 	}
 }
 
@@ -385,7 +399,7 @@ func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
 	if !strings.Contains(src, "backend.Send(bin, session, pane.Addr(), line, env)") {
 		t.Error("the sending call no longer passes the typed line through unexamined")
 	}
-	if !strings.Contains(src, "readLines(os.Stdin, typed)") {
+	if !strings.Contains(src, "readLines(os.Stdin, typed") {
 		t.Error("the mirror no longer reads what to send from the keyboard")
 	}
 }
@@ -395,7 +409,11 @@ func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
 // a hand on the keyboard.
 func TestTypedLinesArriveWithoutBlockingTheRefresh(t *testing.T) {
 	typed := make(chan string, 2)
-	go readLines(strings.NewReader("yes\n2\n"), typed)
+	// A closed channel always yields, which is "carry on reading" -- the state
+	// a mirror is in whenever it is not handing its pane to a client.
+	always := make(chan struct{})
+	close(always)
+	go readLines(strings.NewReader("yes\n2\n"), typed, always)
 
 	for _, want := range []string{"yes", "2"} {
 		select {
@@ -525,7 +543,9 @@ func collect(t *testing.T, in string) []string {
 		}
 		close(done)
 	}()
-	_ = readLines(strings.NewReader(in), out) // the error is the end of input
+	always := make(chan struct{})
+	close(always)
+	_ = readLines(strings.NewReader(in), out, always) // the error is the end of input
 	close(out)
 	<-done
 	return got
@@ -558,5 +578,211 @@ func TestAMultiLineReplyGoesAsOnePaste(t *testing.T) {
 	// the receiving program to understand it, and most replies are one line.
 	if !strings.Contains(send, `"write-chars", "-p", pane, line`) {
 		t.Error("the plain write-chars path is gone; a one-line reply should not need paste support")
+	}
+}
+
+// The reserved word is the one line a mirror reads rather than relays. Doubling
+// the slash sends it, because someone will eventually want to type it at an
+// agent and the escape is already the rule the continuation backslash uses.
+func TestOnlyTheReservedWordIsNotRelayed(t *testing.T) {
+	for _, c := range []struct {
+		name, line string
+		take       bool
+		relayed    string
+	}{
+		{"the word alone takes over", "/take", true, ""},
+		{"doubled, it is a message", "//take", false, "/take"},
+		{"with anything after it, a message", "/take the wheel", false, "/take the wheel"},
+		{"leading space is a message", " /take", false, " /take"},
+		{"ordinary prose", "run the tests", false, "run the tests"},
+		{"a bare Enter still sends one", "", false, ""},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			take, text := command(c.line)
+			if take != c.take {
+				t.Errorf("command(%q) took over = %v, want %v", c.line, take, c.take)
+			}
+			if !take && text != c.relayed {
+				t.Errorf("command(%q) relays %q, want %q", c.line, text, c.relayed)
+			}
+		})
+	}
+}
+
+// Stepping aside is the opposite of orchestration: while a client is attached
+// the person is in the session, so every key works and bothy carries none of
+// them. The mirror must resume afterwards rather than exiting with the client.
+func TestSteppingAsideReturnsToMirroring(t *testing.T) {
+	body, err := os.ReadFile("towercmd.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+	if !strings.Contains(src, "backend.Join(bin, session, env)") {
+		t.Error("the tower no longer hands its pane to a client of the session it watches")
+	}
+	// A failed join is reported where the person typed, like a refused reply,
+	// rather than taking the mirror down with it.
+	i := strings.Index(src, "func step(")
+	if i < 0 {
+		t.Fatal("step is gone; this test names the wrong function")
+	}
+	fn := src[i:]
+	if j := strings.Index(fn, "\n}"); j > 0 {
+		fn = fn[:j]
+	}
+	if !strings.Contains(fn, "fmt.Printf") {
+		t.Error("a join that fails says nothing; the line would vanish")
+	}
+	if strings.Contains(fn, "os.Exit") || strings.Contains(fn, "return err") {
+		t.Error("step ends the mirror instead of resuming it")
+	}
+}
+
+// The nested client renders at the host pane's size unless zellij is told to
+// zoom, which was measured on scratch sessions: the inner session came up at
+// 78x18 inside an 80x22 pane.
+func TestTheGeneratedConfigZoomsANestedSession(t *testing.T) {
+	body, err := os.ReadFile("../../templates/mux/zellij/config.kdl.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(body), `nested_session_handling "fullscreen"`) {
+		t.Error("the config does not set nested_session_handling; take-over gets a modal, then a small pane")
+	}
+}
+
+// While a mirror hands its pane to a client of the session, that client owns
+// the terminal. If the mirror keeps reading stdin too, the two race for every
+// keystroke: keys go missing and a take-over has to be asked for twice, which
+// is how this was found -- by testing it.
+func TestTheMirrorStopsReadingWhileTheSessionHasTheTerminal(t *testing.T) {
+	typed := make(chan string, 4)
+	resume := make(chan struct{})
+	go readLines(strings.NewReader("first\nsecond\n"), typed, resume)
+
+	select {
+	case got := <-typed:
+		if got != "first" {
+			t.Fatalf("first message was %q", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("nothing was delivered")
+	}
+
+	// Nothing more may arrive until the mirror says it has finished with the
+	// message -- that window is where the attached client reads.
+	select {
+	case got := <-typed:
+		t.Fatalf("read %q while the terminal was handed over", got)
+	case <-time.After(150 * time.Millisecond):
+	}
+
+	resume <- struct{}{}
+	select {
+	case got := <-typed:
+		if got != "second" {
+			t.Errorf("after resuming, read %q, want %q", got, "second")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("reading did not resume")
+	}
+}
+
+// A nested client takes its size when it attaches and never asks again, so the
+// pane has to be its full size before the client arrives -- and the tower has to
+// know it landed, not merely that it asked. Firing the toggle and attaching
+// straight away made take-over work only sometimes, and more often on a second
+// go, because the pane was still expanded from the first.
+func TestTheMirrorIsExpandedBeforeTheSessionArrives(t *testing.T) {
+	body, err := os.ReadFile("towercmd.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+	i := strings.Index(src, "func step(")
+	if i < 0 {
+		t.Fatal("step is gone; this test names the wrong function")
+	}
+	fn := src[i:]
+	if j := strings.Index(fn, "\n}\n"); j > 0 {
+		fn = fn[:j]
+	}
+	grow := strings.Index(fn, "ownFullscreen(backend, bin, env, self, true)")
+	join := strings.Index(fn, "backend.Join(")
+	switch {
+	case grow < 0:
+		t.Error("the pane is not expanded; the session arrives at the mirror's size")
+	case join < 0:
+		t.Error("step no longer joins")
+	case grow > join:
+		t.Error("the pane is expanded after the client arrives, which is too late to resize it")
+	}
+	// Put back only when this expanded it, so a pane the person had already
+	// made fullscreen is left as they had it.
+	if !strings.Contains(fn, "defer ownFullscreen(backend, bin, env, self, false)") {
+		t.Error("the pane is not put back after the client leaves")
+	}
+
+	// And the wait is a read-back, not a sleep: the state is asked for until it
+	// is what was wanted.
+	k := strings.Index(src, "func ownFullscreen(")
+	if k < 0 {
+		t.Fatal("ownFullscreen is gone")
+	}
+	own := src[k:]
+	if j := strings.Index(own, "\n}\n"); j > 0 {
+		own = own[:j]
+	}
+	if !strings.Contains(own, "backend.PanesOf(bin, towerSession, env)") {
+		t.Error("ownFullscreen does not read the pane's state back")
+	}
+	if !strings.Contains(own, "pane.Fullscreen == want") {
+		t.Error("ownFullscreen does not check it got what it asked for")
+	}
+	// And waits for the size, not the flag. The flag flips when the toggle
+	// registers; a client attaching in that gap takes the old size and keeps
+	// it, which is the take-over that works only every other time.
+	if !strings.Contains(own, "paneRows() == before") {
+		t.Error("ownFullscreen waits on the multiplexer's idea of the pane; the client inherits this terminal")
+	}
+	if !strings.Contains(own, "backend.Expand(bin, towerSession,") {
+		t.Error("ownFullscreen expands a pane outside the tower's own session")
+	}
+}
+
+// ZELLIJ_PANE_ID is a bare number; Addr spells the same pane terminal_N.
+func TestOwnPaneIsFoundByTheIdTheEnvironmentGives(t *testing.T) {
+	panes := []mux.PaneRef{
+		{ID: 1, Plugin: true, Title: "zellij:tab-bar"},
+		{ID: 0, Command: "bothy"},
+		{ID: 1, Command: "bothy", Fullscreen: true},
+	}
+	got, ok := ownPane(panes, "1")
+	if !ok {
+		t.Fatal("own pane not found")
+	}
+	if got.Addr() != "terminal_1" || !got.Fullscreen {
+		t.Errorf("found %s (fullscreen=%v); want the terminal pane, not the plugin", got.Addr(), got.Fullscreen)
+	}
+	if _, ok := ownPane(panes, "9"); ok {
+		t.Error("a pane id that is not there was matched")
+	}
+}
+
+// One mirror already fills the tower, so there is no expanding to do and
+// nothing to wait for. Without this the take-over would pause for the whole
+// timeout on every single-session tower.
+func TestASingleMirrorIsNotExpanded(t *testing.T) {
+	one := []mux.PaneRef{
+		{ID: 0, Plugin: true, Title: "zellij:tab-bar"},
+		{ID: 0, Command: "bothy"},
+	}
+	if n := terminalPanes(one); n != 1 {
+		t.Errorf("counted %d mirrors, want 1 (plugins are not mirrors)", n)
+	}
+	two := append(one, mux.PaneRef{ID: 1, Command: "bothy"})
+	if n := terminalPanes(two); n != 2 {
+		t.Errorf("counted %d mirrors, want 2", n)
 	}
 }

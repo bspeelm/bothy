@@ -55,7 +55,9 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	agent := install.AgentBinary(cfg.Slots.Agent)
 	typed := make(chan string, 1)
 	closed := make(chan error, 1)
-	go func() { closed <- readLines(os.Stdin, typed) }()
+	// Buffered, so a reader that has already gone is never waited on.
+	resume := make(chan struct{}, 1)
+	go func() { closed <- readLines(os.Stdin, typed, resume) }()
 
 	tick := time.NewTicker(every)
 	defer tick.Stop()
@@ -70,10 +72,15 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			fmt.Printf("\n%s: replies are closed (%v); still watching\n", session, err)
 			closed = nil
 		case line := <-typed:
-			relay(backend, bin, env, session, agent, line)
+			if take, text := command(line); take {
+				step(backend, bin, env, session)
+			} else {
+				relay(backend, bin, env, session, agent, text)
+			}
 			last = "" // the reply is about to change the screen; do not skip it
 			rows = paneRows()
 			replyPrompt(os.Stdout, rows)
+			resume <- struct{}{}
 		case <-tick.C:
 			// Asked every pass, not once: fullscreening a mirror makes its pane
 			// taller, and a height read at startup leaves the rest of it dead
@@ -110,7 +117,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 // scanning at all, so one oversized paste ended replies for the rest of the
 // mirror's life without saying so. Measured: a 70KB line through a Scanner
 // delivered zero lines, the short line after it included.
-func readLines(r io.Reader, out chan<- string) error {
+func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 	br := bufio.NewReader(r)
 	var held []string
 	for {
@@ -128,10 +135,98 @@ func readLines(r io.Reader, out chan<- string) error {
 			// prompt's default is accepted.
 			out <- strings.Join(append(held, trimmed), "\n")
 			held = nil
+			// Wait to be told the message was dealt with before touching the
+			// terminal again. While a mirror hands its pane to a client of the
+			// session, that client owns stdin -- two readers on one terminal
+			// race for every keystroke, which showed up as keys going missing
+			// and a take-over that needed asking for twice.
+			<-resume
 		}
 		if err != nil {
 			return err
 		}
+	}
+}
+
+// step hands this pane to a client of the watched session and goes back to
+// mirroring when that client leaves.
+//
+// The mirror stops painting for the duration because the client owns the
+// terminal; nothing has to be torn down first. zellij routes keys to the inner
+// session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
+// so there is no mode to set and nothing to restore beyond the next frame.
+// ownFullscreen brings this process's own pane to want and reports whether it
+// had to change anything.
+//
+// It reads back until the multiplexer agrees rather than firing a toggle and
+// moving on. A nested client takes its size when it attaches and never asks
+// again, so attaching into a pane that has not finished resizing leaves the
+// session at the old size -- which showed up as a take-over that worked only
+// sometimes, and worked more often on the second go because the pane was still
+// expanded from the first.
+// note records what a take-over saw, when BOTHY_TOWER_DEBUG names a file to
+// write it to. Off unless asked for: this exists to diagnose a resize race that
+// only happens on a real terminal, where no test can reach it.
+func note(format string, a ...any) {
+	path := os.Getenv("BOTHY_TOWER_DEBUG")
+	if path == "" {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, format+"\n", a...)
+}
+
+func ownFullscreen(backend mux.Backend, bin string, env []string, self string, want bool) bool {
+	panes, ok := backend.PanesOf(bin, towerSession, env)
+	if !ok {
+		return false
+	}
+	pane, found := ownPane(panes, self)
+	if !found || pane.Fullscreen == want || terminalPanes(panes) < 2 {
+		return false
+	}
+	// The size to wait for is the one stty reports, not the multiplexer's.
+	// A client attaching here inherits this process's terminal, and that is
+	// what it negotiates against and then keeps. Measured: the pane read
+	// 191x47 with is_fullscreen already true while the session it handed over
+	// still came up 189x42, because the flag flips when the toggle registers
+	// and the terminal is resized after it.
+	before := paneRows()
+	note("want=%v panes=%d pane=%s fs=%v rows(stty)=%d rows(pane)=%d",
+		want, terminalPanes(panes), pane.Addr(), pane.Fullscreen, before, pane.Rows)
+	if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
+		return false
+	}
+	waited := 0
+	for ; waited < 40 && paneRows() == before; waited++ {
+		time.Sleep(25 * time.Millisecond)
+	}
+	note("  toggled; waited %dx25ms; rows(stty) %d -> %d", waited, before, paneRows())
+	return true
+}
+
+// step hands this pane to a client of the watched session and goes back to
+// mirroring when that client leaves.
+//
+// The mirror stops painting for the duration because the client owns the
+// terminal; nothing has to be torn down first. zellij routes keys to the inner
+// session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
+// so there is no mode to set and nothing to restore beyond the next frame.
+func step(backend mux.Backend, bin string, env []string, session string) {
+	// The pane has to be its full size before the client arrives, and has to be
+	// put back afterwards -- only if this expanded it, and verified both ways.
+	if self := os.Getenv("ZELLIJ_PANE_ID"); self != "" {
+		if ownFullscreen(backend, bin, env, self, true) {
+			defer ownFullscreen(backend, bin, env, self, false)
+		}
+	}
+	note("joining %s with rows(stty)=%d", session, paneRows())
+	if err := backend.Join(bin, session, env); err != nil {
+		fmt.Printf("\n%s: %v\n", session, err)
 	}
 }
 
