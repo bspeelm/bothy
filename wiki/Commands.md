@@ -113,8 +113,11 @@ line goes to that agent. The tower reads panes and sends nothing of its own.
 | `--no-expand` | leave your panes as they are, at the cost of thin mirrors |
 | `--restore` | collapse agent panes a closed terminal left expanded |
 
-[The tower](The-tower) — reading a mirror, answering an agent, and why it
-expands the panes it watches.
+Type `/take` into a mirror to hand that pane to the session itself, for a
+prompt a sentence cannot answer.
+
+[The tower](The-tower) — reading a mirror, answering an agent, taking one over,
+and why it expands the panes it watches.
 
 ## Where it opens
 

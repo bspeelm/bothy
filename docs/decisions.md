@@ -2176,3 +2176,103 @@ thing it tests, and counted by no budget at all.
 Neither observation is acted on here. A change to what the budgets measure is
 its own decision, and making it inside a twelve-line bug fix would be exactly
 the quiet threshold move ADR-010 refused.
+
+## ADR-053 — The tower may step aside, and two caps rise once for the work that lets it
+
+**Status:** accepted. Reverses part of ADR-048; amends ADR-052 and ADR-021.
+
+Weeks of daily use found the tower's two edges. A mirror shows about twenty rows
+and no history. And a reply is a line of text, so an agent's selection menu, its
+y/n dialog, Esc and Ctrl-C are all unreachable -- any prompt needing a keystroke
+sends you to that session's own window, which is what the tower existed to save.
+
+**The tower may now hand its pane to a real client of the session it watches.**
+Type `/take` and the mirror stops being a picture and becomes the session.
+Every key works, scrollback works, because the person is *in* it rather than
+looking at it. Detach and the mirror resumes.
+
+**This reverses ADR-048 on attaching, deliberately and narrowly.** That record
+refused a second client because zellij sizes a session to its smallest one, and
+the refusal was right for a watcher: a permanent second client would shrink
+every watched session for as long as the tower ran. It is wrong for a visit.
+Take-over pays that cost knowingly, for one session, while the person is looking
+at it, and stops paying on detach.
+
+**Measured on scratch sessions before any of it was built**, because the whole
+design rested on nesting working:
+
+- `zellij attach` from inside a pane produced a second client on the target --
+  the attach is real, not a drawing.
+- The inner session rendered at the *pane's* size, 78x22 inside 80x22, which is
+  why the generated config now sets `nested_session_handling "fullscreen"`.
+- `Ctrl-o d` sent to the hosting pane reached the **inner** session and detached
+  it, leaving the outer one alone. The host needs no locked mode and nothing to
+  restore. That was the risk, and it is not one.
+
+**A reserved word, not a keypress.** `/take` costs fifteen lines. A hotkey costs
+raw mode, and raw mode means bothy owns backspace, kill-line and cursor movement
+on the reply strip -- the line editor the kernel gives for free in canonical
+mode. ADR-051 refused that trade for Shift+Enter and it is still the wrong one.
+`//take` sends the word, the pairing rule the continuation backslash already
+uses.
+
+**And no key forwarding.** `zellij action send-keys` exists and would relay
+arrows into a pane, and it is not worth building next to this. Firing keys blind
+at a picture refreshed twice a second is strictly worse than being in the
+session, and two input paths is one more than the feature needs. The `send-keys`
+fence stays.
+
+**The fence is restated around origin rather than mechanism.** It banned verbs
+as bare substrings and caught a comment describing what the *person* does to
+come back -- the third time that list has failed on prose, after "paste" and
+"write". Verbs that are also English are quoted now. Two clauses were added
+because stepping aside is a new power: the tower may never pass `--create`, and
+it may only ever join the session it was already watching, never a name that
+arrived in the input it relays.
+
+The line it holds:
+
+> bothy relays; it does not speak; and where it cannot relay, it steps aside.
+> The tower originates no input, composes nothing, and creates no session. It
+> may change how a session is displayed, and it may carry a keystroke from the
+> keyboard to an agent. It may never generate one.
+
+Stepping aside is the safest of the three, and the reason the ban on
+`send-keys` costs nothing: while a client is attached bothy is not in the input
+path at all. Nothing is relayed because nothing passes through.
+
+**One hazard, stated where it cannot be missed.** `Ctrl-q` during a take-over
+ends the watched session, exactly as it would in that session's own window.
+Nothing can intercept it -- the keys are the inner session's -- so it is
+documented beside the feature rather than guarded against.
+
+**Why 8,500.** Take-over measured +27 code lines, 8,162 to 8,189. The
+per-provider transcript reader that answers the other complaint is the rest of
+this arc and is estimated at another 190. 8,500 covers both with margin named as
+margin, and is chosen so this is argued once rather than twice in a fortnight --
+ADR-026's standard, which the last four raises did not meet. If the transcript
+work overruns it, that overrun gets its own record and this number is not
+quietly nudged again.
+
+The fat was looked for first, as ADR-026 requires, and was empty for the fourth
+consecutive audit: no function over eighty lines, none in shipping code that
+only tests reference.
+
+**Why the comment ratio rises to 28, which is the more uncomfortable number.**
+It is at its ceiling for the third record running. ADR-048 raised it 25 to 26
+and immediately noted the headroom was about one line; ADR-051 recorded
+"comments are at the ceiling"; this change puts it at 27.13%. A measure that its
+own records keep describing as exhausted has stopped distinguishing a
+well-commented change from a badly-commented one, which is precisely the
+condition ADR-010 says means fixing the measure rather than the thing.
+
+28 is chosen to leave headroom rather than to clear today, because clearing
+today is what 26 did. The density is not being defended as a virtue: these files
+are dense because they carry measurements -- 78x22 inside 80x22, Ctrl-o d
+reaching the inner session -- and a measurement deleted is a measurement that
+has to be taken again.
+
+**Two budgets moved for one feature is what ADR-048 warned about**, and it is
+being done anyway, with the warning quoted. The difference from the case it
+warned against is that the comment ratio is at its ceiling independent of this
+work: it would fail on the next comment anywhere in the codebase.

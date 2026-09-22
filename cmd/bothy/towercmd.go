@@ -70,7 +70,11 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			fmt.Printf("\n%s: replies are closed (%v); still watching\n", session, err)
 			closed = nil
 		case line := <-typed:
-			relay(backend, bin, env, session, agent, line)
+			if take, text := command(line); take {
+				step(backend, bin, env, session)
+			} else {
+				relay(backend, bin, env, session, agent, text)
+			}
 			last = "" // the reply is about to change the screen; do not skip it
 			rows = paneRows()
 			replyPrompt(os.Stdout, rows)
@@ -132,6 +136,19 @@ func readLines(r io.Reader, out chan<- string) error {
 		if err != nil {
 			return err
 		}
+	}
+}
+
+// step hands this pane to a client of the watched session and goes back to
+// mirroring when that client leaves.
+//
+// The mirror stops painting for the duration because the client owns the
+// terminal; nothing has to be torn down first. zellij routes keys to the inner
+// session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
+// so there is no mode to set and nothing to restore beyond the next frame.
+func step(backend mux.Backend, bin string, env []string, session string) {
+	if err := backend.Join(bin, session, env); err != nil {
+		fmt.Printf("\n%s: %v\n", session, err)
 	}
 }
 

@@ -10,6 +10,15 @@ default_mode "normal"
 // $EDITOR too, but naming it here means the setting holds even in a shell that
 // never sourced the profile.
 scrollback_editor "{{ .EditorBin }}"
+
+// `bothy tower` hands a mirror to a real client of the session it watches, which
+// runs that session inside a pane of the tower's own. Left at the default
+// ("ask") zellij puts a modal in the way; measured, the nested session otherwise
+// renders at the pane's size rather than the window's. "fullscreen" zooms it.
+//
+// It only ever applies to a session running inside a pane, which nothing but the
+// tower does.
+nested_session_handling "fullscreen"
 {{ if .PaneFrames }}
 // Zellij 0.45 added pane_frame_style and made "titles" the default — a heading
 // above each pane rather than a box around it. The setup bothy is a port of

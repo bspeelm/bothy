@@ -51,11 +51,39 @@ shell's answer to the same problem.
 If a reply cannot be delivered — the session went away, or its agent pane did —
 the mirror says so where you typed it, rather than letting the line vanish.
 
+## Taking over a session
+
+A mirror is a picture, and a picture cannot answer a menu. When an agent asks
+something that needs a keystroke rather than a sentence — a numbered choice, a
+y/n, anything you would answer with the arrow keys — type `/take` and press
+Enter.
+
+That pane stops mirroring and becomes the session: a real client, attached, so
+every key works and the scrollback is there. Arrows, Esc, Tab, Ctrl-C, the
+agent's own bindings. You are in it rather than looking at it.
+
+Leave the way you leave any session — `Ctrl-o d` — and the pane goes back to
+mirroring. The tower was running underneath the whole time; the other mirrors
+never stopped.
+
+To send the word itself to an agent rather than taking over, double the slash:
+`//take`.
+
+**While you are in, that session is sized to the tower's window.** If its own
+window is still open somewhere, it shrinks there too, and grows back when you
+leave. That is the cost of being in one session from two places, and it is why
+the tower mirrors instead of attaching the rest of the time.
+
+**`Ctrl-q` while taken over ends that session**, exactly as it would in the
+session's own window. The keys are the session's while you are in it, so bothy
+cannot intercept that one. `Ctrl-o d` is the way out.
+
 ## What it will not do
 
 **bothy relays; it does not speak.** Everything that reaches an agent came from
 your keyboard. bothy composes nothing, answers nothing on your behalf, and
-sends nothing on a timer.
+sends nothing on a timer. During a take-over it is not even relaying: the
+session has your keyboard directly, and bothy is not in between.
 
 Beyond the line you type, the tower reads panes and writes nothing to them. It
 starts and stops nothing, and creates no session but its own, so an agent cannot
