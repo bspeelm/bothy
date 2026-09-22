@@ -69,15 +69,19 @@ never stopped.
 To send the word itself to an agent rather than taking over, double the slash:
 `//take`.
 
-**A session is sized to its smallest window, and that cuts both ways.** While
-you are in, the session has two windows: its own and the tower's. Whichever is
-shorter decides, so a session whose own window is 22 rows shows 22 rows inside a
-42-row tower pane and leaves the rest blank — measured. Take-over is at its best
-on a session whose window you have closed, which is usually the one you wanted
-the tower for.
+**Expect a few blank rows at the bottom.** A session running inside a pane is
+given a little less room than the pane holds. Measured during a take-over: a
+47-row mirror pane handed the session 42 rows, so five were left over.
 
-That is the cost of being in one session from two places, and it is why the
-tower mirrors instead of attaching the rest of the time.
+Where they go is the multiplexer's business and not something bothy can hand
+back — dropping the mirror's own frame was tried and recovers nothing, because
+the frame is already accounted for. It is about a tenth of the pane, and it is
+at the bottom, below what you are reading.
+
+The other cost is the one attaching always has: while you are in, the session
+has two windows, and it is sized to fit both. If its own window is still open
+somewhere it may shrink there too, and it grows back when you leave. That is why
+the tower mirrors rather than attaching the rest of the time.
 
 **`Ctrl-q` while taken over ends that session**, exactly as it would in the
 session's own window. The keys are the session's while you are in it, so bothy
