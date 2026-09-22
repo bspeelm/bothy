@@ -181,6 +181,19 @@ func continues(line string) (string, bool) {
 	return line[:len(line)-n] + strings.Repeat(`\`, n/2), n%2 == 1
 }
 
+// terminalPanes counts the panes that hold a mirror. One of them already fills
+// the tower, so expanding it changes no size and there would be nothing to wait
+// for.
+func terminalPanes(panes []mux.PaneRef) int {
+	n := 0
+	for _, p := range panes {
+		if !p.Plugin {
+			n++
+		}
+	}
+	return n
+}
+
 // ownPane finds this process's own pane among its session's. ZELLIJ_PANE_ID is
 // a bare number where Addr spells the same pane terminal_N.
 func ownPane(panes []mux.PaneRef, id string) (mux.PaneRef, bool) {

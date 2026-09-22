@@ -165,35 +165,28 @@ func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 // sometimes, and worked more often on the second go because the pane was still
 // expanded from the first.
 func ownFullscreen(backend mux.Backend, bin string, env []string, self string, want bool) bool {
-	changed := false
-	settled, last := 0, -1
-	for i := 0; i < 40; i++ {
-		panes, ok := backend.PanesOf(bin, towerSession, env)
-		if !ok {
-			return changed
-		}
-		pane, found := ownPane(panes, self)
-		if !found {
-			return changed
-		}
-		switch {
-		case pane.Fullscreen != want:
-			if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
-				return changed
-			}
-			changed, settled, last = true, 0, -1
-		case pane.Rows == last:
-			// Two readings the same: the resize has finished arriving, and a
-			// client attaching now negotiates against the size it will keep.
-			if settled++; settled >= 1 {
-				return changed
-			}
-		default:
-			settled, last = 0, pane.Rows
-		}
+	panes, ok := backend.PanesOf(bin, towerSession, env)
+	if !ok {
+		return false
+	}
+	pane, found := ownPane(panes, self)
+	if !found || pane.Fullscreen == want || terminalPanes(panes) < 2 {
+		return false
+	}
+	// The size to wait for is the one stty reports, not the multiplexer's.
+	// A client attaching here inherits this process's terminal, and that is
+	// what it negotiates against and then keeps. Measured: the pane read
+	// 191x47 with is_fullscreen already true while the session it handed over
+	// still came up 189x42, because the flag flips when the toggle registers
+	// and the terminal is resized after it.
+	before := paneRows()
+	if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
+		return false
+	}
+	for i := 0; i < 40 && paneRows() == before; i++ {
 		time.Sleep(25 * time.Millisecond)
 	}
-	return changed
+	return true
 }
 
 // step hands this pane to a client of the watched session and goes back to

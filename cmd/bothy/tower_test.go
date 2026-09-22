@@ -737,14 +737,14 @@ func TestTheMirrorIsExpandedBeforeTheSessionArrives(t *testing.T) {
 	if !strings.Contains(own, "backend.PanesOf(bin, towerSession, env)") {
 		t.Error("ownFullscreen does not read the pane's state back")
 	}
-	if !strings.Contains(own, "pane.Fullscreen != want") {
+	if !strings.Contains(own, "pane.Fullscreen == want") {
 		t.Error("ownFullscreen does not check it got what it asked for")
 	}
 	// And waits for the size, not the flag. The flag flips when the toggle
 	// registers; a client attaching in that gap takes the old size and keeps
 	// it, which is the take-over that works only every other time.
-	if !strings.Contains(own, "pane.Rows == last") {
-		t.Error("ownFullscreen trusts the fullscreen flag without waiting for the pane to finish resizing")
+	if !strings.Contains(own, "paneRows() == before") {
+		t.Error("ownFullscreen waits on the multiplexer's idea of the pane; the client inherits this terminal")
 	}
 	if !strings.Contains(own, "backend.Expand(bin, towerSession,") {
 		t.Error("ownFullscreen expands a pane outside the tower's own session")
@@ -767,5 +767,22 @@ func TestOwnPaneIsFoundByTheIdTheEnvironmentGives(t *testing.T) {
 	}
 	if _, ok := ownPane(panes, "9"); ok {
 		t.Error("a pane id that is not there was matched")
+	}
+}
+
+// One mirror already fills the tower, so there is no expanding to do and
+// nothing to wait for. Without this the take-over would pause for the whole
+// timeout on every single-session tower.
+func TestASingleMirrorIsNotExpanded(t *testing.T) {
+	one := []mux.PaneRef{
+		{ID: 0, Plugin: true, Title: "zellij:tab-bar"},
+		{ID: 0, Command: "bothy"},
+	}
+	if n := terminalPanes(one); n != 1 {
+		t.Errorf("counted %d mirrors, want 1 (plugins are not mirrors)", n)
+	}
+	two := append(one, mux.PaneRef{ID: 1, Command: "bothy"})
+	if n := terminalPanes(two); n != 2 {
+		t.Errorf("counted %d mirrors, want 2", n)
 	}
 }
