@@ -125,7 +125,11 @@ type PaneRef struct {
 	Title   string `json:"title"`
 	Dir     string `json:"pane_cwd"`
 	Cols    int    `json:"pane_columns"`
-	Exited  bool   `json:"exited"`
+	// Rows is read to tell a pane that has been told to resize from one that
+	// has finished: the fullscreen flag flips when the toggle registers, the
+	// geometry a client negotiates against arrives after it.
+	Rows   int  `json:"pane_rows"`
+	Exited bool `json:"exited"`
 	// Fullscreen is read before it is changed. Expand toggles, so acting
 	// without looking would collapse a pane that was already expanded.
 	Fullscreen bool `json:"is_fullscreen"`

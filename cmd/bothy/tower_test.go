@@ -737,8 +737,14 @@ func TestTheMirrorIsExpandedBeforeTheSessionArrives(t *testing.T) {
 	if !strings.Contains(own, "backend.PanesOf(bin, towerSession, env)") {
 		t.Error("ownFullscreen does not read the pane's state back")
 	}
-	if !strings.Contains(own, "pane.Fullscreen == want") {
+	if !strings.Contains(own, "pane.Fullscreen != want") {
 		t.Error("ownFullscreen does not check it got what it asked for")
+	}
+	// And waits for the size, not the flag. The flag flips when the toggle
+	// registers; a client attaching in that gap takes the old size and keeps
+	// it, which is the take-over that works only every other time.
+	if !strings.Contains(own, "pane.Rows == last") {
+		t.Error("ownFullscreen trusts the fullscreen flag without waiting for the pane to finish resizing")
 	}
 	if !strings.Contains(own, "backend.Expand(bin, towerSession,") {
 		t.Error("ownFullscreen expands a pane outside the tower's own session")

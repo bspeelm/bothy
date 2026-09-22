@@ -166,20 +166,32 @@ func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 // expanded from the first.
 func ownFullscreen(backend mux.Backend, bin string, env []string, self string, want bool) bool {
 	changed := false
-	for i := 0; i < 20; i++ {
+	settled, last := 0, -1
+	for i := 0; i < 40; i++ {
 		panes, ok := backend.PanesOf(bin, towerSession, env)
 		if !ok {
 			return changed
 		}
 		pane, found := ownPane(panes, self)
-		if !found || pane.Fullscreen == want {
+		if !found {
 			return changed
 		}
-		if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
-			return changed
+		switch {
+		case pane.Fullscreen != want:
+			if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
+				return changed
+			}
+			changed, settled, last = true, 0, -1
+		case pane.Rows == last:
+			// Two readings the same: the resize has finished arriving, and a
+			// client attaching now negotiates against the size it will keep.
+			if settled++; settled >= 1 {
+				return changed
+			}
+		default:
+			settled, last = 0, pane.Rows
 		}
-		changed = true
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(25 * time.Millisecond)
 	}
 	return changed
 }
