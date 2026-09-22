@@ -103,8 +103,9 @@ bothy leaves them alone.
 ### `bothy tower [--mirror session] [--every duration]`
 
 One window showing every running agent, so several sessions can be watched from
-one place. Each row mirrors one session's agent pane; type into a mirror and the
-line goes to that agent. The tower reads panes and sends nothing of its own.
+one place. Each row mirrors one session's agent pane. Type into a mirror and the
+line goes to that agent; type `/take` and the pane becomes that session, for a
+prompt a sentence cannot answer. bothy composes nothing of its own either way.
 
 | flag | |
 |---|---|
@@ -112,9 +113,6 @@ line goes to that agent. The tower reads panes and sends nothing of its own.
 | `--every <duration>` | the refresh interval |
 | `--no-expand` | leave your panes as they are, at the cost of thin mirrors |
 | `--restore` | collapse agent panes a closed terminal left expanded |
-
-Type `/take` into a mirror to hand that pane to the session itself, for a
-prompt a sentence cannot answer.
 
 [The tower](The-tower) — reading a mirror, answering an agent, taking one over,
 and why it expands the panes it watches.

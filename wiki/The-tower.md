@@ -8,6 +8,10 @@ $ bothy tower
 watching 3 agent(s), side by side; 2 pane(s) expanded to be worth reading
 ```
 
+Three things you can do from there, in order of how much they ask of you: read
+what each agent is doing, type a reply to one, or take a session over and work
+in it directly.
+
 ## Reading the mirrors
 
 Each row mirrors one session's agent pane, refreshed every two seconds. Move
@@ -54,35 +58,41 @@ the mirror says so where you typed it, rather than letting the line vanish.
 ## Taking over a session
 
 A mirror is a picture, and a picture cannot answer a menu. When an agent asks
-something that needs a keystroke rather than a sentence — a numbered choice, a
-y/n, anything you would answer with the arrow keys — type `/take` and press
-Enter.
+for something a sentence cannot give it — a numbered choice, a y/n, anything you
+would answer with the arrow keys — take the session over:
 
-That pane stops mirroring and becomes the session: a real client, attached, so
-every key works and the scrollback is there. Arrows, Esc, Tab, Ctrl-C, the
-agent's own bindings. You are in it rather than looking at it.
+```
+> /take
+```
 
-Leave the way you leave any session — `Ctrl-o d` — and the pane goes back to
-mirroring. The tower was running underneath the whole time; the other mirrors
-never stopped.
+The pane stops mirroring and **becomes** that session. Not a better picture of
+it: the session itself, with your keyboard on it. Arrows, Esc, Tab, Ctrl-C, the
+agent's own bindings, its scrollback, all of it, because you are in it rather
+than looking at it. The other mirrors carry on behind you.
 
-To send the word itself to an agent rather than taking over, double the slash:
-`//take`.
+`Ctrl-o d` — the way you leave any session — puts the pane back to mirroring.
 
-**The mirror is expanded before the session arrives.** A session running inside
-a pane takes its size when it attaches and never asks again, so a mirror sharing
-the tower with others would hand it a fraction of the window and leave the rest
-blank however large the pane became afterwards. Expanding first is what gives it
-the whole window; the pane is put back when you leave.
+| | |
+|---|---|
+| `/take` | hand this pane to the session it is watching |
+| `Ctrl-o d` | give it back and return to mirroring |
+| `//take` | send the word `/take` to the agent instead |
 
-The other cost is the one attaching always has: while you are in, the session
-has two windows, and it is sized to fit both. If its own window is still open
-somewhere it may shrink there too, and it grows back when you leave. That is why
-the tower mirrors rather than attaching the rest of the time.
+**`Ctrl-q` ends the session you are in**, exactly as it would in that session's
+own window. While you are taken over the keys are the session's, so bothy cannot
+catch that one for you. `Ctrl-o d` is the way out.
 
-**`Ctrl-q` while taken over ends that session**, exactly as it would in the
-session's own window. The keys are the session's while you are in it, so bothy
-cannot intercept that one. `Ctrl-o d` is the way out.
+### What it does to the windows
+
+The pane is made full size before the session arrives and put back when you
+leave, because a session running inside a pane takes its size once, on the way
+in, and never asks again.
+
+While you are in, that session has two windows — its own and this one — and it
+is sized to fit both. If its own window is open elsewhere it may shrink there
+for as long as you stay, and grow back when you leave. That is the cost of being
+in one session from two places, and the reason the tower mirrors rather than
+attaching the rest of the time.
 
 ## What it will not do
 
