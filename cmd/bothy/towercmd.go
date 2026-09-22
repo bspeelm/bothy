@@ -155,22 +155,48 @@ func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 // terminal; nothing has to be torn down first. zellij routes keys to the inner
 // session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
 // so there is no mode to set and nothing to restore beyond the next frame.
+// ownFullscreen brings this process's own pane to want and reports whether it
+// had to change anything.
+//
+// It reads back until the multiplexer agrees rather than firing a toggle and
+// moving on. A nested client takes its size when it attaches and never asks
+// again, so attaching into a pane that has not finished resizing leaves the
+// session at the old size -- which showed up as a take-over that worked only
+// sometimes, and worked more often on the second go because the pane was still
+// expanded from the first.
+func ownFullscreen(backend mux.Backend, bin string, env []string, self string, want bool) bool {
+	changed := false
+	for i := 0; i < 20; i++ {
+		panes, ok := backend.PanesOf(bin, towerSession, env)
+		if !ok {
+			return changed
+		}
+		pane, found := ownPane(panes, self)
+		if !found || pane.Fullscreen == want {
+			return changed
+		}
+		if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
+			return changed
+		}
+		changed = true
+		time.Sleep(50 * time.Millisecond)
+	}
+	return changed
+}
+
+// step hands this pane to a client of the watched session and goes back to
+// mirroring when that client leaves.
+//
+// The mirror stops painting for the duration because the client owns the
+// terminal; nothing has to be torn down first. zellij routes keys to the inner
+// session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
+// so there is no mode to set and nothing to restore beyond the next frame.
 func step(backend mux.Backend, bin string, env []string, session string) {
-	// A nested client takes its size when it attaches and never asks again. A
-	// mirror sharing the tower two ways therefore hands the session half a
-	// window and leaves the rest blank however large the pane becomes after --
-	// measured: taking over from a stacked pair filled the top half only, and
-	// zellij's own zoom moves the display without resizing the client.
-	//
-	// So the pane is expanded first, on the tower's own session, read before it
-	// is toggled and put back only if this turned it on.
+	// The pane has to be its full size before the client arrives, and has to be
+	// put back afterwards -- only if this expanded it, and verified both ways.
 	if self := os.Getenv("ZELLIJ_PANE_ID"); self != "" {
-		if panes, ok := backend.PanesOf(bin, towerSession, env); ok {
-			if pane, found := ownPane(panes, self); found && !pane.Fullscreen {
-				if backend.Expand(bin, towerSession, pane.Addr(), env) == nil {
-					defer func() { _ = backend.Expand(bin, towerSession, pane.Addr(), env) }()
-				}
-			}
+		if ownFullscreen(backend, bin, env, self, true) {
+			defer ownFullscreen(backend, bin, env, self, false)
 		}
 	}
 	if err := backend.Join(bin, session, env); err != nil {

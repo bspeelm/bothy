@@ -690,9 +690,10 @@ func TestTheMirrorStopsReadingWhileTheSessionHasTheTerminal(t *testing.T) {
 }
 
 // A nested client takes its size when it attaches and never asks again, so the
-// pane has to be its full size before the client arrives. Taking over from a
-// mirror that shared the tower two ways filled the top half and left the rest
-// blank — zellij's own zoom moved the display without resizing the client.
+// pane has to be its full size before the client arrives -- and the tower has to
+// know it landed, not merely that it asked. Firing the toggle and attaching
+// straight away made take-over work only sometimes, and more often on a second
+// go, because the pane was still expanded from the first.
 func TestTheMirrorIsExpandedBeforeTheSessionArrives(t *testing.T) {
 	body, err := os.ReadFile("towercmd.go")
 	if err != nil {
@@ -707,19 +708,40 @@ func TestTheMirrorIsExpandedBeforeTheSessionArrives(t *testing.T) {
 	if j := strings.Index(fn, "\n}\n"); j > 0 {
 		fn = fn[:j]
 	}
-	expand := strings.Index(fn, "backend.Expand(")
+	grow := strings.Index(fn, "ownFullscreen(backend, bin, env, self, true)")
 	join := strings.Index(fn, "backend.Join(")
 	switch {
-	case expand < 0:
+	case grow < 0:
 		t.Error("the pane is not expanded; the session arrives at the mirror's size")
 	case join < 0:
 		t.Error("step no longer joins")
-	case expand > join:
+	case grow > join:
 		t.Error("the pane is expanded after the client arrives, which is too late to resize it")
 	}
-	// Its own session's pane, never the watched one.
-	if !strings.Contains(fn, "backend.Expand(bin, towerSession,") {
-		t.Error("step expands a pane outside the tower's own session")
+	// Put back only when this expanded it, so a pane the person had already
+	// made fullscreen is left as they had it.
+	if !strings.Contains(fn, "defer ownFullscreen(backend, bin, env, self, false)") {
+		t.Error("the pane is not put back after the client leaves")
+	}
+
+	// And the wait is a read-back, not a sleep: the state is asked for until it
+	// is what was wanted.
+	k := strings.Index(src, "func ownFullscreen(")
+	if k < 0 {
+		t.Fatal("ownFullscreen is gone")
+	}
+	own := src[k:]
+	if j := strings.Index(own, "\n}\n"); j > 0 {
+		own = own[:j]
+	}
+	if !strings.Contains(own, "backend.PanesOf(bin, towerSession, env)") {
+		t.Error("ownFullscreen does not read the pane's state back")
+	}
+	if !strings.Contains(own, "pane.Fullscreen == want") {
+		t.Error("ownFullscreen does not check it got what it asked for")
+	}
+	if !strings.Contains(own, "backend.Expand(bin, towerSession,") {
+		t.Error("ownFullscreen expands a pane outside the tower's own session")
 	}
 }
 
