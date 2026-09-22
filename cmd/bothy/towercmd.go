@@ -164,6 +164,22 @@ func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 // session at the old size -- which showed up as a take-over that worked only
 // sometimes, and worked more often on the second go because the pane was still
 // expanded from the first.
+// note records what a take-over saw, when BOTHY_TOWER_DEBUG names a file to
+// write it to. Off unless asked for: this exists to diagnose a resize race that
+// only happens on a real terminal, where no test can reach it.
+func note(format string, a ...any) {
+	path := os.Getenv("BOTHY_TOWER_DEBUG")
+	if path == "" {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, format+"\n", a...)
+}
+
 func ownFullscreen(backend mux.Backend, bin string, env []string, self string, want bool) bool {
 	panes, ok := backend.PanesOf(bin, towerSession, env)
 	if !ok {
@@ -180,12 +196,16 @@ func ownFullscreen(backend mux.Backend, bin string, env []string, self string, w
 	// still came up 189x42, because the flag flips when the toggle registers
 	// and the terminal is resized after it.
 	before := paneRows()
+	note("want=%v panes=%d pane=%s fs=%v rows(stty)=%d rows(pane)=%d",
+		want, terminalPanes(panes), pane.Addr(), pane.Fullscreen, before, pane.Rows)
 	if backend.Expand(bin, towerSession, pane.Addr(), env) != nil {
 		return false
 	}
-	for i := 0; i < 40 && paneRows() == before; i++ {
+	waited := 0
+	for ; waited < 40 && paneRows() == before; waited++ {
 		time.Sleep(25 * time.Millisecond)
 	}
+	note("  toggled; waited %dx25ms; rows(stty) %d -> %d", waited, before, paneRows())
 	return true
 }
 
@@ -204,6 +224,7 @@ func step(backend mux.Backend, bin string, env []string, session string) {
 			defer ownFullscreen(backend, bin, env, self, false)
 		}
 	}
+	note("joining %s with rows(stty)=%d", session, paneRows())
 	if err := backend.Join(bin, session, env); err != nil {
 		fmt.Printf("\n%s: %v\n", session, err)
 	}
