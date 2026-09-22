@@ -156,6 +156,23 @@ func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 // session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
 // so there is no mode to set and nothing to restore beyond the next frame.
 func step(backend mux.Backend, bin string, env []string, session string) {
+	// A nested client takes its size when it attaches and never asks again. A
+	// mirror sharing the tower two ways therefore hands the session half a
+	// window and leaves the rest blank however large the pane becomes after --
+	// measured: taking over from a stacked pair filled the top half only, and
+	// zellij's own zoom moves the display without resizing the client.
+	//
+	// So the pane is expanded first, on the tower's own session, read before it
+	// is toggled and put back only if this turned it on.
+	if self := os.Getenv("ZELLIJ_PANE_ID"); self != "" {
+		if panes, ok := backend.PanesOf(bin, towerSession, env); ok {
+			if pane, found := ownPane(panes, self); found && !pane.Fullscreen {
+				if backend.Expand(bin, towerSession, pane.Addr(), env) == nil {
+					defer func() { _ = backend.Expand(bin, towerSession, pane.Addr(), env) }()
+				}
+			}
+		}
+	}
 	if err := backend.Join(bin, session, env); err != nil {
 		fmt.Printf("\n%s: %v\n", session, err)
 	}

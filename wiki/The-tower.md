@@ -69,14 +69,11 @@ never stopped.
 To send the word itself to an agent rather than taking over, double the slash:
 `//take`.
 
-**Expect a few blank rows at the bottom.** A session running inside a pane is
-given a little less room than the pane holds. Measured during a take-over: a
-47-row mirror pane handed the session 42 rows, so five were left over.
-
-Where they go is the multiplexer's business and not something bothy can hand
-back — dropping the mirror's own frame was tried and recovers nothing, because
-the frame is already accounted for. It is about a tenth of the pane, and it is
-at the bottom, below what you are reading.
+**The mirror is expanded before the session arrives.** A session running inside
+a pane takes its size when it attaches and never asks again, so a mirror sharing
+the tower with others would hand it a fraction of the window and leave the rest
+blank however large the pane became afterwards. Expanding first is what gives it
+the whole window; the pane is put back when you leave.
 
 The other cost is the one attaching always has: while you are in, the session
 has two windows, and it is sized to fit both. If its own window is still open

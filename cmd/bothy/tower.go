@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/layout"
@@ -178,6 +179,17 @@ func continues(line string) (string, bool) {
 		return line, false
 	}
 	return line[:len(line)-n] + strings.Repeat(`\`, n/2), n%2 == 1
+}
+
+// ownPane finds this process's own pane among its session's. ZELLIJ_PANE_ID is
+// a bare number where Addr spells the same pane terminal_N.
+func ownPane(panes []mux.PaneRef, id string) (mux.PaneRef, bool) {
+	for _, p := range panes {
+		if !p.Plugin && strconv.Itoa(p.ID) == id {
+			return p, true
+		}
+	}
+	return mux.PaneRef{}, false
 }
 
 // takeOver is the word that hands a mirror over to a real client of the session

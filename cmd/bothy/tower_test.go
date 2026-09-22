@@ -688,3 +688,56 @@ func TestTheMirrorStopsReadingWhileTheSessionHasTheTerminal(t *testing.T) {
 		t.Fatal("reading did not resume")
 	}
 }
+
+// A nested client takes its size when it attaches and never asks again, so the
+// pane has to be its full size before the client arrives. Taking over from a
+// mirror that shared the tower two ways filled the top half and left the rest
+// blank — zellij's own zoom moved the display without resizing the client.
+func TestTheMirrorIsExpandedBeforeTheSessionArrives(t *testing.T) {
+	body, err := os.ReadFile("towercmd.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(body)
+	i := strings.Index(src, "func step(")
+	if i < 0 {
+		t.Fatal("step is gone; this test names the wrong function")
+	}
+	fn := src[i:]
+	if j := strings.Index(fn, "\n}\n"); j > 0 {
+		fn = fn[:j]
+	}
+	expand := strings.Index(fn, "backend.Expand(")
+	join := strings.Index(fn, "backend.Join(")
+	switch {
+	case expand < 0:
+		t.Error("the pane is not expanded; the session arrives at the mirror's size")
+	case join < 0:
+		t.Error("step no longer joins")
+	case expand > join:
+		t.Error("the pane is expanded after the client arrives, which is too late to resize it")
+	}
+	// Its own session's pane, never the watched one.
+	if !strings.Contains(fn, "backend.Expand(bin, towerSession,") {
+		t.Error("step expands a pane outside the tower's own session")
+	}
+}
+
+// ZELLIJ_PANE_ID is a bare number; Addr spells the same pane terminal_N.
+func TestOwnPaneIsFoundByTheIdTheEnvironmentGives(t *testing.T) {
+	panes := []mux.PaneRef{
+		{ID: 1, Plugin: true, Title: "zellij:tab-bar"},
+		{ID: 0, Command: "bothy"},
+		{ID: 1, Command: "bothy", Fullscreen: true},
+	}
+	got, ok := ownPane(panes, "1")
+	if !ok {
+		t.Fatal("own pane not found")
+	}
+	if got.Addr() != "terminal_1" || !got.Fullscreen {
+		t.Errorf("found %s (fullscreen=%v); want the terminal pane, not the plugin", got.Addr(), got.Fullscreen)
+	}
+	if _, ok := ownPane(panes, "9"); ok {
+		t.Error("a pane id that is not there was matched")
+	}
+}
