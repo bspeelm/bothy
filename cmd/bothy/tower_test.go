@@ -399,7 +399,7 @@ func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
 	if !strings.Contains(src, "backend.Send(bin, session, pane.Addr(), line, env)") {
 		t.Error("the sending call no longer passes the typed line through unexamined")
 	}
-	if !strings.Contains(src, "readLines(os.Stdin, typed)") {
+	if !strings.Contains(src, "readLines(os.Stdin, typed") {
 		t.Error("the mirror no longer reads what to send from the keyboard")
 	}
 }
@@ -409,7 +409,11 @@ func TestTheTowerRelaysOnlyWhatWasTyped(t *testing.T) {
 // a hand on the keyboard.
 func TestTypedLinesArriveWithoutBlockingTheRefresh(t *testing.T) {
 	typed := make(chan string, 2)
-	go readLines(strings.NewReader("yes\n2\n"), typed)
+	// A closed channel always yields, which is "carry on reading" -- the state
+	// a mirror is in whenever it is not handing its pane to a client.
+	always := make(chan struct{})
+	close(always)
+	go readLines(strings.NewReader("yes\n2\n"), typed, always)
 
 	for _, want := range []string{"yes", "2"} {
 		select {
@@ -539,7 +543,9 @@ func collect(t *testing.T, in string) []string {
 		}
 		close(done)
 	}()
-	_ = readLines(strings.NewReader(in), out) // the error is the end of input
+	always := make(chan struct{})
+	close(always)
+	_ = readLines(strings.NewReader(in), out, always) // the error is the end of input
 	close(out)
 	<-done
 	return got
@@ -643,5 +649,42 @@ func TestTheGeneratedConfigZoomsANestedSession(t *testing.T) {
 	}
 	if !strings.Contains(string(body), `nested_session_handling "fullscreen"`) {
 		t.Error("the config does not set nested_session_handling; take-over gets a modal, then a small pane")
+	}
+}
+
+// While a mirror hands its pane to a client of the session, that client owns
+// the terminal. If the mirror keeps reading stdin too, the two race for every
+// keystroke: keys go missing and a take-over has to be asked for twice, which
+// is how this was found -- by testing it.
+func TestTheMirrorStopsReadingWhileTheSessionHasTheTerminal(t *testing.T) {
+	typed := make(chan string, 4)
+	resume := make(chan struct{})
+	go readLines(strings.NewReader("first\nsecond\n"), typed, resume)
+
+	select {
+	case got := <-typed:
+		if got != "first" {
+			t.Fatalf("first message was %q", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("nothing was delivered")
+	}
+
+	// Nothing more may arrive until the mirror says it has finished with the
+	// message -- that window is where the attached client reads.
+	select {
+	case got := <-typed:
+		t.Fatalf("read %q while the terminal was handed over", got)
+	case <-time.After(150 * time.Millisecond):
+	}
+
+	resume <- struct{}{}
+	select {
+	case got := <-typed:
+		if got != "second" {
+			t.Errorf("after resuming, read %q, want %q", got, "second")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("reading did not resume")
 	}
 }

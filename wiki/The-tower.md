@@ -69,10 +69,15 @@ never stopped.
 To send the word itself to an agent rather than taking over, double the slash:
 `//take`.
 
-**While you are in, that session is sized to the tower's window.** If its own
-window is still open somewhere, it shrinks there too, and grows back when you
-leave. That is the cost of being in one session from two places, and it is why
-the tower mirrors instead of attaching the rest of the time.
+**A session is sized to its smallest window, and that cuts both ways.** While
+you are in, the session has two windows: its own and the tower's. Whichever is
+shorter decides, so a session whose own window is 22 rows shows 22 rows inside a
+42-row tower pane and leaves the rest blank — measured. Take-over is at its best
+on a session whose window you have closed, which is usually the one you wanted
+the tower for.
+
+That is the cost of being in one session from two places, and it is why the
+tower mirrors instead of attaching the rest of the time.
 
 **`Ctrl-q` while taken over ends that session**, exactly as it would in the
 session's own window. The keys are the session's while you are in it, so bothy
@@ -87,11 +92,11 @@ session has your keyboard directly, and bothy is not in between.
 
 Beyond the line you type, the tower reads panes and writes nothing to them. It
 starts and stops nothing, and creates no session but its own, so an agent cannot
-be disturbed by being watched. It also attaches to nothing: a second terminal
-attached to a session would size that session to the smaller of the two windows.
+be disturbed by being watched. It attaches to nothing unless you ask it to with
+`/take`, because a second window on a session resizes it.
 
-It sends text, and only text. Not arrows, not tab, not Ctrl-C — so a question
-that has to be answered by moving a selection still needs its own window.
+A relayed reply is text, and only text — not arrows, not tab, not Ctrl-C. A
+question that has to be answered by moving a selection is what `/take` is for.
 
 **It cannot bring a session's window to the front.** Selecting a row shows you
 which session wants attention; switching to it is yours to do. No Wayland

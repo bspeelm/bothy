@@ -55,7 +55,9 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	agent := install.AgentBinary(cfg.Slots.Agent)
 	typed := make(chan string, 1)
 	closed := make(chan error, 1)
-	go func() { closed <- readLines(os.Stdin, typed) }()
+	// Buffered, so a reader that has already gone is never waited on.
+	resume := make(chan struct{}, 1)
+	go func() { closed <- readLines(os.Stdin, typed, resume) }()
 
 	tick := time.NewTicker(every)
 	defer tick.Stop()
@@ -78,6 +80,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			last = "" // the reply is about to change the screen; do not skip it
 			rows = paneRows()
 			replyPrompt(os.Stdout, rows)
+			resume <- struct{}{}
 		case <-tick.C:
 			// Asked every pass, not once: fullscreening a mirror makes its pane
 			// taller, and a height read at startup leaves the rest of it dead
@@ -114,7 +117,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 // scanning at all, so one oversized paste ended replies for the rest of the
 // mirror's life without saying so. Measured: a 70KB line through a Scanner
 // delivered zero lines, the short line after it included.
-func readLines(r io.Reader, out chan<- string) error {
+func readLines(r io.Reader, out chan<- string, resume <-chan struct{}) error {
 	br := bufio.NewReader(r)
 	var held []string
 	for {
@@ -132,6 +135,12 @@ func readLines(r io.Reader, out chan<- string) error {
 			// prompt's default is accepted.
 			out <- strings.Join(append(held, trimmed), "\n")
 			held = nil
+			// Wait to be told the message was dealt with before touching the
+			// terminal again. While a mirror hands its pane to a client of the
+			// session, that client owns stdin -- two readers on one terminal
+			// race for every keystroke, which showed up as keys going missing
+			// and a take-over that needed asking for twice.
+			<-resume
 		}
 		if err != nil {
 			return err
