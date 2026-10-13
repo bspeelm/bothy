@@ -15,7 +15,7 @@
 %global debug_package %{nil}
 
 Name:           bothy
-Version:        0.13.0
+Version:        0.13.1
 Release:        1%{?dist}
 Summary:        A turn-key terminal workspace built from tools you already trust
 
@@ -75,6 +75,9 @@ go test ./...
 %{_datadir}/zsh/site-functions/_%{name}
 
 %changelog
+* Tue Oct 13 2026 Bryan Speelman <bryspeelm@pm.me> - 0.13.1-1
+- See https://github.com/bspeelm/bothy/releases/tag/v0.13.1
+
 * Tue Sep 22 2026 Bryan Speelman <bryspeelm@pm.me> - 0.13.0-1
 - See https://github.com/bspeelm/bothy/releases/tag/v0.13.0
 
