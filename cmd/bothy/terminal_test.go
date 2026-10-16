@@ -215,6 +215,9 @@ func TestGhosttyIsFoundInsideAnAppBundle(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty"))
+	restore := systemApplications
+	t.Cleanup(func() { systemApplications = restore })
+	systemApplications = filepath.Join(t.TempDir(), "Applications")
 
 	cmd, err := ghosttyCommand(platform.Info{OS: "darwin", Home: home})
 	if err != nil {
