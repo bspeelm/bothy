@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -95,6 +96,9 @@ func TestALaunchIsNeverBlockedByAProbeThatFailed(t *testing.T) {
 // wrote would never go stale and the project would be shut permanently. This
 // guards the guard: without it the fix becomes a worse version of the bug.
 func TestABothyInsideTheContainerDoesNotClaimTheSession(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("reads /proc")
+	}
 	cfg := config.Default()
 
 	outside := sandbox(t, true)
