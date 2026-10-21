@@ -71,3 +71,33 @@ func TestKillWithNoNameMeansThisDirectory(t *testing.T) {
 		t.Errorf("planned to end %q, want the session for this directory", got)
 	}
 }
+
+// A command with no flag set took --help for one of its words: kill went
+// looking for a session called "--help", attach handed it to zellij.
+func TestHelpIsNotTakenForASessionName(t *testing.T) {
+	for _, cmd := range []string{"kill", "attach", "box", "config", "keys", "theme", "tools"} {
+		for _, flag := range []string{"-h", "--help"} {
+			lines, ok := helpFor(cmd, []string{flag})
+			if !ok || !strings.Contains(lines, "bothy "+cmd) {
+				t.Errorf("bothy %s %s = %q, %v; want its usage line", cmd, flag, lines, ok)
+			}
+		}
+	}
+	if _, ok := helpFor("kill", []string{"bothy-work"}); ok {
+		t.Error("a session name was answered with help")
+	}
+	// A flag set lists the flags, which the usage line does not.
+	if _, ok := helpFor("ls", []string{"--help"}); ok {
+		t.Error("ls has a flag set and should answer -h itself")
+	}
+}
+
+// parsesFlags is a closed list: a command named there that the usage text does
+// not know is a stale entry, and a typo would silently route help wrongly.
+func TestEveryCommandThatParsesFlagsIsARealOne(t *testing.T) {
+	for cmd := range parsesFlags {
+		if cmd != "lock" && commandUsage(cmd) == "" {
+			t.Errorf("parsesFlags names %q, which usage does not list", cmd)
+		}
+	}
+}

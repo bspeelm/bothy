@@ -472,7 +472,7 @@ func planAttach(p platform.Info, cfg config.Config, dir, session string, args []
 	}
 	bin, err := lookPathIn(p, mux)
 	if err != nil {
-		return attachPlan{}, fmt.Errorf("%s is not installed", mux)
+		return attachPlan{}, fmt.Errorf("%s is not installed — run 'bothy install'", mux)
 	}
 	return attachPlan{
 		Bin:     bin,

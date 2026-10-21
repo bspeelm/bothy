@@ -175,3 +175,14 @@ func TestDevChecksForAttachAfterParsingFlags(t *testing.T) {
 		t.Error("cmdDev checks for `attach` before parsing flags, so `bothy dev --profile x attach` is misread")
 	}
 }
+
+// Launch named the way out of a missing multiplexer and attach did not, for
+// the same failure.
+func TestAttachWithNoMultiplexerSaysHowToGetOne(t *testing.T) {
+	p := sandbox(t, false)
+	t.Setenv("PATH", t.TempDir())
+	_, err := planAttach(p, config.Default(), "/w", "", nil)
+	if err == nil || !strings.Contains(err.Error(), "bothy install") {
+		t.Errorf("planAttach = %v, want it to name 'bothy install'", err)
+	}
+}

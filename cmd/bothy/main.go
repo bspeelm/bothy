@@ -92,6 +92,10 @@ func main() {
 	}
 
 	cmd, args := os.Args[1], os.Args[2:]
+	if lines, ok := helpFor(cmd, args); ok {
+		fmt.Print(lines)
+		return
+	}
 	var err error
 	switch cmd {
 	case "install":
@@ -146,6 +150,38 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
+}
+
+// parsesFlags are the commands whose flag set answers -h itself, listing the
+// flags as well. The rest take positional words, and without this a --help
+// is taken for one: kill looks for a session called "--help", attach hands it
+// to zellij.
+var parsesFlags = map[string]bool{
+	"completion": true, "confine": true, "connect": true, "desktop-entry": true,
+	"doctor": true, "install": true, "layout": true, "lock": true, "ls": true,
+	"outdated": true, "tower": true, "uninstall": true, "upgrade": true,
+}
+
+// helpFor answers -h or --help for a command that takes only positional words.
+func helpFor(cmd string, args []string) (string, bool) {
+	if len(args) == 0 || (args[0] != "-h" && args[0] != "--help") || parsesFlags[cmd] {
+		return "", false
+	}
+	lines := commandUsage(cmd)
+	return lines, lines != ""
+}
+
+// commandUsage is cmd's lines from the usage text, "" for a command it does
+// not list.
+func commandUsage(cmd string) string {
+	var out strings.Builder
+	for _, line := range strings.Split(usage, "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[0] == "bothy" && f[1] == cmd {
+			out.WriteString(line + "\n")
+		}
+	}
+	return out.String()
 }
 
 // fail exits for err. A child's exit status passes through as the child's own
