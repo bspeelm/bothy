@@ -17,6 +17,7 @@ import (
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/probe"
+	"github.com/bspeelm/bothy/internal/state"
 )
 
 // Zellij is the multiplexer CI tests.
@@ -132,7 +133,7 @@ func (z Zellij) Open(r Request) error {
 		return err
 	}
 	file := filepath.Join(dir, r.Profile.Name+".kdl")
-	if err := os.WriteFile(file, []byte(kdl), 0o644); err != nil {
+	if err := state.WriteFile(file, []byte(kdl), 0o644); err != nil {
 		return err
 	}
 	if err := os.Chdir(r.Dir); err != nil {
