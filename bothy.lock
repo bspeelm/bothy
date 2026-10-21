@@ -39,15 +39,15 @@ linux_x86_64 = 'b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f
 
 [[tool]]
 name = 'lazygit'
-tag = 'v0.66.1'
-version = '0.66.1'
+tag = 'v0.66.2'
+version = '0.66.2'
 verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
 
 [tool.sha256]
-darwin_aarch64 = 'c66b15f666216142a2f39143f5540c6a572473f03fab014dae07c33cd76e719a'
-darwin_x86_64 = '525aa969eac201ee74c51a1aa52af0891d3d945a3f444f14d399252da31f3986'
-linux_aarch64 = 'add91327af13343f37d2d610512d0982ef5c75da5cc962b5159748adc8a11a86'
-linux_x86_64 = '7b3f30c2c06a42cf575280f907e58d7ea08411408b6b62bc926bc91cbc6c3f46'
+darwin_aarch64 = 'fadda59ae7665ba556fcbaa704c7eade6e40d016d3f3b25d6327dd1f3f906a0c'
+darwin_x86_64 = 'de5d3771e4befa6fe17590e21445614998adc1ef34a71f4003df6764247517ab'
+linux_aarch64 = '79a3161eeb642f0473e23db6341f7baabd4a5933e921a9c1167c5d5c765c41a4'
+linux_x86_64 = '158efc9ddfa1241fab5fb3526bb442c8dc6c4b1904d73213b9e4e93e03c52034'
 
 [[tool]]
 name = 'ripgrep'
