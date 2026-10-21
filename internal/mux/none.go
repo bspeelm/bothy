@@ -38,7 +38,7 @@ func (None) Open(r Request) error {
 	if cmd == "" {
 		return nil
 	}
-	return runReplacing(r.Env, cmd)
+	return RunAttached(r.Env, cmd)
 }
 
 // Without a multiplexer there are no panes to describe and no screen to read,

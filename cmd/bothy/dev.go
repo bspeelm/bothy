@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 // cmdDev launches the workspace: bare `bothy`, and `bothy` with any flag.
@@ -152,8 +152,10 @@ func clientVerdict(n int, counted, owned bool) verdict {
 // window's foreground group -- and Ctrl-C in a pane must not end the workspace.
 func onHangup(cleanup func()) func() {
 	ch := make(chan os.Signal, 1)
+	done := make(chan struct{})
 	signal.Notify(ch, syscall.SIGHUP)
 	go func() {
+		defer close(done)
 		if _, ok := <-ch; !ok {
 			return
 		}
@@ -165,8 +167,22 @@ func onHangup(cleanup func()) func() {
 			_ = self.Signal(syscall.SIGHUP)
 		}
 	}()
-	return func() { signal.Stop(ch); close(ch) }
+	// A hangup already taken is a cleanup under way, and returning lets main
+	// exit underneath it. Wait for it, bounded: a window that is gone has
+	// nobody to keep waiting for.
+	return func() {
+		signal.Stop(ch)
+		close(ch)
+		select {
+		case <-done:
+		case <-time.After(hangupGrace):
+		}
+	}
 }
+
+// hangupGrace bounds the wait for a cleanup already running. Reclaim waits
+// about two seconds a client and Kill five, so this covers both with room.
+const hangupGrace = 10 * time.Second
 
 // endTheSession ends the multiplexer client this launch is showing.
 //
@@ -515,15 +531,7 @@ func runInteractive(name string, args ...string) error {
 }
 
 func runInteractiveEnv(env []string, name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Env = env
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	err := cmd.Run()
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		os.Exit(exitErr.ExitCode())
-	}
-	return err
+	return mux.RunAttached(env, name, args...)
 }
 
 // shellQuote makes a value safe to embed in the `bash -lc` container hop.

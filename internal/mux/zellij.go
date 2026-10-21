@@ -142,7 +142,7 @@ func (z Zellij) Open(r Request) error {
 	if !slices.Contains(r.Live, r.Session) {
 		z.discardDead(r.Bin, r.Env, r.Session)
 	}
-	return runReplacing(r.Env, r.Bin, z.launchArgs(r.Session, file, r.Live)...)
+	return RunAttached(r.Env, r.Bin, z.launchArgs(r.Session, file, r.Live)...)
 }
 
 // launchArgs must not carry --layout into a live session: zellij applies one
@@ -241,8 +241,13 @@ func (Zellij) sessions(bin string, env []string) (live, stopped []string) {
 
 // Kill ends a running session and removes what it would have been resurrected
 // from. --force is the difference from Discard: here ending it is the point.
+//
+// Bounded, because the window-close cleanup waits on it, and a wedged server
+// would otherwise hold a windowless bothy open indefinitely.
 func (Zellij) Kill(bin string, env []string, session string) error {
-	cmd := exec.Command(bin, "delete-session", "--force", session)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, "delete-session", "--force", session)
 	cmd.Env = env
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%s: %s", session, strings.TrimSpace(string(out)))
@@ -459,8 +464,8 @@ func (Zellij) Send(bin, session, pane, line string, env []string) error {
 // owns, and returns when it goes.
 //
 // Not sessionAction: this is the session itself, not an instruction about one,
-// so it takes the terminal. Not runReplacing either -- that exits the process,
-// and the mirror has to carry on watching afterwards.
+// so it takes the terminal. Not RunAttached either: its exit status is the
+// caller's to end on, and the mirror has to carry on watching afterwards.
 //
 // zellij notices it is running inside a pane of another session and routes keys
 // to this one; the config sets nested_session_handling so it zooms rather than

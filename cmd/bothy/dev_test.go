@@ -215,6 +215,31 @@ func TestABothyInsideTheContainerEndsNothing(t *testing.T) {
 	}
 }
 
+// The window closing kills zellij and bothy together, and the zellij client
+// dying returns control to main, which unhooks on its way out. Unhooking must
+// not let the process exit under a cleanup already running, or the session
+// the cleanup was ending outlives the window.
+func TestUnhookingWaitsForACleanupAlreadyUnderWay(t *testing.T) {
+	started := make(chan struct{})
+	var finished atomic.Bool
+	stop := onHangup(func() {
+		close(started)
+		time.Sleep(300 * time.Millisecond)
+		finished.Store(true)
+	})
+	hangup(t)
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the hangup never reached the cleanup")
+	}
+	stop()
+	if !finished.Load() {
+		t.Error("unhooking returned while the cleanup was still running")
+	}
+	awaitHangups(t, 2)
+}
+
 func hangup(t *testing.T) {
 	t.Helper()
 	self, err := os.FindProcess(os.Getpid())

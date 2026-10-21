@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
@@ -74,8 +76,7 @@ func isHelpFlag(s string) bool {
 func main() {
 	if len(os.Args) < 2 {
 		if err := cmdDev(nil); err != nil {
-			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
-			os.Exit(1)
+			fail(err)
 		}
 		return
 	}
@@ -85,8 +86,7 @@ func main() {
 	// that alias outlived the shell function it was kept for.
 	if strings.HasPrefix(os.Args[1], "-") && !isHelpFlag(os.Args[1]) {
 		if err := cmdDev(os.Args[1:]); err != nil {
-			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
-			os.Exit(1)
+			fail(err)
 		}
 		return
 	}
@@ -144,9 +144,19 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
-		os.Exit(1)
+		fail(err)
 	}
+}
+
+// fail exits for err. A child's exit status passes through as the child's own
+// code with nothing printed: the child has already said what it had to.
+func fail(err error) {
+	var status mux.ExitStatus
+	if errors.As(err, &status) {
+		os.Exit(status.Code)
+	}
+	fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
+	os.Exit(1)
 }
 
 func load() (platform.Info, config.Config, error) {
