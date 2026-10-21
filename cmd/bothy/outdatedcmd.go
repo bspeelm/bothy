@@ -12,6 +12,17 @@ import (
 
 // `bothy outdated` -- which pinned tools have newer releases upstream.
 
+// takeUpdates is the next step. In a checkout the maintainer takes them, and
+// the weekly job quotes this line in the issue it files; anywhere else the
+// pins ship inside bothy, and `bothy lock` would write a stray bothy.lock into
+// the current directory and change nothing.
+func takeUpdates(inCheckout bool) string {
+	if inCheckout {
+		return "Run 'bothy lock' to take them, then review the diff."
+	}
+	return "The pins ship with bothy and move when it does; 'bothy upgrade' says how to update."
+}
+
 func cmdOutdated(args []string) error {
 	fs := flag.NewFlagSet("outdated", flag.ExitOnError)
 	asJSON := fs.Bool("json", false, "machine-readable output")
@@ -61,7 +72,7 @@ func cmdOutdated(args []string) error {
 		fmt.Printf("no updates found, but %d could not be checked.\n", unknown)
 	default:
 		fmt.Printf("%d of %d tools have newer releases.\n", stale, len(updates))
-		fmt.Println("Run 'bothy lock' to take them, then review the diff.")
+		fmt.Println(takeUpdates(fetch.InCheckout()))
 	}
 
 	// Being out of date is a fact, not a failure: exiting non-zero here would

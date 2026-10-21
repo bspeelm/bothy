@@ -87,11 +87,10 @@ func writeJSON(path string, v any) error {
 	if err != nil {
 		return fmt.Errorf("state: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(out, '\n'), 0o644); err != nil {
+	if err := WriteFile(path, append(out, '\n'), 0o644); err != nil {
 		return fmt.Errorf("state: %w", err)
 	}
-	return os.Rename(tmp, path)
+	return nil
 }
 
 // RecordBinary adds or replaces a binary entry.

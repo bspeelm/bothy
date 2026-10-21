@@ -23,3 +23,16 @@ func TestLockRefusesATagWithoutATool(t *testing.T) {
 		t.Errorf("the refusal is %q, which does not say what to add", err)
 	}
 }
+
+// `bothy outdated` told everyone to run `bothy lock`, which outside a
+// checkout writes a stray bothy.lock into the current directory and changes
+// nothing. The weekly job runs in the checkout and keeps quoting the lock line.
+func TestOutdatedSendsAUserToUpgradeAndTheMaintainerToLock(t *testing.T) {
+	if got := takeUpdates(true); !strings.Contains(got, "bothy lock") {
+		t.Errorf("in a checkout: %q, want the lock step", got)
+	}
+	got := takeUpdates(false)
+	if strings.Contains(got, "bothy lock") || !strings.Contains(got, "bothy upgrade") {
+		t.Errorf("outside a checkout: %q, want 'bothy upgrade' and no lock step", got)
+	}
+}
