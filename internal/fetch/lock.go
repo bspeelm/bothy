@@ -157,9 +157,7 @@ var gitDescribe = regexp.MustCompile(`-g[0-9a-f]{7,}`)
 
 // IsSourceBuild reports whether a version came from `git describe` rather than
 // a release tag -- whether it is *ahead* of the tag it names. The shape is
-// "v0.1.5-3-gabc1234-dirty"; only a bare `go build` yields "dev". Update
-// .Outdated compares by string inequality, which would otherwise announce an
-// upgrade to someone already past it.
+// "v0.1.5-3-gabc1234-dirty"; only a bare `go build` yields "dev".
 func IsSourceBuild(v string) bool {
 	return v == "" || v == "dev" ||
 		strings.HasSuffix(v, "-dirty") ||
