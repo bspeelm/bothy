@@ -154,6 +154,11 @@ func checkOpener(env Env) Result {
 				"this container has no desktop to open files with, and no host to forward to",
 				"")
 		}
+		if env.Platform.OS == "windows" {
+			return warn(want+" is not on PATH",
+				"Windows opens files with it, and it is part of the system",
+				"check that %SystemRoot%\\System32 is on PATH")
+		}
 		return warn(want+" is not on PATH", "", "install xdg-utils")
 	}
 	return pass(want + " resolves")

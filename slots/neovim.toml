@@ -6,7 +6,7 @@
 name      = "neovim"
 what      = "the editor in the editor profile"
 slot      = "editor"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 
 [advise]
 binary      = "nvim"
@@ -18,3 +18,4 @@ ubuntu         = "sudo apt install -y neovim"
 debian         = "sudo apt install -y neovim"
 arch           = "sudo pacman -S neovim"
 darwin         = "brew install neovim"
+windows        = "winget install Neovim.Neovim"

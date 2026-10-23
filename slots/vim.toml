@@ -4,7 +4,7 @@
 name      = "vim"
 what      = "the editor in the editor profile"
 slot      = "editor"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 provides  = ["theme"]
 
 [advise]
@@ -16,6 +16,9 @@ fedora         = "sudo dnf install -y vim-enhanced"
 debian         = "sudo apt install -y vim"
 arch           = "sudo pacman -S vim"
 darwin         = "vim ships with macOS; if it is missing, brew install vim"
+# Measured: the winget package installs per-user and puts nothing on PATH,
+# unlike every other editor here, so the second step is not optional.
+windows        = 'winget install vim.vim, then add %LOCALAPPDATA%\Programs\Vim to PATH'
 
 [[file]]
 template = "templates/editor/vim/vimrc.tmpl"

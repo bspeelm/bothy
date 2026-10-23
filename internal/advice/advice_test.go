@@ -139,6 +139,8 @@ func TestPlatformsAreCoveredByAnInstallLine(t *testing.T) {
 				covered["linux"], covered["darwin"] = true, true
 			case "darwin":
 				covered["darwin"] = true
+			case "windows":
+				covered["windows"] = true
 			default: // every other key is a Linux distribution
 				covered["linux"] = true
 			}
