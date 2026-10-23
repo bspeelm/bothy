@@ -438,7 +438,7 @@ func layoutCommand(p platform.Info, cmd string) string {
 	if full == cmd {
 		return cmd
 	}
-	return "'" + full + "'"
+	return mux.JoinCommand([]string{full})
 }
 
 // LoadProfile reads a profile by name, preferring the user's own copy in

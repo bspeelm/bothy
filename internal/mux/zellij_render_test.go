@@ -276,6 +276,11 @@ func TestAProjectPathWithSpacesStaysOneMount(t *testing.T) {
 		"/home/me/it's",
 		`/home/me/back\slash "quoted"`,
 		"",
+		// The tower builds its pane command the same way, and a Windows path
+		// is nothing but backslashes: without quoting it came back as
+		// C:Usersmebothy.exe and the pane said "Command not found".
+		`C:\Users\me\bin\bothy.exe`,
+		`C:\Program Files\bothy\bothy.exe`,
 	} {
 		want := []string{"podman", "run", "-v", dir + ":/work:rw", "img", "claude"}
 		got, err := splitCommand(JoinCommand(want))

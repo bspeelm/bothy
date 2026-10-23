@@ -163,8 +163,10 @@ func TestTheTowerStacksMirrorsOneToARow(t *testing.T) {
 		t.Errorf("first row does not watch bothy-api: %q", prof.Rows[0].Panes[0].Command)
 	}
 	// The absolute path, so the tower re-runs the bothy that built it rather
-	// than whichever one PATH finds first.
-	if !strings.HasPrefix(prof.Rows[0].Panes[0].Command, "/usr/bin/bothy ") {
+	// than whichever one PATH finds first. Quoted, because the layout splits
+	// this line back into words and a backslash escapes there -- a Windows
+	// path arrived as C:Usersmebothy.exe without it.
+	if !strings.HasPrefix(prof.Rows[0].Panes[0].Command, "'/usr/bin/bothy' ") {
 		t.Errorf("mirror command does not run this binary by path: %q", prof.Rows[0].Panes[0].Command)
 	}
 }
