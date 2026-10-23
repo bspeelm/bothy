@@ -352,13 +352,25 @@ func AgentContextFlag(slot string) string {
 	return a.ContextFlag
 }
 
-// Commands maps layout slots to the commands their panes run.
+// Commands maps layout slots to the commands their panes run. A slot turned
+// off maps to an empty command, which is a pane running your shell -- not to
+// the word "none", which is a program nobody has.
 func Commands(cfg config.Config) layout.Commands {
 	return layout.Commands{
-		"browser": cfg.Slots.Browser,
-		"editor":  EditorBinary(cfg.Slots.Editor),
-		"agent":   AgentBinary(cfg.Slots.Agent),
+		"browser": slotCommand(cfg.Slots.Browser, func(s string) string { return s }),
+		"editor":  slotCommand(cfg.Slots.Editor, EditorBinary),
+		"agent":   slotCommand(cfg.Slots.Agent, AgentBinary),
 	}
+}
+
+// slotCommand resolves a slot to its command, treating "none" as off. That is
+// the same sentinel the mux slot already uses, so it is the spelling people
+// have been told about.
+func slotCommand(slot string, binary func(string) string) string {
+	if slot == "none" {
+		return ""
+	}
+	return binary(slot)
 }
 
 // LoadProfile reads a profile by name, preferring the user's own copy in

@@ -264,3 +264,33 @@ func TestSplitCommandKeepsBackslashesAShellWouldKeep(t *testing.T) {
 		}
 	}
 }
+
+// Turning a slot off put `command "none"` in the layout, so zellij tried to
+// run a program called none and the pane died with "Command not found" where
+// the agent should have been. "none" is the spelling bothy already documents
+// for the mux slot, so it has to mean off here too -- and off means a pane
+// running your shell.
+func TestASlotTurnedOffIsAShellPaneNotACommandCalledNone(t *testing.T) {
+	prof := layout.Profile{Rows: []layout.Row{
+		{Panes: []layout.Pane{{Name: "agent", Slot: "agent"}}},
+		{Panes: []layout.Pane{{Name: "browser", Slot: "browser"}}},
+	}}
+	out, err := render(prof, layout.Commands{"agent": "", "browser": "yazi"})
+	if err != nil {
+		t.Fatalf("a slot turned off must render, not error: %v", err)
+	}
+	if strings.Contains(out, `"none"`) {
+		t.Errorf("the layout still names a program called none:\n%s", out)
+	}
+	if strings.Contains(out, `name="agent" {`) {
+		t.Errorf("the agent pane has a command body; it should run the shell:\n%s", out)
+	}
+	if !strings.Contains(out, `command "yazi"`) {
+		t.Errorf("the slot that is on lost its command:\n%s", out)
+	}
+
+	// A profile naming a slot that nothing fills is still a mistake.
+	if _, err := render(prof, layout.Commands{"browser": "yazi"}); err == nil {
+		t.Error("a slot absent from the map should be reported, not become a shell")
+	}
+}
