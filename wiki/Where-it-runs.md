@@ -4,11 +4,10 @@ If your terminal carries the Kitty keyboard protocol (Ghostty, Kitty, WezTerm,
 iTerm2), bothy runs in it. If it does not, bothy opens a Ghostty window
 instead, so that Shift+Enter and Ctrl+Enter reach an agent rather than arriving
 as plain Enter. `--in-place` and
-`--window` overrule that judgement in either direction. If you overrule it every time, make it the standing
-answer with `bothy config set workspace.launch here`, or `window` for the
+`--window` overrule that decision in either direction. To make an override
+permanent, set `bothy config set workspace.launch here`, or `window` for the
 opposite; the flags still win for a single run. With no graphical display —
-over SSH, say — it stays where it is, which is generally the sensible thing to
-do when somewhere else.
+over SSH, for example — it runs where it is.
 
 That is bothy noticing you are somewhere else. `bothy connect` is the other
 direction: you stay here and the workspace opens against another machine's
@@ -23,16 +22,13 @@ setting.
 
 Inside a Toolbx or Distrobox container, bothy remembers which container it
 put its tools in and goes back there when you launch it from the host. If you
-install from a container that has none of the tools, bothy downloads the lot
-into its own folder, and the result works from either side. It has, on the
-whole, had enough of being surprised by containers, and has written some of
-this down.
+install from a container that has none of the tools, bothy downloads them all
+into its own directory, and the result works from either side.
 
-As for which machines: Fedora, Ubuntu, Debian and Arch in containers, and
-macOS on a Mac, on every release — installed, exercised, uninstalled, and the
-whole doctor report compared against what it ought to have said. That is the
-whole of what supported means here: not that it ought to work, but that
-something proved it did this morning.
+Which machines: Fedora, Ubuntu, Debian and Arch in containers, and macOS on a
+Mac, on every release — installed, exercised, uninstalled, with the whole doctor
+report compared against an expected one. That is what supported means here: not
+that it should work, but that a run proved it did.
 
 **Windows is in beta.** There is a `bothy_windows_amd64.zip` on every release
 and `scoop install bothy` brings it down. bothy installs there, fetches all
@@ -56,26 +52,26 @@ yet. Three things are known rather than guessed:
   podman, toolbox, flatpak-spawn and FUSE. They report themselves unavailable
   rather than failing oddly.
 
-Use WezTerm; it is what the Windows work was done against. `bothy doctor` is
-the honest answer on that machine, and it is the same answer it gives anywhere
-else nobody has checked for long.
+Use WezTerm, which is what the Windows work was done against. `bothy doctor` is
+the authoritative answer on that machine, as it is on any machine CI does not
+cover.
 
-Two things bothy has advice for and does not test. **Silverblue and other
+Two things bothy gives advice for and does not test. **Silverblue and other
 image-based systems**, where `dnf` means `rpm-ostree` and a reboot: bothy is
 written on one and cannot put one in a container. **Mint, Pop!_OS and the other
 derivatives**, which inherit Debian's advice through `ID_LIKE` — their container
 images report `ID=ubuntu`, so a job using one would prove nothing the Ubuntu job
 does not. That path is unit-tested instead.
 
-macOS took eight releases to earn that sentence, having been listed from the
-first on the strength of the binaries being built, which is not the same
-thing. The first Mac to run it found a file opener naming a program macOS does
-not have; the first machine in CI found an uninstall that reported success and
-left the binary behind. Both are fixed. Neither would have been found by
-reading the code.
+macOS was listed as supported for eight releases on the strength of the
+binaries being built, which is not the same thing. The first Mac to run it found
+a file opener naming a program macOS does not have; the first machine in CI
+found an uninstall that reported success and left the binary behind. Both are
+fixed, and neither would have been found by reading the code.
 
-Anywhere else, bothy runs and the doctor tells you what it cannot do on that
-machine. Nobody has checked. It does not pretend otherwise.
+Anywhere else, bothy runs and the doctor reports what it cannot do on that
+machine. Those platforms are unverified, and bothy says so rather than implying
+otherwise.
 
 ---
 

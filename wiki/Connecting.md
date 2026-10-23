@@ -8,10 +8,10 @@ and the agent works on its files.
 bothy connect <client>
 ```
 
-**bothy puts nothing on the machine you connect to.** Not itself, not a tool,
-not a credential, not a temporary file. The only thing it uses over there is
-the SSH server already running, which is what connecting over SSH means. If
-you can `ssh <client>` today, you can `bothy connect <client>`.
+**bothy puts nothing on the machine you connect to** — not itself, not a tool,
+not a credential, not a temporary file. The only thing it uses there is the SSH
+server already running. If you can `ssh <client>` today, you can
+`bothy connect <client>`.
 
 ## What you need
 
@@ -30,13 +30,13 @@ and that route costs no reboot.
 
 Nothing else. The far machine needs no preparation at all.
 
-## What "it works" means
+## What it requires
 
-**If `ssh <host>` works from your terminal, `bothy connect <host>` works.** That
-is the whole test. bothy does not manage keys, users, ports or jump hosts — ssh
-does, and bothy hands your host string to it untouched.
+**If `ssh <host>` works from your terminal, `bothy connect <host>` works.**
+bothy does not manage keys, users, ports or jump hosts; ssh does, and bothy
+passes the host string to it untouched.
 
-So the two things that catch people out are the two that would catch `ssh` out:
+The two common problems are therefore the two that would also affect `ssh`:
 
 **The account.** `bothy connect 192.168.1.42` logs in as *your local
 username*, because that is what ssh does with a bare address. On someone else's
@@ -116,7 +116,8 @@ Nothing is written on the other machine.
 ## What the agent is told
 
 The agent is handed a short note when the workspace opens, because otherwise it
-has to work out where it is by experiment — and gets it wrong. It says which
+has to determine where it is by experiment, and does so unreliably. It says
+which
 machine is mounted, that the agent is **not** running on it, that paths under
 the working directory belong to that machine while `/etc` and `/home` are
 yours, and that `on` is how to run something over there.
@@ -159,20 +160,19 @@ because ssh handles them, not bothy.
 bothy chooses which key ssh should offer, when you tell it to, and does
 nothing else to your SSH setup. It never disables host key checking, never
 changes your known-hosts file, and never turns on password authentication.
-Choosing a key is not the same as weakening verification, and bothy only does
-the first.
+Selecting which key to offer does not weaken verification, and that is the only
+part bothy touches.
 
 Nothing is copied. The key stays where it is; bothy records the path.
 
-**Use a key rather than a password** — not because a password is unsafe, but
-because there is nobody to type it. One workspace opens several SSH
-connections: the mount, the shell pane, and a fresh one for every `on`. A host
-that wants a password asks for it each time, and the agent running `on make
-test` cannot answer, so the pane simply waits.
+**Use a key rather than a password**, because there is nobody to type one. A
+single workspace opens several SSH connections: the mount, the shell pane, and
+a new one for every `on`. A host that requires a password asks on each of them,
+and an agent running `on make test` cannot answer, so the pane waits
+indefinitely.
 
-bothy does not refuse a password. ssh decides how you authenticate and bothy
-does not overrule it — the same reason it never turns password authentication
-on. It just cannot answer the prompt for you.
+bothy does not refuse a password. ssh decides how authentication happens and
+bothy does not overrule it; it simply cannot answer the prompt.
 
 ```sh
 ssh-copy-id <client>
@@ -200,17 +200,15 @@ with `bothy connect <client>` again.
 
 ## What to expect
 
-**Browsing is fine. Searching from your side is not.** `rg` run locally walks
-the whole tree over the network. Run it in the shell pane, or with `on`, and it
-runs on the machine that has the files.
+**Browsing is fast; searching from your side is not.** `rg` run locally walks
+the whole tree over the network. Run it in the shell pane, or with `on`, so it
+runs on the machine that holds the files.
 
-**Confine and connect do not combine, and bothy says so.** Run `bothy confine`
-in a connected workspace and it refuses, because the wall could not reach the
-files. The container is started by podman, and an sshfs mount made where bothy
-runs is invisible to it — measured: twenty-four entries inside the toolbox,
-none from the host. The bind would succeed and mount an *empty* directory, so
-the agent would start walled off from the very files you opened it for. A wall
-that hides the project is worse than none.
+**`confine` and `connect` do not combine, and bothy refuses the combination.**
+The container is started by podman, and an sshfs mount made where bothy runs is
+invisible to it — measured: twenty-four entries inside the toolbox, none from
+the host. The bind would succeed and mount an empty directory, so the agent
+would start with no access to the files the workspace was opened for.
 
 **macOS is untested by CI**, though nothing about bothy prevents it. sshfs
 there needs a FUSE layer, and the one to use is **FUSE-T** rather than macFUSE:

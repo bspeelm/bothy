@@ -1,23 +1,22 @@
 # The watermark
 
-An image behind the terminal, off unless you point at one:
+An image behind the terminal, off unless one is configured:
 
 ```sh
-bothy config set workspace.background_image ~/pictures/bothy-watermark.png
+bothy config set workspace.background_image ~/pictures/watermark.png
 bothy install
 ```
 
-**bothy ships no art.** The trick wants an image composited where a particular
-pane will be, which depends on your screen and your layout — so a picture bothy
-chose would be wrong on most machines, and the one it used to ship was a Tux it
-had no business redistributing uncredited.
+**bothy ships no art.** The technique requires an image composited where a
+particular pane will be, which depends on the screen and the layout, so an
+image bothy chose would be positioned wrongly on most machines. It is also not
+bothy's place to redistribute somebody else's artwork.
 
-## Why this works at all
+## How it works
 
-A terminal cannot scope a background image to one pane. But with a fixed
-layout, the image can be made to *land* on one: a mostly transparent canvas the
-shape of your window, with the art composited at the percentage where the pane
-sits. Ghostty's `background-image-fit = stretch` maps that canvas onto the
+A terminal cannot scope a background image to one pane. With a fixed layout the
+image can instead be made to land on one: a mostly transparent canvas the shape
+of the window, with the art composited at the percentage where the pane sits. Ghostty's `background-image-fit = stretch` maps that canvas onto the
 window, so the percentages hold at any resolution.
 
 Do not reach for `fit = none` with a corner anchor. That positions in absolute
@@ -58,7 +57,7 @@ background-image-opacity = 0.12
 
 `bothy doctor` fails if `workspace.background_image` names a file that is not there,
 because Ghostty says nothing about a `background-image` it cannot find. It
-draws nothing, which looks identical to "the opacity is too low" and sends you
-tuning a setting that was never the problem.
+draws nothing, which is indistinguishable from an opacity set too low and leads
+to tuning a setting that was never the problem.
 
 [Swapping parts, and theming](Swapping-parts-and-theming) · [Profiles](Profiles)

@@ -1,7 +1,7 @@
 # Security
 
-What bothy verifies, what it deliberately does not, and where each wall ends.
-To report a hole, use
+What bothy verifies, what it deliberately does not, and where each boundary
+ends. To report a vulnerability, use
 [SECURITY.md](https://github.com/bspeelm/bothy/blob/main/SECURITY.md) — privately, through GitHub's security
 advisories, not a public issue.
 
@@ -24,9 +24,9 @@ rules out a substitution *after* publication, and a download corrupted or
 intercepted on the way. It does not rule out a compromised release pipeline,
 and no checksum can.
 
-**The limit, stated plainly:** these are other projects' releases. A checksum
-proves you got the bytes bothy expected — it does not prove those bytes are
-good. bothy does not sign what it did not build.
+**The limit:** these are other projects' releases. A checksum proves the bytes
+are the ones bothy expected; it does not prove those bytes are safe. bothy does
+not sign what it did not build.
 
 ## What bothy itself is signed with
 
@@ -36,16 +36,17 @@ transparency log — so the binary can be traced to a specific run of a specific
 workflow on a specific commit
 ([ADR-030](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-030--releases-are-signed-by-the-workflow-that-built-them)).
 
-There is deliberately no private key: none to store, rotate, or leak.
+There is deliberately no private key, so there is none to store, rotate or
+leak.
 
-**What that does not do:** it does not make a compromise impossible, it makes
-one *visible and permanent*. If this repository's Actions were compromised, the
-attestation would faithfully record the attacker's build — and that record
-could not be quietly withdrawn.
+**What that does not do:** it does not make a compromise impossible. It makes
+one visible and permanent. If this repository's Actions were compromised, the
+attestation would record the attacker's build, and that record could not be
+withdrawn quietly.
 
-**And it is not what Gatekeeper asks.** Apple wants an identifiable paying
-developer account; the attestation answers a different question. Both are real,
-neither substitutes for the other. See [Installing](Installing).
+It is also not what Gatekeeper asks for. Apple requires an identifiable paid
+developer account; the attestation answers a different question, and neither
+substitutes for the other. See [Installing](Installing).
 
 ## `curl | sh`
 
@@ -62,9 +63,9 @@ less install.sh
 sh install.sh
 ```
 
-Or skip it: `go install`, the `.deb`, or dnf all avoid the question.
+Or avoid it: `go install`, the `.deb` and dnf do not have this step.
 
-## The wall around the agent
+## Confining the agent
 
 `bothy confine` runs the agent in a rootless podman container with your project
 directory and the agent's own credentials mounted, and nothing else from
@@ -102,6 +103,6 @@ the launch, which is a position to make it better if you ask.
 In scope: the release pipeline, the confinement wall, `bootstrap/install.sh`,
 the Homebrew cask's quarantine removal, and the configs bothy generates for
 other tools. Out of scope: what the agent does, and holes in the tools bothy
-fetches — though a hole in *how bothy pins or verifies them* is very much in
-scope. The full statement is
+fetches — although a flaw in how bothy pins or verifies them is in scope. The
+full statement is
 [SECURITY.md](https://github.com/bspeelm/bothy/blob/main/SECURITY.md).

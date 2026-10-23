@@ -1,8 +1,8 @@
 # Troubleshooting
 
-**Run `bothy doctor` first.** Every check carries the command
-that fixes it — a test fails if any check reports a failure without one. This
-page is the handful people actually hit, by symptom.
+**Run `bothy doctor` first.** Every failing check carries the command that
+fixes it; a test fails if any check reports a failure without one. This page
+covers the common failures, by symptom.
 
 ## `bothy: command not found`
 
@@ -31,8 +31,9 @@ it asks on every launch.
 
 ## The agent pane is empty
 
-Nothing to run. bothy launches `claude` unless told otherwise and never
-installs an agent — your AI tools and their credentials are your business
+There is nothing to run. bothy launches `claude` unless configured otherwise
+and never installs an agent, because AI tools and their credentials are yours
+to manage
 ([ADR-014](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-014--bothy-installs-no-editor-and-helix-could-not-be-installed-anyway)).
 
 ```sh
@@ -121,7 +122,7 @@ bothy)"` clears it, and the doctor prints that with your path filled in. See
 
 ## Something else
 
-`bothy doctor --json` is the thing to paste into an issue — it is what the bug
-template asks for, and it carries every check, its severity and its fix.
+`bothy doctor --json` is what to attach to an issue: the bug template asks for
+it, and it carries every check with its severity and its fix.
 Report at [github.com/bspeelm/bothy/issues](https://github.com/bspeelm/bothy/issues);
-for anything security-shaped, [SECURITY.md](https://github.com/bspeelm/bothy/blob/main/SECURITY.md) instead.
+for a suspected vulnerability, [SECURITY.md](https://github.com/bspeelm/bothy/blob/main/SECURITY.md) instead.

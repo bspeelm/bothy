@@ -4,7 +4,7 @@ One entry per command: what it does, and its flags. Anything with a page of its
 own is linked from its entry rather than explained twice.
 
 `bothy` opens the workspace, `bothy tower` watches every agent at once, and
-`bothy doctor` says what is wrong. The rest are for a specific afternoon.
+`bothy doctor` reports what is wrong. The rest are occasional.
 `bothy --help` prints the same list.
 
 ## Opening the workspace
@@ -22,11 +22,10 @@ missing, asks before downloading, then opens.
 | `--window` | always open a new Ghostty window |
 | `--in-place` | always run in the terminal you are already in |
 
-**Closing the window ends the session.** That is what closing it usually means,
-and a session left running is one you cannot tell from a session you are using.
-What is written down is untouched: the agent keeps its own transcript, so its
-conversation comes back with that agent's own resume command. What is lost is
-whatever turn was in flight.
+**Closing the window ends the session**, which is what closing a window usually
+means. Nothing written down is affected: the agent keeps its own transcript, so
+its conversation resumes with that agent's own command. What is lost is whatever
+turn was in flight.
 
 Inside a container the multiplexer client would otherwise outlive the terminal
 that opened it — `podman exec` ignores the hangup — and a session with a client
@@ -69,9 +68,9 @@ Clear them with 'bothy ls --prune'.
 
 **detached** means the session is running with no window on it. That happens
 when you detach with `Ctrl-o d`, which is the point of detaching. Closing a
-window ends its session instead, so it will not appear here at all. Nothing is
-said when the multiplexer will not answer: "could not ask" is not "nobody is
-looking".
+window ends its session instead, so it will not appear here at all. When the
+multiplexer cannot be reached, bothy reports that rather than reporting an empty
+list.
 
 A **stopped** session is one whose server is gone but whose layout zellij kept —
 after a reboot or a crash, mostly, since the ordinary ways of ending a session
@@ -96,10 +95,10 @@ and refuses one that has already stopped, because that is what
 
 ### `bothy keys`
 
-The bindings worth knowing on a first day. They are Zellij's, not bothy's —
-bothy leaves them alone.
+The bindings most used in a session. They are Zellij's, not bothy's, and bothy
+does not change them.
 
-## Watching several at once
+## Watching several agents
 
 ### `bothy tower [--mirror session] [--every duration]`
 
@@ -180,13 +179,13 @@ there is no setting that turns it on. See
 [Walling off the agent](Walling-off-the-agent) — including what it deliberately
 does not stop.
 
-## Finding out what is wrong
+## Diagnosis
 
 ### `bothy doctor [--json]`
 
-Checks the workspace, each with a fix. This is the command
-the project is built around: [The doctor](The-doctor) explains the output,
-the severities and the capability grouping.
+Checks the workspace, with a fix attached to each failure.
+[The doctor](The-doctor) explains the output, the severities and the capability
+grouping.
 
 ### `bothy tools`
 
@@ -207,10 +206,10 @@ itself is good; see [Security](Security).
 
 ### `bothy layout [--profile P]`
 
-Prints the Zellij layout bothy would launch, generated from the profile. For
-when you doubt what it is about to do.
+Prints the Zellij layout bothy would launch, generated from the profile, for
+checking what a profile produces before opening it.
 
-## Changing things
+## Configuration
 
 ### `bothy config [get|set|edit|path]`
 
@@ -239,7 +238,7 @@ Every generated file says it is bothy's and names where to put your own changes.
 Prints a blank eleven-token palette to fill in. Point bothy at the result with
 `bothy config set theme.palette <path>`.
 
-## Files outside bothy's tree
+## Files outside bothy's own tree
 
 ### `bothy completion <bash|zsh> [--install] [--remove]`
 

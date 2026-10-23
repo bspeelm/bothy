@@ -1,6 +1,7 @@
 # Your first session
 
-You have installed bothy. This is what happens next and what to do in the room.
+You have installed bothy. This is what happens on the first run, and how to
+work in the window it opens.
 
 ## Open it
 
@@ -9,16 +10,16 @@ cd ~/some/project
 bothy
 ```
 
-The first run is slower than the rest: bothy looks at the machine, lists what
-is missing, asks before downloading anything, writes its configs, then opens
-the window. Afterwards it is just the window.
+The first run is slower than the rest: bothy inspects the machine, lists what
+is missing, asks before downloading anything, writes its configuration, and
+then opens the window. Later runs open the window directly.
 
 If your terminal does not carry the Kitty keyboard protocol, bothy opens a
 **new Ghostty window** rather than running where you are, so that the keys an
 agent needs are not flattened on the way in. Force it either way with
 `--in-place` or `--window`.
 
-## The room
+## The panes
 
 The default profile is `cockpit`:
 
@@ -33,9 +34,9 @@ The default profile is `cockpit`:
 **The file browser** is Yazi. Move with `hjkl`, `l` enters a directory or opens
 a file, and the preview appears beside it.
 
-**The agent pane** is where your AI tool runs — `claude` unless you configured
-otherwise. It starts focused, because it is usually what you came for. If you
-have no agent installed the pane sits empty and the doctor says so.
+**The agent pane** runs your AI tool — `claude` unless configured otherwise. It
+starts focused, since it is the pane most sessions begin in. With no agent
+installed the pane is empty and the doctor reports it.
 
 **The shell** is a plain shell in the same directory. Git, builds, logs.
 
@@ -66,13 +67,12 @@ bothy ls         # which sessions are running
 One session per project directory, named after it — which is how `attach` finds
 the right one without being told.
 
-**Closing the window ends the session too.** Detaching is the way to leave
-something running; closing the window says you are finished with it. The agent's
-own conversation is not lost either way — it keeps its own transcript — but a
-turn in progress is.
+**Closing the window ends the session.** Detaching is how to leave something
+running. The agent's own conversation survives either way, since it keeps its
+own transcript, but a turn in progress does not.
 
-**`Ctrl-q` is the other thing.** It ends the session rather than leaving it.
-There is no undo.
+`Ctrl-q` also ends the session rather than detaching from it, and cannot be
+undone.
 
 ## When something looks wrong
 
@@ -80,11 +80,11 @@ There is no undo.
 bothy doctor
 ```
 
-Every check carries the command that fixes it. Start there before
-anything else — see [The doctor](The-doctor) for how to read it, and
-[Troubleshooting](Troubleshooting) for the failures people actually hit.
+Every failing check carries the command that fixes it. See
+[The doctor](The-doctor) for how to read a report, and
+[Troubleshooting](Troubleshooting) for the common failures by symptom.
 
-## Making it yours
+## Changing it
 
 - A different layout: `bothy config set profile editor` — see [Profiles](Profiles).
 - A different tool in a slot, or your own config for one:

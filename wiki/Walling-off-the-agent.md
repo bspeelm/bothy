@@ -1,12 +1,12 @@
-# Walling off the agent
+# Confining the agent
 
 `bothy confine` runs the agent pane in a rootless podman container. What it
-stops and what it deliberately does not is in
-[Security](Security#the-wall-around-the-agent); this page is the setup.
+prevents, and what it deliberately allows, is in
+[Security](Security#confining-the-agent); this page covers the setup.
 
 ## Three commands, once
 
-The first is the instructions, so you do not have to know the other two:
+The first prints the other two:
 
 ```sh
 bothy confine
@@ -25,18 +25,18 @@ bothy confine
 ```
 
 **bothy writes the recipe and never builds it.** Building installs an agent,
-and bothy does not install agents — they change how they install, they need
-credentials bothy has no business touching, and one arriving unasked is a
-workspace tool overstepping ([ADR-034](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-034--the-agent-can-be-walled-off-on-request-and-never-by-default)).
+and bothy does not install agents: their installation methods change, they
+require credentials bothy should not handle, and one arriving unrequested is
+more than a workspace tool should do ([ADR-034](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-034--the-agent-can-be-walled-off-on-request-and-never-by-default)).
 
 The Containerfile is yours once written: change the agent, pin a version, add
-tools. bothy will not overwrite it. `bothy confine --print` shows the recipe
-and the exact `podman run`, so you can read the wall before trusting it.
+tools. bothy does not overwrite it. `bothy confine --print` shows the recipe
+and the exact `podman run`, so the boundary can be read before it is trusted.
 
 ## Inside a toolbox
 
-The common case on Silverblue, with one wrinkle: **podman is on the host, not
-in the toolbox.** bothy handles that itself, reaching the host through
+The common case on Silverblue, with one complication: **podman is on the host,
+not in the toolbox.** bothy handles that itself, reaching the host through
 `flatpak-spawn` the same way it opens files, so `bothy confine` needs nothing
 extra.
 
@@ -73,11 +73,11 @@ image is not bothy's to delete — it is ~550 MB bothy did not build:
 podman rmi bothy-agent
 ```
 
-Uninstall names it on the way out rather than leaving you to find it.
+Uninstall names the image rather than leaving you to find it.
 
 ## Where it works
 
 Tested on Linux with podman. On macOS podman runs a Linux VM: it works, the
-wall is real, and its edges are shaped differently — bothy says so and carries
-on rather than pretending either way. With no podman at all, `bothy confine`
-fails and tells you; it never silently runs unconfined.
+boundary is real, and its edges differ — bothy reports that rather than
+implying equivalence. With no podman installed, `bothy confine` fails and says
+so; it never runs unconfined without reporting it.
