@@ -76,6 +76,22 @@ func TestLoadRejectsBadHex(t *testing.T) {
 	}
 }
 
+// The name lands in the comment on the first line of the vim colorscheme, the
+// zellij theme and the yazi theme. A palette is a file someone supplies, and
+// a newline in its name would put a live command after that comment.
+func TestAPaletteNameCannotEndTheCommentItSitsIn(t *testing.T) {
+	for _, bad := range []string{`x\ncall system('id')`, `x\r| !id`, `x\u0000`} {
+		body := strings.Replace(completePalette, `"test-palette"`, `"`+bad+`"`, 1)
+		if _, err := Load(writePalette(t, body)); err == nil {
+			t.Errorf("a palette named %q was accepted", bad)
+		}
+	}
+	body := strings.Replace(completePalette, `"test-palette"`, `"Dracula — mine, v2 (warm)"`, 1)
+	if _, err := Load(writePalette(t, body)); err != nil {
+		t.Errorf("an ordinary name with spaces and punctuation was refused: %v", err)
+	}
+}
+
 func TestLoadNormalisesCase(t *testing.T) {
 	body := strings.Replace(completePalette, `"#0A0A0A"`, `"#0a0a0a"`, 1)
 	p, err := Load(writePalette(t, body))

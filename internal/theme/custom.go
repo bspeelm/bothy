@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -80,6 +81,12 @@ func (p Palette) validate(source string) error {
 		return fmt.Errorf("theme: %s is missing: %s\n"+
 			"      a palette needs all eleven tokens; see 'bothy theme example'",
 			source, strings.Join(miss, ", "))
+	}
+	// The name is printed into the first comment line of every generated
+	// theme file. A newline in it would end that comment and turn the rest
+	// into live Vimscript, KDL or TOML, so control characters are refused.
+	if strings.IndexFunc(p.Name, unicode.IsControl) >= 0 {
+		return fmt.Errorf("theme: %s: name = %q holds a control character", source, p.Name)
 	}
 	for _, tok := range paletteTokens {
 		v, _ := p.Color(tok)

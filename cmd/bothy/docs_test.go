@@ -1152,6 +1152,9 @@ var genericPathWords = map[string]bool{
 	// ordinary vocabulary, and a directory of that name beside the checkout
 	// failed a build that had not touched them.
 	"secrets": true,
+	// Prose says "below" constantly ("the table below"), so a directory of that
+	// name beside the checkout identifies nobody.
+	"below": true,
 }
 
 // localWords is what this machine is called and where it keeps its work: the

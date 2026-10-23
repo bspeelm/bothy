@@ -203,6 +203,12 @@ jobs:
           go-version: '1.25'
       - run: make build
 
+      # The unit suite, not only the install: `check` runs it on Linux alone,
+      # and a test that assumes /proc or reads the runner's own installs is
+      # green there and red on every Mac a contributor runs `make check` on.
+      - name: unit tests
+        run: go test ./...
+
       - name: install, verify and uninstall
         # pipefail, or `go test | tee` reports tee's exit code and a failing
         # test is green.

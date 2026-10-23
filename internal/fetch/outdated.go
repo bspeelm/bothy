@@ -3,6 +3,7 @@ package fetch
 import (
 	"sort"
 
+	"github.com/bspeelm/bothy/internal/probe"
 	"github.com/bspeelm/bothy/internal/tools"
 )
 
@@ -18,9 +19,24 @@ type Update struct {
 	Reason string `json:"reason,omitempty"`
 }
 
-// Outdated reports whether Latest is both known and different from Pinned.
+// Outdated reports whether Latest is known and numerically newer than Pinned.
+// Differing is not enough: a pin taken ahead of the latest release, or a
+// latest that moved backwards, would otherwise be advice to downgrade. A
+// version either side cannot parse is not called outdated -- a guess here
+// files an issue telling someone to move a pin.
 func (u Update) Outdated() bool {
-	return u.Reason == "" && u.Latest != "" && u.Latest != u.Pinned
+	if u.Reason != "" || u.Latest == "" {
+		return false
+	}
+	pinned, err := probe.ParseVersion(u.Pinned)
+	if err != nil {
+		return false
+	}
+	latest, err := probe.ParseVersion(u.Latest)
+	if err != nil {
+		return false
+	}
+	return pinned.Less(latest)
 }
 
 // CheckOutdated asks each tool's forge for its latest release and compares it

@@ -1,6 +1,7 @@
 package mux
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -31,5 +32,20 @@ func TestPWDNamesTheWorkspaceNotWhereBothyWasTyped(t *testing.T) {
 	// Set even when it was absent, or the tool falls back to a stale inherited one.
 	if out := withPWD([]string{"PATH=/bin"}, "/w"); len(out) != 2 || out[1] != "PWD=/w" {
 		t.Errorf("withPWD() on an env with no PWD = %q", out)
+	}
+}
+
+// The multiplexer exiting non-zero used to end bothy on the spot, under every
+// deferred cleanup its callers had queued. The status has to come back up so
+// main can exit with it once they have run. This test binary surviving the
+// call is half the assertion.
+func TestAChildsExitStatusComesBackRatherThanEndingBothy(t *testing.T) {
+	err := RunAttached(nil, "sh", "-c", "exit 3")
+	var status ExitStatus
+	if !errors.As(err, &status) || status.Code != 3 {
+		t.Fatalf("RunAttached = %v, want ExitStatus{3}", err)
+	}
+	if err := RunAttached(nil, "sh", "-c", "exit 0"); err != nil {
+		t.Errorf("a clean exit came back as %v", err)
 	}
 }

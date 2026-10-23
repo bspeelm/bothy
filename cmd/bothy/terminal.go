@@ -88,6 +88,10 @@ func hasDisplay(p platform.Info) bool {
 	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
 }
 
+// systemApplications is /Applications, a var so a test can hand it a directory
+// it built rather than read the machine's own installs.
+var systemApplications = "/Applications"
+
 // ghosttyCommand returns how to run ghostty. Inside a container it is a host
 // application, reached through flatpak-spawn --host.
 func ghosttyCommand(p platform.Info) ([]string, error) {
@@ -98,7 +102,7 @@ func ghosttyCommand(p platform.Info) ([]string, error) {
 	// nothing on PATH. The binary inside takes the same arguments, so this is
 	// a path to find rather than a different way to launch.
 	if p.OS == "darwin" {
-		for _, dir := range []string{"/Applications", filepath.Join(p.Home, "Applications")} {
+		for _, dir := range []string{systemApplications, filepath.Join(p.Home, "Applications")} {
 			bin := filepath.Join(dir, "Ghostty.app", "Contents", "MacOS", "ghostty")
 			if fi, err := os.Stat(bin); err == nil && !fi.IsDir() {
 				return []string{bin}, nil

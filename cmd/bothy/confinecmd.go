@@ -9,6 +9,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/confine"
 	"github.com/bspeelm/bothy/internal/install"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 )
@@ -58,8 +59,8 @@ func cmdConfine(args []string) error {
 				"       Name them and this goes away:\n"+
 				"         bothy config set agent.credentials ~/.config/%s\n", agent, agent)
 	}
-	cmd := strings.Join(confine.Command(p, runtime, image, dir,
-		install.AgentBinary(cfg.Slots.Agent), creds), " ")
+	cmd := mux.JoinCommand(confine.Command(p, runtime, image, dir,
+		install.AgentBinary(cfg.Slots.Agent), creds))
 
 	if *printOnly {
 		recipe, err := confine.Recipe()

@@ -62,6 +62,14 @@ var APIBase = "https://api.github.com"
 // LockPath is the lockfile's name at the repository root.
 const LockPath = "bothy.lock"
 
+// InCheckout reports whether this is being run from a bothy checkout, where
+// `bothy lock` is the answer to a pin. Anywhere else the pins are compiled
+// into the binary and move only when bothy does.
+func InCheckout() bool {
+	_, err := os.Stat(LockPath)
+	return err == nil
+}
+
 // LoadLock reads the lockfile compiled into the binary. It is embedded rather
 // than read from disk because an installed bothy has no repository to read
 // from, and the pins are part of what a given bothy release *is*.
@@ -157,9 +165,7 @@ var gitDescribe = regexp.MustCompile(`-g[0-9a-f]{7,}`)
 
 // IsSourceBuild reports whether a version came from `git describe` rather than
 // a release tag -- whether it is *ahead* of the tag it names. The shape is
-// "v0.1.5-3-gabc1234-dirty"; only a bare `go build` yields "dev". Update
-// .Outdated compares by string inequality, which would otherwise announce an
-// upgrade to someone already past it.
+// "v0.1.5-3-gabc1234-dirty"; only a bare `go build` yields "dev".
 func IsSourceBuild(v string) bool {
 	return v == "" || v == "dev" ||
 		strings.HasSuffix(v, "-dirty") ||

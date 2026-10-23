@@ -7,6 +7,7 @@ package mux
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -173,9 +174,17 @@ func withPWD(env []string, dir string) []string {
 	return append(out, "PWD="+dir)
 }
 
-// runReplacing hands stdio to the multiplexer. A non-zero exit is the
-// multiplexer's status, not a bothy error.
-func runReplacing(env []string, name string, args ...string) error {
+// ExitStatus is a child's non-zero exit, carried up to main rather than
+// exited on the spot, so the deferred cleanup -- the session record, the
+// hangup handler, a mount, the tower's restored panes -- runs first. It is the
+// child's status, not a bothy error; main exits with it and prints nothing.
+type ExitStatus struct{ Code int }
+
+func (e ExitStatus) Error() string { return fmt.Sprintf("exit status %d", e.Code) }
+
+// RunAttached hands this process's stdio to a child, so it owns the terminal
+// rather than talking through a pipe.
+func RunAttached(env []string, name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -183,7 +192,7 @@ func runReplacing(env []string, name string, args ...string) error {
 
 	var exitErr *exec.ExitError
 	if errors.As(err, &exitErr) {
-		os.Exit(exitErr.ExitCode())
+		return ExitStatus{Code: exitErr.ExitCode()}
 	}
 	return err
 }

@@ -83,7 +83,7 @@ func TestSaveCreatesTheStateDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".tmp") {
+		if e.Name() != filepath.Base(ManifestPath(dir)) {
 			t.Errorf("%s was left behind by the atomic write", e.Name())
 		}
 	}
