@@ -113,6 +113,13 @@ func describeInstall(self string, p platform.Info, ver string) (string, string) 
 		return "This copy is at " + self + ", which a package manager owns:",
 			"use whatever installed it"
 
+	// scoop keeps each app under scoop/apps/<name>/<version> and puts a shim
+	// on PATH. Matched with forward slashes because os.Executable returns
+	// backslashes on Windows, where every other arm here would miss.
+	case strings.Contains(filepath.ToSlash(self), "/scoop/"):
+		return "This copy is at " + self + ", which scoop owns:",
+			"scoop update bothy"
+
 	case p.Home != "" && strings.HasPrefix(self, filepath.Join(p.Home, "go", "bin")):
 		return "This copy is at " + self + ", so it came from go install:",
 			"go install github.com/" + Repo + "/cmd/bothy@latest"

@@ -1,0 +1,32 @@
+# WezTerm is advised, never installed: it is a desktop application, and its
+# only stable release is from February 2024 -- a version gate would be
+# misleading rather than helpful.
+#
+# provides omits "images" deliberately. Yazi does not use the Kitty protocol on
+# WezTerm; inside a multiplexer it uses sixel, and whether sixel survives
+# Windows' ConPTY is not something bothy has proved. The graphics probe decides
+# per machine; this list is what the slot is claimed to give.
+
+name      = "wezterm"
+what      = "a terminal that can draw inline images"
+slot      = "terminal"
+platforms = ["linux", "darwin", "windows"]
+provides  = ["theme"]
+
+[spawn]
+binary = "wezterm"
+config = "wezterm.lua"
+# Global options bind to the top-level command, so they precede the
+# subcommand. -e is an alias for a hidden blocking start, which always opens a
+# new process rather than handing the command to an instance already running.
+args   = ["--config-file", "{config}", "-e"]
+
+[advise.install]
+windows = "winget install wez.wezterm"
+fedora  = "sudo dnf copr enable wezfurlong/wezterm-nightly -y && sudo dnf install -y wezterm"
+arch    = "sudo pacman -S wezterm"
+darwin  = "brew install --cask wezterm"
+
+[[file]]
+template = "templates/terminal/wezterm/wezterm.lua.tmpl"
+dest     = "wezterm.lua"

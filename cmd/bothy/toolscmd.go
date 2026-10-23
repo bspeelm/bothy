@@ -21,7 +21,7 @@ func cmdTools(args []string) error {
 	if err != nil {
 		return err
 	}
-	decisions, err := tools.ResolveAll(names, p.BinDir())
+	decisions, err := tools.ResolveAll(p.OS, names, p.BinDir())
 	if err != nil {
 		return err
 	}

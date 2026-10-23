@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"github.com/bspeelm/bothy/internal/install"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -18,16 +20,20 @@ func clearDisplay(t *testing.T) {
 	t.Setenv("DISPLAY", "")
 	t.Setenv("WAYLAND_DISPLAY", "")
 	t.Setenv(InTerminalEnv, "")
+	// On macOS and Windows the question is whether this is a remote shell, so
+	// an ssh session running the tests is ambient input to the thing measured.
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_TTY", "")
 }
 
 func TestForceFlagsWin(t *testing.T) {
 	clearDisplay(t)
 	p := platform.Info{Terminal: "gnome-terminal"}
 
-	if m := decideLaunch(p, "here"); m.Spawn {
+	if m := decideLaunch(p, "ghostty", "here"); m.Spawn {
 		t.Error("--in-place must never spawn")
 	}
-	if m := decideLaunch(p, "window"); !m.Spawn {
+	if m := decideLaunch(p, "ghostty", "window"); !m.Spawn {
 		t.Error("--window must spawn even with no display, so the failure is visible")
 	}
 }
@@ -39,7 +45,7 @@ func TestInTerminalMarkerStopsRecursion(t *testing.T) {
 	t.Setenv("DISPLAY", ":0")
 	t.Setenv(InTerminalEnv, "1")
 
-	m := decideLaunch(platform.Info{Terminal: "gnome-terminal"}, "")
+	m := decideLaunch(platform.Info{Terminal: "gnome-terminal"}, "ghostty", "")
 	if m.Spawn {
 		t.Fatal("a bothy started by its own terminal must not open another")
 	}
@@ -52,7 +58,7 @@ func TestInTerminalMarkerStopsRecursion(t *testing.T) {
 // degraded previews beats failing to launch at all.
 func TestNoDisplayRunsInPlace(t *testing.T) {
 	clearDisplay(t)
-	m := decideLaunch(platform.Info{Terminal: "gnome-terminal"}, "")
+	m := decideLaunch(platform.Info{Terminal: "gnome-terminal"}, "ghostty", "")
 	if m.Spawn {
 		t.Fatal("spawned a window with no graphical display")
 	}
@@ -66,7 +72,7 @@ func TestNoDisplayRunsInPlace(t *testing.T) {
 func TestEveryDecisionCarriesAReason(t *testing.T) {
 	clearDisplay(t)
 	for _, mode := range []string{"", "auto", "window", "here"} {
-		if m := decideLaunch(platform.Info{Terminal: "ghostty"}, mode); m.Reason == "" {
+		if m := decideLaunch(platform.Info{Terminal: "ghostty"}, "ghostty", mode); m.Reason == "" {
 			t.Errorf("mode=%q produced no reason", mode)
 		}
 	}
@@ -75,7 +81,7 @@ func TestEveryDecisionCarriesAReason(t *testing.T) {
 // A container has no ghostty of its own; the terminal is a host application.
 func TestGhosttyCommandUsesTheHostFromAContainer(t *testing.T) {
 	p := platform.Info{Container: platform.Toolbx, ContainerName: "test"}
-	cmd, err := ghosttyCommand(p)
+	cmd, err := terminalCommand(p, "ghostty")
 	if err != nil {
 		t.Skip("no ghostty reachable from here")
 	}
@@ -219,7 +225,7 @@ func TestGhosttyIsFoundInsideAnAppBundle(t *testing.T) {
 	t.Cleanup(func() { systemApplications = restore })
 	systemApplications = filepath.Join(t.TempDir(), "Applications")
 
-	cmd, err := ghosttyCommand(platform.Info{OS: "darwin", Home: home})
+	cmd, err := terminalCommand(platform.Info{OS: "darwin", Home: home}, "ghostty")
 	if err != nil {
 		t.Fatalf("ghostty in ~/Applications was not found: %v", err)
 	}
@@ -240,7 +246,39 @@ func TestAppBundlesAreNotConsultedOnLinux(t *testing.T) {
 	}
 	t.Setenv("PATH", filepath.Join(t.TempDir(), "empty"))
 
-	if _, err := ghosttyCommand(platform.Info{OS: "linux", Home: home}); err == nil {
+	if _, err := terminalCommand(platform.Info{OS: "linux", Home: home}, "ghostty"); err == nil {
 		t.Error("a Linux machine found a macOS application bundle")
+	}
+}
+
+// ghostty takes --config-file=X, wezterm takes it as two words and binds it
+// to the top-level command rather than the subcommand. Getting that wrong
+// means wezterm silently ignores the file and falls back to its own defaults,
+// so the theme vanishes with no error anywhere.
+func TestEachTerminalGetsItsOwnArgvShape(t *testing.T) {
+	for _, tc := range []struct {
+		term string
+		want []string
+	}{
+		{"ghostty", []string{"--config-file={config}", "-e"}},
+		{"wezterm", []string{"--config-file", "{config}", "-e"}},
+	} {
+		sp, err := install.TerminalSpawn(tc.term)
+		if err != nil {
+			t.Errorf("%s: %v", tc.term, err)
+			continue
+		}
+		if !slices.Equal(sp.Args, tc.want) {
+			t.Errorf("%s args = %v, want %v", tc.term, sp.Args, tc.want)
+		}
+		if sp.Config == "" {
+			t.Errorf("%s names no config file, so bothy cannot check one exists", tc.term)
+		}
+	}
+	if _, err := install.TerminalSpawn("none"); err == nil {
+		t.Error("a terminal of none should not resolve to a window to open")
+	}
+	if _, err := install.TerminalSpawn("nosuchterm"); err == nil {
+		t.Error("an unknown terminal should be reported, not spawned")
 	}
 }

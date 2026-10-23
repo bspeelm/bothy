@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/platform"
@@ -332,6 +333,18 @@ func TestEveryToolThatPublishesChecksumsHasThemRecorded(t *testing.T) {
 		if len(entry.Verified) == 0 {
 			t.Errorf("%s names a checksums file (%q) and no platform was cross-checked; "+
 				"the name is probably wrong for this release", tool.Name, tool.Checksums)
+			continue
+		}
+		// Per platform, not per tool. A tool with one verified platform used
+		// to satisfy this, which would have let a new platform land pinned but
+		// never compared with anything the project published -- and said
+		// nothing. ripgrep's Windows checksums are in a different format from
+		// its others, so that gap was one asset away from being real.
+		for plat := range entry.SHA256 {
+			if !slices.Contains(entry.Verified, plat) {
+				t.Errorf("%s pins %s but never cross-checked it against %q",
+					tool.Name, plat, tool.Checksums)
+			}
 		}
 	}
 }
@@ -398,5 +411,28 @@ func TestACheckoutIsWhereTheLockfileIs(t *testing.T) {
 	}
 	if !InCheckout() {
 		t.Error("a directory holding bothy.lock does not read as a checkout")
+	}
+}
+
+// ripgrep publishes sha256sum format for Linux and macOS and CertUtil output
+// for Windows, in the same release. The sha256sum reader skips every line of
+// the CertUtil shape -- the three lines have 4, 1 and 5 fields -- so without
+// this the Windows pin would silently lose its upstream cross-check while
+// every other platform kept one.
+func TestCertUtilChecksumsAreRead(t *testing.T) {
+	body := []byte("SHA256 hash of ripgrep-15.2.0-x86_64-pc-windows-msvc.zip:\r\n" +
+		"71B2FEF860ABE467217A538FF31DE02F5258807C0129F771846F87BD029AAFC5\r\n" +
+		"CertUtil: -hashfile command completed successfully.\r\n")
+	got := certUtilSum(body, "ripgrep-15.2.0-x86_64-pc-windows-msvc.zip")
+	want := "71b2fef860abe467217a538ff31de02f5258807c0129f771846f87bd029aafc5"
+	if got != want {
+		t.Errorf("certUtilSum = %q, want %q", got, want)
+	}
+	if other := certUtilSum(body, "ripgrep-15.2.0-aarch64-pc-windows-msvc.zip"); other != "" {
+		t.Errorf("matched an asset the file does not name: %q", other)
+	}
+	plain := []byte("33e15bcf  ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz\n")
+	if s := certUtilSum(plain, "ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz"); s != "" {
+		t.Errorf("sha256sum format should not be read as CertUtil: %q", s)
 	}
 }

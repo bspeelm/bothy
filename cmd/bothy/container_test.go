@@ -85,7 +85,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"yazi-version":          doctor.Pass,
 	"yazi-config-keys":      doctor.Pass,
 	"yazi-plugins":          doctor.Pass, // needs git, which is why prep installs it
-	"image-previews":        doctor.Pass, // no graphics terminal and no preview block: they agree
+	"image-previews":        doctor.Warn, // off, correctly: no graphics terminal here
 	"profile-renders":       doctor.Pass,
 	"layout-built":          doctor.Skip, // only meaningful inside a live zellij session
 	"pane-fields":           doctor.Skip, // same: there are no panes to describe
@@ -104,6 +104,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"watermark-image": doctor.Skip, // none configured
 	"mux-config":      doctor.Pass,
 	"terminfo":        doctor.Pass, // only because prep installed infocmp
+	"msvc-runtime":    doctor.Skip, // a Windows library
 	// Warn: in a container the opener forwards to the host,
 	// and neither base image ships flatpak-spawn to forward with. There is
 	// nothing to open a file with here and nothing bothy can do about it.

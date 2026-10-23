@@ -13,10 +13,11 @@ and inside Toolbx and Distrobox.
 
 | | |
 |---|---|
-| **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it. |
+| **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it — except on Windows, where you want [Git for Windows](https://git-scm.com/download/win): Yazi also uses the `file.exe` it ships to work out what a file is. |
 | **curl** or **wget** | Only for the install script below, and only one of them. |
 | **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else previews fall back to block art. |
 | **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
+| **the Microsoft C runtime** | Windows only, and required: Yazi's build links it, and without it Yazi exits the moment it starts with nothing on screen to say why. `winget install Microsoft.VCRedist.2015+.x64`. |
 | **Go** and **make** | Only if you build from source, which nobody has to. |
 
 bothy brings everything else. If any of the above is missing, `bothy doctor`
@@ -42,6 +43,7 @@ the script says so and prints the line to add.
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | download the `.deb`, then `sudo apt install ./bothy_*.deb` |
 | **Homebrew** | macOS, or Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` |
+| **scoop** | Windows | `scoop bucket add bothy https://github.com/bspeelm/scoop-bothy && scoop install bothy` |
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **source** | contributors | `git clone` then `make install-binary` |
 
@@ -70,6 +72,7 @@ log, so a swapped download is detectable whether or not anyone checks.
 | script | a checksum, automatic; the signature on request |
 | Homebrew | the sha256 in the cask, automatic; the signature on request |
 | `.deb` | the signature on request |
+| scoop | the sha256 in the manifest, automatic; the signature on request |
 | source | you compiled it yourself |
 
 ```sh

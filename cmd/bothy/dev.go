@@ -74,7 +74,7 @@ func cmdDev(args []string) error {
 	}
 
 	if plan.Spawn {
-		if err := spawnTerminal(p, plan.Dir, plan.Profile); err != nil {
+		if err := spawnTerminal(p, cfg.Slots.Terminal, plan.Dir, plan.Profile); err != nil {
 			// Not fatal: the workspace still runs here, without image previews.
 			fmt.Fprintf(os.Stderr, "bothy: %v\n         running in this terminal instead\n", err)
 		} else {
@@ -285,14 +285,14 @@ func launch(p platform.Info, cfg config.Config, dir, profileName, agentOverride 
 	}
 	return backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: session, Dir: dir,
-		Profile: prof, Commands: commandsWith(cfg, agentOverride), Env: env,
+		Profile: prof, Commands: commandsWith(p, cfg, agentOverride), Env: env,
 		Live: backend.Live(bin, env),
 	})
 }
 
 // commandsWith is the pane commands, with the agent replaced when confined.
-func commandsWith(cfg config.Config, agentOverride string) layout.Commands {
-	cmds := install.Commands(cfg)
+func commandsWith(p platform.Info, cfg config.Config, agentOverride string) layout.Commands {
+	cmds := install.Commands(p, cfg)
 	if agentOverride != "" {
 		cmds["agent"] = agentOverride
 	}
@@ -427,7 +427,7 @@ func planLaunch(p platform.Info, cfg config.Config, cwd string, f launchFlags) (
 	}
 
 	// Before the container hop, so the window opens once and on the host.
-	if d := decide(p, launchModeFor(cfg, f.Window, f.InPlace)); d.Spawn {
+	if d := decide(p, cfg.Slots.Terminal, launchModeFor(cfg, f.Window, f.InPlace)); d.Spawn {
 		plan.Spawn, plan.Reason = true, d.Reason
 	}
 	// Home is shared, so $PWD means the same thing on both sides.

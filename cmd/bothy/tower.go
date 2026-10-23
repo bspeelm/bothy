@@ -74,8 +74,12 @@ func label(session, dir string) string {
 // mirrorCommand is what one tower pane runs: this binary, in the mode that
 // prints another pane repeatedly. By absolute path, because the copy on PATH
 // may not be the one that built this window.
+//
+// Joined rather than formatted: the layout splits a command line back into
+// words, and there a backslash escapes. A Windows path went in as
+// C:\Users\me\bothy.exe and came out as C:Usersmebothy.exe.
 func mirrorCommand(self string, m mirror) string {
-	return fmt.Sprintf("%s tower --mirror %s", self, m.Session)
+	return mux.JoinCommand([]string{self, "tower", "--mirror", m.Session})
 }
 
 // towerProfile lays the mirrors out to fit what they are being mirrored from.

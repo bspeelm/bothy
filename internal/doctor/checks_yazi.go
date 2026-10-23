@@ -187,6 +187,6 @@ func checkImagePreviews(env Env) Result {
 	case g.Supported:
 		return pass("image previews are on — " + g.Reason)
 	default:
-		return pass("image previews are off — " + g.Reason)
+		return warn("image previews are off", g.Reason, "")
 	}
 }

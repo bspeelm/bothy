@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -106,7 +107,10 @@ func TestWriteExecIsExecutable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fi.Mode()&0o111 == 0 {
+	// platform.Runnable's reason, from the other side: Windows reports 0666
+	// for every file, so there is no bit to assert. The shim this writes is a
+	// freedesktop xdg-open forwarder, which only exists on Linux anyway.
+	if runtime.GOOS != "windows" && fi.Mode()&0o111 == 0 {
 		t.Errorf("mode = %v; a shim that is not executable is not a shim", fi.Mode())
 	}
 }
@@ -202,6 +206,12 @@ func TestRenderReportsATemplateThatDoesNotParse(t *testing.T) {
 // to provide. Concurrent writes must now leave the destination holding one of
 // the inputs whole, never a mixture, and no debris behind.
 func TestConcurrentWritesDoNotCorruptEachOther(t *testing.T) {
+	// Same reason as state.TestAReaderMidFileKeepsTheWholeOldVersion: the
+	// rename these writers race on cannot replace a file another has open on
+	// Windows, so the race being tested is not the one that happens there.
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows cannot rename over an open file; this races a POSIX guarantee")
+	}
 	root := t.TempDir()
 	w := NewWriter(root, "")
 	dest := filepath.Join(root, "c.toml")

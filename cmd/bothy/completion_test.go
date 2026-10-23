@@ -50,7 +50,7 @@ func TestEachShellGetsTheNameItInsistsOn(t *testing.T) {
 // never runs.
 func TestBashCompletionGoesWhereBashLooks(t *testing.T) {
 	dir := completionShells["bash"].Dir
-	if dir != filepath.Join("bash-completion", "completions") {
+	if dir != "bash-completion/completions" {
 		t.Errorf("bash completion goes to %q, which bash-completion does not search", dir)
 	}
 }

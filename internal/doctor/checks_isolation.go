@@ -198,7 +198,7 @@ func checkProfileRenders(env Env) Result {
 	if env.Mux == nil {
 		return skip("no multiplexer backend for the configured slot")
 	}
-	if _, err := env.Mux.Preview(prof, install.Commands(env.Config)); err != nil {
+	if _, err := env.Mux.Preview(prof, install.Commands(env.Platform, env.Config)); err != nil {
 		return fail("the layout profile does not render", err.Error(),
 			"a pane probably names a slot nothing fills")
 	}

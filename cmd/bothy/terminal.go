@@ -28,7 +28,7 @@ type launchMode struct {
 // mode is workspace.launch or the flag overriding it: "here" and "window" are
 // decisions, "auto" and "" are questions. Reasons to stay put are checked
 // before reasons to spawn.
-func decideLaunch(p platform.Info, mode string) launchMode {
+func decideLaunch(p platform.Info, term, mode string) launchMode {
 	switch mode {
 	case "here":
 		return launchMode{Reason: "asked to run in this terminal"}
@@ -48,8 +48,8 @@ func decideLaunch(p platform.Info, mode string) launchMode {
 		return launchMode{Reason: "no graphical display; running here"}
 	}
 
-	if _, err := ghosttyCommand(p); err != nil {
-		return launchMode{Reason: "ghostty is not installed; running here"}
+	if _, err := terminalCommand(p, term); err != nil {
+		return launchMode{Reason: err.Error() + "; running here"}
 	}
 
 	// Launched from a desktop icon or a script: there is no terminal to run
@@ -78,11 +78,14 @@ func isTerminal(f *os.File) bool {
 	return true
 }
 
-// hasDisplay reports whether there is a session to open a window into. On
-// darwin an SSH login has no window server either, and $SSH_CONNECTION says so
-// without the machinery of asking launchd.
+// hasDisplay reports whether there is a session to open a window into. darwin
+// and windows have a window server whenever anyone is logged in at all, so the
+// question there is only whether this is a remote login -- $SSH_CONNECTION
+// says so without the machinery of asking launchd or the session manager.
+// Neither sets DISPLAY, so the X and Wayland test would answer no on every
+// Mac and every Windows machine.
 func hasDisplay(p platform.Info) bool {
-	if p.OS == "darwin" {
+	if p.OS == "darwin" || p.OS == "windows" {
 		return os.Getenv("SSH_CONNECTION") == "" && os.Getenv("SSH_TTY") == ""
 	}
 	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
@@ -92,31 +95,37 @@ func hasDisplay(p platform.Info) bool {
 // it built rather than read the machine's own installs.
 var systemApplications = "/Applications"
 
-// ghosttyCommand returns how to run ghostty. Inside a container it is a host
-// application, reached through flatpak-spawn --host.
-func ghosttyCommand(p platform.Info) ([]string, error) {
-	if path, err := exec.LookPath("ghostty"); err == nil {
+// terminalCommand returns how to run the configured terminal. Inside a
+// container it is a host application, reached through flatpak-spawn --host.
+func terminalCommand(p platform.Info, term string) ([]string, error) {
+	sp, err := install.TerminalSpawn(term)
+	if err != nil {
+		return nil, err
+	}
+	bin := p.ExeName(sp.Binary)
+	if path, err := exec.LookPath(bin); err == nil {
 		return []string{path}, nil
 	}
-	// macOS installs applications as bundles and Ghostty's installer puts
-	// nothing on PATH. The binary inside takes the same arguments, so this is
-	// a path to find rather than a different way to launch.
+	// macOS installs applications as bundles and their installers put nothing
+	// on PATH. The binary inside takes the same arguments, so this is a path to
+	// find rather than a different way to launch.
 	if p.OS == "darwin" {
+		app := strings.ToUpper(sp.Binary[:1]) + sp.Binary[1:] + ".app"
 		for _, dir := range []string{systemApplications, filepath.Join(p.Home, "Applications")} {
-			bin := filepath.Join(dir, "Ghostty.app", "Contents", "MacOS", "ghostty")
-			if fi, err := os.Stat(bin); err == nil && !fi.IsDir() {
-				return []string{bin}, nil
+			inside := filepath.Join(dir, app, "Contents", "MacOS", sp.Binary)
+			if fi, err := os.Stat(inside); err == nil && !fi.IsDir() {
+				return []string{inside}, nil
 			}
 		}
 	}
 	if p.InContainer() {
 		if fs, err := exec.LookPath("flatpak-spawn"); err == nil {
-			if err := exec.Command(fs, "--host", "sh", "-c", "command -v ghostty").Run(); err == nil {
-				return []string{fs, "--host", "ghostty"}, nil
+			if err := exec.Command(fs, "--host", "sh", "-c", "command -v "+sp.Binary).Run(); err == nil {
+				return []string{fs, "--host", sp.Binary}, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("ghostty not found")
+	return nil, fmt.Errorf("%s is not installed", sp.Binary)
 }
 
 // hostBothyLookup asks the host where its bothy is. A package variable so a
@@ -151,8 +160,12 @@ func hostBothy(p platform.Info) (string, error) {
 
 // spawnTerminal opens Ghostty on bothy's own config and runs bothy inside it.
 // The palette is inlined because Ghostty theme lookup paths are not relocatable.
-func spawnTerminal(p platform.Info, dir, profileName string) error {
-	term, err := ghosttyCommand(p)
+func spawnTerminal(p platform.Info, termSlot, dir, profileName string) error {
+	sp, err := install.TerminalSpawn(termSlot)
+	if err != nil {
+		return err
+	}
+	term, err := terminalCommand(p, termSlot)
 	if err != nil {
 		return err
 	}
@@ -171,16 +184,22 @@ func spawnTerminal(p platform.Info, dir, profileName string) error {
 		self = host
 	}
 
-	conf := install.GhosttyConf(p)
+	conf, err := install.TerminalConf(p, termSlot)
+	if err != nil {
+		return err
+	}
+	// Checked rather than assumed: wezterm falls back to its built-in defaults
+	// without a word when a config file is missing, so the theme would go
+	// quietly rather than loudly.
 	if _, err := os.Stat(conf); err != nil {
 		return fmt.Errorf("%s does not exist — run 'bothy install' first", conf)
 	}
 
 	args := append([]string{}, term[1:]...)
-	args = append(args,
-		"--config-file="+conf,
-		"-e", self, "--dir", dir, "--profile", profileName,
-	)
+	for _, a := range sp.Args {
+		args = append(args, strings.ReplaceAll(a, "{config}", conf))
+	}
+	args = append(args, self, "--dir", dir, "--profile", profileName)
 
 	cmd := exec.Command(term[0], args...)
 	cmd.Env = append(os.Environ(), InTerminalEnv+"=1")
@@ -192,6 +211,6 @@ func spawnTerminal(p platform.Info, dir, profileName string) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("could not open a terminal: %w", err)
 	}
-	fmt.Println("opened a Ghostty window")
+	fmt.Printf("opened a %s window\n", sp.Binary)
 	return cmd.Process.Release()
 }

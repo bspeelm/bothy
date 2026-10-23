@@ -238,6 +238,7 @@ func Checks() []Check {
 		{ID: "watermark-image", Run: checkWatermarkImage},
 		{ID: "mux-config", Capability: Isolation, Run: checkMuxConfig},
 		{ID: "terminfo", Run: checkTerminfo},
+		{ID: "msvc-runtime", Run: checkMSVCRuntime},
 		{ID: "opener", Run: checkOpener},
 		{ID: "xdg-open-shim-guard", Run: checkXdgOpenShimGuard},
 		{ID: "agent", Run: checkAgent},

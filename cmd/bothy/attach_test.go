@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -19,7 +20,10 @@ func sandbox(t *testing.T, ownZellij bool) platform.Info {
 	t.Helper()
 	home := t.TempDir()
 	p := platform.Info{
-		OS: "linux", Arch: "x86_64",
+		// The machine this runs on, not a chosen one: the tools below are
+		// written to its filesystem, and whether a file is runnable is a
+		// question only the real platform can answer.
+		OS: runtime.GOOS, Arch: "x86_64",
 		Home:      home,
 		DataDir:   filepath.Join(home, ".local", "share"),
 		ConfigDir: filepath.Join(home, ".config"),
@@ -29,7 +33,7 @@ func sandbox(t *testing.T, ownZellij bool) platform.Info {
 		if err := os.MkdirAll(p.BinDir(), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(p.BinDir(), "zellij"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		if err := os.WriteFile(filepath.Join(p.BinDir(), p.ExeName("zellij")), []byte("#!/bin/sh\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -45,7 +49,7 @@ func TestAttachPrefersTheZellijBothyInstalled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(p.BinDir(), "zellij")
+	want := filepath.Join(p.BinDir(), p.ExeName("zellij"))
 	if plan.Bin != want {
 		t.Errorf("Bin = %q, want bothy's own copy at %q", plan.Bin, want)
 	}

@@ -98,7 +98,7 @@ func confirmDownloads(p platform.Info, cfg config.Config) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	decisions, err := tools.ResolveAll(names, p.BinDir())
+	decisions, err := tools.ResolveAll(p.OS, names, p.BinDir())
 	if err != nil {
 		return false, err
 	}

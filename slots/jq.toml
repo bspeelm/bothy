@@ -3,7 +3,7 @@
 
 name      = "jq"
 what      = "a JSON processor"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 
 [fetch]
 binary      = "jq"
@@ -16,3 +16,4 @@ linux_x86_64   = "jq-linux-amd64"
 linux_aarch64  = "jq-linux-arm64"
 darwin_x86_64  = "jq-macos-amd64"
 darwin_aarch64 = "jq-macos-arm64"
+windows_x86_64 = "jq-windows-amd64.exe"

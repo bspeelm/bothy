@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -10,6 +11,16 @@ import (
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/platform"
 )
+
+// connect mounts the far machine with sshfs, which wants FUSE: it is a Linux
+// and macOS feature, and the paths it builds are spelled the way those
+// platforms spell them.
+func skipWhereConnectDoesNotRun(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("connect needs FUSE, which Windows does not have")
+	}
+}
 
 // The requirement, as a test: nothing bothy does may put a file on the far
 // machine. A source fence rather than a comment, because this is the kind of
@@ -55,6 +66,7 @@ func TestTheMountIsAPurePrefixOfTheRemotePath(t *testing.T) {
 // something in it. A remote home is usually ten dotfiles and nothing else,
 // which reads as a connection that did not work.
 func TestTheDefaultIsTheWholeMachine(t *testing.T) {
+	skipWhereConnectDoesNotRun(t)
 	const mount = "/c/remotes/<client>"
 	if got := localPath(mount, "/"); got != mount {
 		t.Errorf("localPath(/) = %q, want the mount root", got)
@@ -69,6 +81,7 @@ func TestTheDefaultIsTheWholeMachine(t *testing.T) {
 // A ~ can still be typed, and only the far machine can expand it — so it maps
 // to the mount root rather than to a directory called "~" that nothing has.
 func TestAnUnexpandedHomeOpensAtTheMountRoot(t *testing.T) {
+	skipWhereConnectDoesNotRun(t)
 	const mount = "/c/remotes/<client>"
 	for _, remote := range []string{"", "~", "~/src/api"} {
 		if got := localPath(mount, remote); got != mount {
@@ -181,6 +194,7 @@ func TestTheShimRunsOnTheBoxInTheRightDirectory(t *testing.T) {
 // Inside the cache, so uninstall removes it and a stale mount never outlives
 // the directory bothy owns.
 func TestTheMountIsInsideBothysOwnTree(t *testing.T) {
+	skipWhereConnectDoesNotRun(t)
 	cache := "/home/me/.local/share/bothy/cache"
 	m := mountPoint(cache, "<client>")
 	if !strings.HasPrefix(m, cache+string(filepath.Separator)) {

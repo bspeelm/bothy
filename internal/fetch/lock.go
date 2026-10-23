@@ -133,11 +133,40 @@ func (l *Lockfile) Save(path string) error {
 	return os.WriteFile(path, append([]byte(header), out...), 0o644)
 }
 
+// hex64 is a bare sha256, which is a whole line in CertUtil output.
+var hex64 = regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+
+// certUtilSum reads the shape Windows releases are often published in, which
+// is the output of `certutil -hashfile` rather than sha256sum: a prose header
+// naming the file, the bare hash on the next line, and a success line. ripgrep
+// publishes this for its Windows assets and sha256sum format for every other
+// platform, so the two live side by side in one release.
+func certUtilSum(body []byte, asset string) string {
+	lines := strings.Split(string(body), "\n")
+	for i, line := range lines {
+		head := strings.TrimSpace(line)
+		if !strings.HasPrefix(head, "SHA256 hash of ") || !strings.Contains(head, asset) {
+			continue
+		}
+		for _, next := range lines[i+1:] {
+			h := strings.TrimSpace(next)
+			if h == "" {
+				continue
+			}
+			if hex64.MatchString(h) {
+				return strings.ToLower(h)
+			}
+			break
+		}
+	}
+	return ""
+}
+
 // upstreamSum reads the sha256 a project published for one asset, or "" when
-// it published none. The file is "<sha256>  <filename>" lines either way, so
-// both shapes are read by matching the filename -- or, where
-// checksum_covers = "binary", its basename: zellij names the line by the
-// binary's build path, which matches no asset.
+// it published none. The common shape is "<sha256>  <filename>" lines, matched
+// by filename -- or, where checksum_covers = "binary", by its basename: zellij
+// names the line by the binary's build path, which matches no asset, and on
+// Windows that path ends in .exe.
 func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (string, error) {
 	name, err := t.ChecksumFile(p, version)
 	if err != nil || name == "" {
@@ -147,15 +176,19 @@ func upstreamSum(t tools.Tool, p platform.Info, tag, version, asset string) (str
 	if err != nil {
 		return "", err
 	}
+	bin := platform.ExeName(p.OS, t.Binary)
 	for _, line := range strings.Split(string(body), "\n") {
 		f := strings.Fields(line)
 		if len(f) != 2 {
 			continue
 		}
 		listed := strings.TrimPrefix(f[1], "*")
-		if listed == asset || (t.ChecksumCovers == "binary" && path.Base(listed) == t.Binary) {
+		if listed == asset || (t.ChecksumCovers == "binary" && path.Base(listed) == bin) {
 			return strings.ToLower(f[0]), nil
 		}
+	}
+	if sum := certUtilSum(body, asset); sum != "" {
+		return sum, nil
 	}
 	return "", fmt.Errorf("%s does not list %s", name, asset)
 }
@@ -246,6 +279,10 @@ var Platforms = []platform.Info{
 	{OS: "linux", Arch: "aarch64"},
 	{OS: "darwin", Arch: "x86_64"},
 	{OS: "darwin", Arch: "aarch64"},
+	// No windows_aarch64: zellij publishes no aarch64-pc-windows-msvc build,
+	// and a workspace with no multiplexer is not a workspace. Every other tool
+	// ships one, so the day zellij does this is a one-line-per-slot change.
+	{OS: "windows", Arch: "x86_64"},
 }
 
 // Relock refreshes one tool's entry at the latest release.
@@ -290,13 +327,14 @@ func RelockAt(t tools.Tool, tag string, progress func(string)) (Entry, error) {
 		// before unpacking. The cross-check may be against the binary inside.
 		mine := sum
 		if t.ChecksumCovers == "binary" {
-			found, err := Extract(body, asset, []string{t.Binary})
-			if err != nil || found[t.Binary] == nil {
+			bin := platform.ExeName(p.OS, t.Binary)
+			found, err := Extract(body, asset, []string{bin})
+			if err != nil || found[bin] == nil {
 				return Entry{}, fmt.Errorf(
 					"fetch: %s %s %s_%s: cannot read %s out of %s to compare with the "+
 						"published checksum: %v", t.Name, version, p.OS, p.Arch, t.Binary, asset, err)
 			}
-			mine = Sum(found[t.Binary])
+			mine = Sum(found[bin])
 		}
 
 		// Cross-check against what the project published, where it publishes

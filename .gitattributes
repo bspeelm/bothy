@@ -1,0 +1,13 @@
+# Every file here is LF, on every platform that checks it out.
+#
+# The tests read this repository's own sources and match patterns anchored to
+# "\n" -- the usage block in main.go, the job list in ci.yml, the release
+# blocks in .goreleaser.yaml -- so git's autocrlf default on Windows would
+# have them measuring the checkout rather than the file. The configs bothy
+# generates are LF for the same reason: the tools reading them are the same
+# tools on every platform.
+* text=auto eol=lf
+
+# Named rather than left to git's content sniffing: a screenshot rewritten as
+# text is a screenshot nobody can open.
+*.png binary

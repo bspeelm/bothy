@@ -32,7 +32,7 @@ func cmdLayout(args []string) error {
 	if err != nil {
 		return err
 	}
-	out, err := backend.Preview(prof, install.Commands(cfg))
+	out, err := backend.Preview(prof, install.Commands(p, cfg))
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,7 @@ Every part can be changed. Most of it needn't be, and most of it won't be.
 
 | part | default | alternatives |
 |---|---|---|
-| terminal | ghostty | kitty, wezterm — none of which bothy installs |
+| terminal | ghostty, or wezterm on Windows | kitty — none of which bothy installs |
 | multiplexer | zellij | or turn it off, and run the agent in this terminal |
 | file browser | yazi | or turn it off |
 | editor | vim | nano, helix |

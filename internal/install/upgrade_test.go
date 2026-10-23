@@ -1,8 +1,10 @@
 package install
 
 import (
+	"github.com/bspeelm/bothy/internal/platform"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/slots"
@@ -18,7 +20,8 @@ import (
 func TestSystemLookupIgnoresBothysOwnBin(t *testing.T) {
 	own, other := t.TempDir(), t.TempDir()
 	for _, dir := range []string{own, other} {
-		if err := os.WriteFile(filepath.Join(dir, "zellij"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		name := platform.ExeName(runtime.GOOS, "zellij")
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -26,17 +29,17 @@ func TestSystemLookupIgnoresBothysOwnBin(t *testing.T) {
 	// bothy's bin first, exactly as a bothy session puts it.
 	t.Setenv("PATH", own+string(os.PathListSeparator)+other)
 
-	got, err := tools.SystemLookPath(own)("zellij")
+	got, err := tools.SystemLookPath(runtime.GOOS, own)("zellij")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(other, "zellij"); got != want {
+	if want := filepath.Join(other, platform.ExeName(runtime.GOOS, "zellij")); got != want {
 		t.Errorf("found %q, want the system's copy at %q", got, want)
 	}
 
 	// And with only bothy's copy present, the system has none.
 	t.Setenv("PATH", own)
-	if path, err := tools.SystemLookPath(own)("zellij"); err == nil {
+	if path, err := tools.SystemLookPath(runtime.GOOS, own)("zellij"); err == nil {
 		t.Errorf("bothy's own copy at %q counted as the system's", path)
 	}
 }

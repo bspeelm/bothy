@@ -7,6 +7,7 @@ package install
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -162,6 +163,56 @@ func GhosttyConf(p platform.Info) string {
 	return filepath.Join(p.ConfigRoot(), "ghostty.conf")
 }
 
+// fileOne is the file(1) Yazi uses to detect MIME types, when it needs naming.
+// Windows has no file(1) and Yazi has no fallback: without one every entry is
+// "Cannot find `file` to detect the file's MIME type" and nothing previews or
+// opens by type. Git for Windows ships one but puts only git on PATH, so the
+// path is named rather than searched for.
+func fileOne(p platform.Info) string {
+	if p.OS != "windows" {
+		return "" // file(1) is on PATH everywhere else
+	}
+	if found, err := exec.LookPath("file.exe"); err == nil {
+		return found
+	}
+	for _, root := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
+		if root == "" {
+			continue
+		}
+		cand := filepath.Join(root, "Git", "usr", "bin", "file.exe")
+		if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+			return cand
+		}
+	}
+	return ""
+}
+
+// TerminalSpawn is how a terminal provider is opened. The error names the
+// slot, because an unknown terminal and one that cannot be spawned are
+// different problems with different fixes.
+func TerminalSpawn(term string) (slots.Spawn, error) {
+	if term == "" || term == "none" {
+		return slots.Spawn{}, fmt.Errorf("no terminal is configured")
+	}
+	pr, ok := slots.Get(term)
+	if !ok {
+		return slots.Spawn{}, fmt.Errorf("%s is not a terminal bothy knows", term)
+	}
+	if pr.Spawn == nil {
+		return slots.Spawn{}, fmt.Errorf("%s does not say how to open a window", term)
+	}
+	return *pr.Spawn, nil
+}
+
+// TerminalConf is the config file bothy writes for a terminal provider.
+func TerminalConf(p platform.Info, term string) (string, error) {
+	sp, err := TerminalSpawn(term)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(p.ConfigRoot(), sp.Config), nil
+}
+
 // plan lists every file to write. Adding a provider should mean adding entries
 // here and templates beside them — never new logic.
 func plan(p platform.Info, cfg config.Config, data Data) []file {
@@ -292,14 +343,24 @@ func opener(p platform.Info) string {
 		return "flatpak-spawn --host xdg-open"
 	case p.OS == "darwin":
 		return "open"
+	case p.OS == "windows":
+		// `start` is a cmd builtin, not a program, and Yazi runs openers
+		// through cmd.exe -- so this works where naming a binary would not.
+		// The empty argument is the window title: `start` reads a lone quoted
+		// first argument as one, and Yazi quotes the path it substitutes.
+		return `start ""`
 	}
 	return "xdg-open"
 }
 
 // OpenerBinary is the program the opener runs, for a check that wants to know
 // whether it is there. The container opener forwards through flatpak-spawn, so
-// that is the binary that has to exist here.
+// that is the binary that has to exist here. On Windows the opener is a cmd
+// builtin, so the program that has to exist is the shell Yazi runs it through.
 func OpenerBinary(p platform.Info) string {
+	if p.OS == "windows" {
+		return "cmd"
+	}
 	return strings.Fields(opener(p))[0]
 }
 
@@ -342,13 +403,42 @@ func AgentContextFlag(slot string) string {
 	return a.ContextFlag
 }
 
-// Commands maps layout slots to the commands their panes run.
-func Commands(cfg config.Config) layout.Commands {
+// Commands maps layout slots to the commands their panes run. A slot turned
+// off maps to an empty command, which is a pane running your shell -- not to
+// the word "none", which is a program nobody has.
+func Commands(p platform.Info, cfg config.Config) layout.Commands {
 	return layout.Commands{
-		"browser": cfg.Slots.Browser,
-		"editor":  EditorBinary(cfg.Slots.Editor),
-		"agent":   AgentBinary(cfg.Slots.Agent),
+		"browser": slotCommand(p, cfg.Slots.Browser, func(s string) string { return s }),
+		"editor":  slotCommand(p, cfg.Slots.Editor, EditorBinary),
+		"agent":   slotCommand(p, cfg.Slots.Agent, AgentBinary),
 	}
+}
+
+// slotCommand resolves a slot to its command, treating "none" as off. That is
+// the same sentinel the mux slot already uses, so it is the spelling people
+// have been told about.
+func slotCommand(p platform.Info, slot string, binary func(string) string) string {
+	if slot == "none" {
+		return ""
+	}
+	return layoutCommand(p, binary(slot))
+}
+
+// layoutCommand names a program the way the layout should run it. Windows
+// package managers install their shims as symlinks -- winget's claude.exe is
+// one -- and zellij will not resolve those from PATH: it reports "Command not
+// found" for a program that runs perfectly when named in full. So on Windows
+// the full path goes in, single-quoted, because the layout splits commands
+// shell-style and a bare backslash would be read as an escape.
+func layoutCommand(p platform.Info, cmd string) string {
+	if p.OS != "windows" || cmd == "" {
+		return cmd
+	}
+	full := ToolPath(p, cmd)
+	if full == cmd {
+		return cmd
+	}
+	return mux.JoinCommand([]string{full})
 }
 
 // LoadProfile reads a profile by name, preferring the user's own copy in
@@ -421,6 +511,9 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	}
 	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
+		if one := fileOne(p); one != "" {
+			env.set("YAZI_FILE_ONE", one)
+		}
 	} else {
 		env.unset("YAZI_CONFIG_HOME")
 	}

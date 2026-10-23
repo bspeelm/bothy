@@ -1,7 +1,9 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -54,7 +56,7 @@ func TestLaunchModeIsASettingTheFlagsOverride(t *testing.T) {
 func TestAutoLeavesTheDecisionToTheTerminal(t *testing.T) {
 	clearDisplay(t)
 	for _, mode := range []string{"", "auto"} {
-		m := decideLaunch(platform.Info{Terminal: "ghostty"}, mode)
+		m := decideLaunch(platform.Info{Terminal: "ghostty"}, "ghostty", mode)
 		if m.Reason == "asked for a window" || m.Reason == "asked to run in this terminal" {
 			t.Errorf("mode %q was treated as a forced answer: %q", mode, m.Reason)
 		}
@@ -70,7 +72,7 @@ func TestPlanLaunchDecidesWhereTheWorkspaceOpens(t *testing.T) {
 	// makes this matrix about the rest, on any machine.
 	restore := decide
 	t.Cleanup(func() { decide = restore })
-	decide = func(platform.Info, string) launchMode { return launchMode{} }
+	decide = func(platform.Info, string, string) launchMode { return launchMode{} }
 
 	here := platform.Info{Home: "/home/u", Terminal: "ghostty"}
 
@@ -132,6 +134,12 @@ func TestPlanLaunchDecidesWhereTheWorkspaceOpens(t *testing.T) {
 				t.Fatal(err)
 			}
 			got.Reason = "" // the wording is decideLaunch's business
+			// Fixture paths are POSIX-absolute; Windows resolves them onto the
+			// current drive and spells them with backslashes. What is under
+			// test is which directory wins, not how one is written.
+			if samePath(got.Dir, tc.want.Dir) {
+				got.Dir = tc.want.Dir
+			}
 			if got != tc.want {
 				t.Errorf("planLaunch = %+v, want %+v", got, tc.want)
 			}
@@ -154,7 +162,7 @@ func TestPlanLaunchRefusesContradictoryFlags(t *testing.T) {
 func TestPlanLaunchSpawnsOrHopsButSaysBoth(t *testing.T) {
 	restore := decide
 	t.Cleanup(func() { decide = restore })
-	decide = func(platform.Info, string) launchMode {
+	decide = func(platform.Info, string, string) launchMode {
 		return launchMode{Spawn: true, Reason: "this terminal cannot draw images"}
 	}
 
@@ -174,4 +182,14 @@ func TestPlanLaunchSpawnsOrHopsButSaysBoth(t *testing.T) {
 	if got.Reason == "" {
 		t.Error("no reason given, so a failed spawn would report nothing")
 	}
+}
+
+// samePath compares two paths with the volume and the separator spelling
+// removed, so a table written in one platform's notation can be read in
+// another's.
+func samePath(a, b string) bool {
+	trim := func(p string) string {
+		return filepath.ToSlash(strings.TrimPrefix(p, filepath.VolumeName(p)))
+	}
+	return trim(a) == trim(b)
 }

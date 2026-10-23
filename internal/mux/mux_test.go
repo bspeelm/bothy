@@ -2,6 +2,7 @@ package mux
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -40,6 +41,11 @@ func TestPWDNamesTheWorkspaceNotWhereBothyWasTyped(t *testing.T) {
 // main can exit with it once they have run. This test binary surviving the
 // call is half the assertion.
 func TestAChildsExitStatusComesBackRatherThanEndingBothy(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// `sh` is Git Bash there if it is anything, so this would assert
+		// whether the runner has Git rather than how a status comes back.
+		t.Skip("needs a POSIX shell to exit with a chosen status")
+	}
 	err := RunAttached(nil, "sh", "-c", "exit 3")
 	var status ExitStatus
 	if !errors.As(err, &status) || status.Code != 3 {

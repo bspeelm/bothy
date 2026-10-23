@@ -28,20 +28,26 @@ func checkTerminalCapability(env Env) Result {
 	if g.Supported {
 		return pass("running in " + term + ", which can draw images")
 	}
-	// Not a failure: bothy opens a Ghostty window instead — unless there is
-	// no ghostty to open.
-	if _, err := exec.LookPath("ghostty"); err != nil {
+	// Not a failure: bothy opens a window in the configured terminal instead
+	// -- unless that terminal is not there. Named from the config rather than
+	// hardcoded, because ghostty has no Windows build and advising one there
+	// would be advice nobody can take.
+	want := env.Config.Slots.Terminal
+	if want == "" {
+		want = "ghostty"
+	}
+	if _, err := exec.LookPath(env.Platform.ExeName(want)); err != nil {
 		fix := "install a terminal that can draw images, or accept block-art previews"
-		if a, err := advice.Get("ghostty"); err == nil {
+		if a, err := advice.Get(want); err == nil {
 			fix = a.Command(env.Platform)
 			if w := a.Warnings(env.Platform); w != "" {
 				fix += "\n         " + w
 			}
 		}
-		return warn("this terminal cannot draw inline images, and ghostty is not installed",
+		return warn("this terminal cannot draw inline images, and "+want+" is not installed",
 			g.Reason, fix)
 	}
-	return pass("this terminal cannot draw images, so bothy will open a Ghostty window — " + g.Reason)
+	return pass("this terminal cannot draw images, so bothy will open a " + want + " window — " + g.Reason)
 }
 
 func checkMuxConfig(env Env) Result {

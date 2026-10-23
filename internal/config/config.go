@@ -205,6 +205,16 @@ func dropLine(src []byte, row int) ([]byte, string, bool) {
 	return []byte(strings.Join(out, "\n")), key, true
 }
 
+// defaultTerminal is the terminal slot a platform starts with. ghostty
+// publishes nothing for Windows, so defaulting to it there would name a
+// program that can never arrive and advise an install that does not exist.
+func defaultTerminal(goos string) string {
+	if goos == "windows" {
+		return "wezterm"
+	}
+	return "ghostty"
+}
+
 // Path returns the config file location for a detected machine.
 func Path(p platform.Info) string {
 	return filepath.Join(p.ConfigDir, "bothy", "config.toml")
@@ -214,6 +224,7 @@ func Path(p platform.Info) string {
 // not an error: it means "everything default", which is what a fresh install is.
 func Load(p platform.Info) (Config, error) {
 	cfg := Default()
+	cfg.Slots.Terminal = defaultTerminal(p.OS)
 
 	src, err := os.ReadFile(Path(p))
 	if errors.Is(err, os.ErrNotExist) {

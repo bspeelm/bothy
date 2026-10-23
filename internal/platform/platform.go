@@ -30,15 +30,13 @@ type Info struct {
 	OS   string // "linux", "darwin"
 	Arch string // "x86_64", "aarch64" — release-asset spelling, not Go's
 
-	DistroID      string // os-release ID, e.g. "fedora", "ubuntu", "arch"
-	DistroLike    string // os-release ID_LIKE, e.g. "debian" on Mint and Pop!_OS
-	DistroVersion string // os-release VERSION_ID
-	Immutable     bool   // rpm-ostree/bootc host: never install system packages
+	DistroID   string // os-release ID, e.g. "fedora", "ubuntu", "arch"
+	DistroLike string // os-release ID_LIKE, e.g. "debian" on Mint and Pop!_OS
+	Immutable  bool   // rpm-ostree/bootc host: never install system packages
 
 	Container     ContainerKind
 	ContainerName string // the toolbox/distrobox name, for the `dev` host hop
 	SharedHome    bool   // home is the host's home (Toolbx/Distrobox always)
-	WSL           bool
 
 	Term     string // $TERM
 	Terminal string // best guess at the emulator: "ghostty", "wezterm", …
@@ -111,6 +109,37 @@ func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
 // overrides. bothy reads it and writes only config.toml there.
 func (i Info) UserConfigDir() string { return filepath.Join(i.ConfigDir, "bothy") }
 
+// ExeName is what a binary is called on an operating system. Windows needs the
+// suffix at both ends: looking a tool up on PATH, and matching it inside a
+// release archive. Taking the OS rather than reading runtime.GOOS is ADR-031:
+// the Windows arm stays reachable from a test on any machine.
+func ExeName(goos, name string) string {
+	if name == "" || goos != "windows" || strings.HasSuffix(strings.ToLower(name), ".exe") {
+		return name
+	}
+	return name + ".exe"
+}
+
+// Runnable reports whether a file is a program bothy can run. Windows has no
+// execute bit -- Go reports 0666 or 0444 for every file -- so testing for one
+// there asks the filesystem a question it cannot answer, and the answer would
+// be no for every tool bothy had just installed.
+func Runnable(goos string, fi os.FileInfo) bool {
+	if fi == nil || fi.IsDir() {
+		return false
+	}
+	if goos == "windows" {
+		return true
+	}
+	return fi.Mode()&0o111 != 0
+}
+
+// ExeName is ExeName for this machine.
+func (i Info) ExeName(name string) string { return ExeName(i.OS, name) }
+
+// Runnable is Runnable for this machine.
+func (i Info) Runnable(fi os.FileInfo) bool { return Runnable(i.OS, fi) }
+
 // Detect probes the machine. It never fails: an undetectable field is left
 // zero, and the doctor is what turns a missing field into a visible problem.
 func Detect() Info {
@@ -132,10 +161,9 @@ func Detect() Info {
 		i.Root = strandedSessionRoot()
 	}
 
-	i.DistroID, i.DistroLike, i.DistroVersion = osRelease()
+	i.DistroID, i.DistroLike = osRelease()
 	i.Container, i.ContainerName = detectContainer()
 	i.SharedHome = i.Container == Toolbx || i.Container == Distrobox
-	i.WSL = detectWSL()
 	i.Immutable = detectImmutable(i.Container)
 
 	return i
@@ -171,10 +199,10 @@ func xdg(env, home string, fallback ...string) string {
 //
 // ID_LIKE matters as much as ID: it is how Mint, Pop!_OS and other derivatives
 // say "treat me as debian".
-func osRelease() (id, like, version string) {
+func osRelease() (id, like string) {
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
-		return "", "", ""
+		return "", ""
 	}
 	defer f.Close()
 
@@ -191,11 +219,9 @@ func osRelease() (id, like, version string) {
 		case "ID_LIKE":
 			// ID_LIKE is a space-separated, most-similar-first list.
 			like, _, _ = strings.Cut(v, " ")
-		case "VERSION_ID":
-			version = v
 		}
 	}
-	return id, like, version
+	return id, like
 }
 
 // detectContainer identifies Toolbx/Distrobox and recovers the container's
@@ -253,14 +279,6 @@ func containerNameIn(root string) string {
 		}
 	}
 	return ""
-}
-
-func detectWSL() bool {
-	if os.Getenv("WSL_DISTRO_NAME") != "" {
-		return true
-	}
-	b, err := os.ReadFile("/proc/sys/kernel/osrelease")
-	return err == nil && strings.Contains(strings.ToLower(string(b)), "microsoft")
 }
 
 // detectImmutable reports whether the *host* is an image-based system where

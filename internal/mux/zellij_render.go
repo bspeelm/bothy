@@ -87,8 +87,11 @@ func writePane(b *strings.Builder, p layout.Pane, cmds layout.Commands, depth in
 
 	cmd := p.Command
 	if cmd == "" && p.Slot != "" {
+		// Present-but-empty is a slot deliberately turned off, which is a
+		// shell pane. Absent is a profile naming a slot nothing fills, which
+		// is a mistake worth reporting rather than quietly becoming a shell.
 		c, ok := cmds[p.Slot]
-		if !ok || c == "" {
+		if !ok {
 			return fmt.Errorf("layout: pane needs slot %q but no command is configured for it", p.Slot)
 		}
 		cmd = c

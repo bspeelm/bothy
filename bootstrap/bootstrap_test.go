@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -72,6 +73,7 @@ func checksumsFor(archive []byte, name string) string {
 // the script will ask for.
 func archiveName(t *testing.T) string {
 	t.Helper()
+	skipOnWindows(t)
 	out, err := exec.Command("sh", "-c",
 		`case "$(uname -s)" in Linux) os=linux;; Darwin) os=darwin;; esac
 		 case "$(uname -m)" in x86_64|amd64) a=amd64;; aarch64|arm64) a=arm64;; esac
@@ -112,6 +114,7 @@ func TestBootstrapInstallsTheBinary(t *testing.T) {
 	defer srv.Close()
 
 	home := t.TempDir()
+	skipOnWindows(t)
 	cmd := exec.Command("sh", "install.sh")
 	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
 	out, err := cmd.CombinedOutput()
@@ -166,6 +169,7 @@ func TestBootstrapWarnsWhenBindirIsNotOnPath(t *testing.T) {
 
 // A download that fails must not leave a half-installed binary behind.
 func TestBootstrapLeavesNothingOnAFailedDownload(t *testing.T) {
+	skipOnWindows(t)
 	srv, _ := releaseServer(nil, "")
 	defer srv.Close()
 
@@ -239,6 +243,7 @@ func TestBootstrapRefusesAMismatchedChecksum(t *testing.T) {
 // An archive missing from checksums.txt is a broken release, not a reason to
 // install it unchecked.
 func TestBootstrapRefusesAnUnlistedArchive(t *testing.T) {
+	skipOnWindows(t)
 	archive := releaseArchive(t, "x")
 	srv, _ := releaseServer(archive, checksumsFor(archive, "bothy_some_other_platform.tar.gz"))
 	defer srv.Close()
@@ -258,6 +263,7 @@ func TestBootstrapRefusesAnUnlistedArchive(t *testing.T) {
 // Releases before 0.1.4 have no checksums.txt. Those must still install, and
 // must say plainly that nothing was verified rather than implying it was.
 func TestBootstrapSaysWhenItCannotVerify(t *testing.T) {
+	skipOnWindows(t)
 	archive := releaseArchive(t, "#!/bin/sh\necho ok\n")
 	srv, _ := releaseServer(archive, "") // no checksums.txt published
 	defer srv.Close()
@@ -421,5 +427,19 @@ func TestBootstrapTakesVerifyThroughAPipe(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "provenance verified") {
 		t.Errorf("--verify did not reach the script through the pipe:\n%s", out)
+	}
+}
+
+// skipOnWindows keeps these tests off a Windows runner. Every test that runs
+// the script names it, rather than inheriting it from a helper: the script
+// exits 1 there by design, so a test asserting a failure would pass for the
+// wrong reason and an inherited skip is invisible at the assertion. exec.LookPath("sh")
+// finds Git Bash there, uname reports MINGW64_NT-*, and install.sh exits 1 by
+// design because it refuses native Windows -- so the whole file would fail for
+// the one reason that is correct behaviour.
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("install.sh refuses native Windows by design; scoop is that channel")
 	}
 }

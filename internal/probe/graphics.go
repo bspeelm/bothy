@@ -45,12 +45,12 @@ var graphicsTerminals = map[string]terminalGraphics{
 	"ghostty": {direct: kgp, carried: kgp},
 	"kitty":   {direct: kgp, carried: kgp},
 
-	// WezTerm speaks Kitty, but Yazi does not use it there: its driver table
-	// maps WezTerm to the iTerm2 protocol first and sixel second, and inside a
-	// multiplexer it takes sixel. zellij carries sixel as well as Kitty, so
-	// previews work -- by a different route than ghostty's, and the reason
-	// shown to the user has to say which.
-	"wezterm": {direct: "iTerm2's inline-image protocol", carried: "sixel"},
+	// WezTerm speaks Kitty, but Yazi does not use it there. Measured with
+	// `ya env` inside a real session: brand WezTerm, kgp false, sixel false,
+	// mux None, and the chosen driver is the iTerm2 protocol -- which zellij
+	// does not carry. So previews work with nothing in the way and not through
+	// a multiplexer, which is the same shape as iTerm2 itself.
+	"wezterm": {direct: "iTerm2's inline-image protocol"},
 
 	// $TERM_PROGRAM, lowercased by platform.detectTerminal. iTerm2 has drawn
 	// inline images since long before the Kitty protocol existed and still

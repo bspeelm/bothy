@@ -34,6 +34,16 @@ type Provider struct {
 	Advise      *Advise  `toml:"advise"`
 	Files       []File   `toml:"file"`
 	Plugins     []Plugin `toml:"plugin"`
+	Spawn       *Spawn   `toml:"spawn"`
+}
+
+// Spawn is how a terminal provider is asked to open a window running a
+// command. Data rather than code because the providers differ only in argv:
+// ghostty wants --config-file=X, wezterm wants it as two words (ADR-032).
+type Spawn struct {
+	Binary string   `toml:"binary"`
+	Config string   `toml:"config"`
+	Args   []string `toml:"args"`
 }
 
 // Fetch is a release bothy can download. The fields are the fetcher's, and

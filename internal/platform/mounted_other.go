@@ -2,6 +2,7 @@
 
 package platform
 
-// Mounted has no answer where there is no st_dev. bothy does not run on
-// Windows (ADR-018) -- this exists so the tree keeps compiling for it.
+// Mounted has no answer where there is no st_dev. On Windows that means
+// `bothy connect` reports nothing mounted (ADR-054) -- it is a Linux and
+// macOS feature, and this keeps the tree compiling.
 func Mounted(path string) bool { return false }

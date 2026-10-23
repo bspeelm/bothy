@@ -43,7 +43,7 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 	if err != nil {
 		return nil, err
 	}
-	decisions, err := tools.ResolveAll(names, p.BinDir())
+	decisions, err := tools.ResolveAll(p.OS, names, p.BinDir())
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 		}
 		rep.Fetched = append(rep.Fetched, d)
 		m.RecordBinary(state.Binary{
-			Name: d.Tool.Name, Path: filepath.Join(p.BinDir(), d.Tool.Binary),
+			Name: d.Tool.Name, Path: SuppliedPath(p, d.Tool.Binary),
 			Version: res.Version, SHA256: res.SHA256, Source: "bothy",
 		})
 	}
@@ -211,10 +211,18 @@ func ToolPath(p platform.Info, name string) string {
 	return name
 }
 
+// SuppliedPath is where bothy puts a tool it supplies. One function because
+// two of them disagreed: the manifest recorded a path without the Windows
+// .exe while the installer wrote one with it, so every tool looked missing
+// the moment it had been installed.
+func SuppliedPath(p platform.Info, name string) string {
+	return filepath.Join(p.BinDir(), p.ExeName(name))
+}
+
 // InstalledBinary reports the path of a tool bothy supplied, if it did.
 func InstalledBinary(p platform.Info, name string) (string, bool) {
-	path := filepath.Join(p.BinDir(), name)
-	if fi, err := os.Stat(path); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+	path := SuppliedPath(p, name)
+	if fi, err := os.Stat(path); err == nil && p.Runnable(fi) {
 		return path, true
 	}
 	return "", false

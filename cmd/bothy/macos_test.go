@@ -37,7 +37,7 @@ var macExpectation = map[string]doctor.Severity{
 	"yazi-version":          doctor.Pass,
 	"yazi-config-keys":      doctor.Pass,
 	"yazi-plugins":          doctor.Pass, // git ships with the Xcode command line tools
-	"image-previews":        doctor.Pass, // no graphics terminal and no preview block: they agree
+	"image-previews":        doctor.Warn, // no graphics terminal and no preview block: they agree
 	"profile-renders":       doctor.Pass,
 	"layout-built":          doctor.Skip, // only meaningful inside a live zellij session
 	"pane-fields":           doctor.Skip, // same: there are no panes to describe
@@ -55,6 +55,7 @@ var macExpectation = map[string]doctor.Severity{
 	"watermark-image":       doctor.Skip, // none configured
 	"mux-config":            doctor.Pass,
 	"terminfo":              doctor.Pass, // infocmp is in /usr/bin, and TERM is set below
+	"msvc-runtime":          doctor.Skip, // a Windows library
 	// The check this job exists to prove. macOS has `open`, not xdg-open, and
 	// until #95 the generated yazi config named the wrong one on every Mac.
 	"opener":              doctor.Pass,

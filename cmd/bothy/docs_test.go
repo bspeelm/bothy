@@ -352,6 +352,7 @@ var upgradeAdvice = map[string]string{
 	"dnf":      "dnf upgrade",
 	"apt":      "apt install",
 	"go":       "go install",
+	"scoop":    "scoop update",
 	"source":   "make install-binary",
 }
 
@@ -694,7 +695,7 @@ func TestTheJobsThatReadProseAreNotSkippedForProse(t *testing.T) {
 			t.Errorf("the %q job is gated on scope, so a prose-only change would not run it", name)
 		}
 	}
-	for _, name := range []string{"isolation", "container", "buildroot", "macos", "deb"} {
+	for _, name := range []string{"isolation", "container", "buildroot", "macos", "windows", "deb"} {
 		if _, ok := gated[name]; !ok {
 			t.Errorf("ci.yml has no %q job; this test is asserting nothing about it", name)
 		} else if !gated[name] {

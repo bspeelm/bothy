@@ -7,6 +7,11 @@ slot      = "terminal"
 platforms = ["linux", "darwin"]
 provides  = ["images", "theme"]
 
+[spawn]
+binary = "ghostty"
+config = "ghostty.conf"
+args   = ["--config-file={config}", "-e"]
+
 [advise.install]
 fedora-ostree  = "sudo curl -fsSL -o /etc/yum.repos.d/_copr_scottames-ghostty.repo https://copr.fedorainfracloud.org/coprs/scottames/ghostty/repo/fedora-$(rpm -E %fedora)/scottames-ghostty-fedora-$(rpm -E %fedora).repo && sudo rpm-ostree install ghostty && systemctl reboot"
 fedora         = "sudo dnf copr enable scottames/ghostty -y && sudo dnf install -y ghostty"
