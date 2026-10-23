@@ -406,22 +406,39 @@ func AgentContextFlag(slot string) string {
 // Commands maps layout slots to the commands their panes run. A slot turned
 // off maps to an empty command, which is a pane running your shell -- not to
 // the word "none", which is a program nobody has.
-func Commands(cfg config.Config) layout.Commands {
+func Commands(p platform.Info, cfg config.Config) layout.Commands {
 	return layout.Commands{
-		"browser": slotCommand(cfg.Slots.Browser, func(s string) string { return s }),
-		"editor":  slotCommand(cfg.Slots.Editor, EditorBinary),
-		"agent":   slotCommand(cfg.Slots.Agent, AgentBinary),
+		"browser": slotCommand(p, cfg.Slots.Browser, func(s string) string { return s }),
+		"editor":  slotCommand(p, cfg.Slots.Editor, EditorBinary),
+		"agent":   slotCommand(p, cfg.Slots.Agent, AgentBinary),
 	}
 }
 
 // slotCommand resolves a slot to its command, treating "none" as off. That is
 // the same sentinel the mux slot already uses, so it is the spelling people
 // have been told about.
-func slotCommand(slot string, binary func(string) string) string {
+func slotCommand(p platform.Info, slot string, binary func(string) string) string {
 	if slot == "none" {
 		return ""
 	}
-	return binary(slot)
+	return layoutCommand(p, binary(slot))
+}
+
+// layoutCommand names a program the way the layout should run it. Windows
+// package managers install their shims as symlinks -- winget's claude.exe is
+// one -- and zellij will not resolve those from PATH: it reports "Command not
+// found" for a program that runs perfectly when named in full. So on Windows
+// the full path goes in, single-quoted, because the layout splits commands
+// shell-style and a bare backslash would be read as an escape.
+func layoutCommand(p platform.Info, cmd string) string {
+	if p.OS != "windows" || cmd == "" {
+		return cmd
+	}
+	full := ToolPath(p, cmd)
+	if full == cmd {
+		return cmd
+	}
+	return "'" + full + "'"
 }
 
 // LoadProfile reads a profile by name, preferring the user's own copy in

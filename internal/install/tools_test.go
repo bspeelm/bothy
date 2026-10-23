@@ -3,6 +3,7 @@ package install
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/platform"
@@ -51,5 +52,42 @@ func TestYaziIsPointedAtFileOneOnWindowsOnly(t *testing.T) {
 	}
 	if got := fileOne(platform.Info{OS: "windows"}); got != filepath.Join(git, "file.exe") {
 		t.Errorf("windows with Git installed = %q, want the bundled file.exe", got)
+	}
+}
+
+// winget installs its shims as symlinks -- claude.exe in WinGet\Links is one,
+// zero bytes and a reparse point -- and zellij will not resolve those from
+// PATH. The agent pane said "Command not found: claude" for a program that ran
+// fine when named in full, so on Windows the layout names the full path.
+//
+// Single-quoted because the layout splits commands shell-style: a bare
+// backslash is an escape there, so C:\Users\... would arrive as C:Users...
+func TestWindowsLayoutCommandsAreNamedInFull(t *testing.T) {
+	dir := t.TempDir()
+	p := platform.Info{OS: "windows", DataDir: dir}
+	bin := p.BinDir()
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "yazi.exe"), []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := layoutCommand(p, "yazi")
+	want := "'" + filepath.Join(bin, "yazi.exe") + "'"
+	if got != want {
+		t.Errorf("layoutCommand = %q, want %q", got, want)
+	}
+	if !strings.HasPrefix(got, "'") || !strings.HasSuffix(got, "'") {
+		t.Errorf("%q is unquoted; the renderer would eat the backslashes", got)
+	}
+
+	// Linux is unchanged: the golden cockpit layout says command "yazi".
+	if got := layoutCommand(platform.Info{OS: "linux", DataDir: dir}, "yazi"); got != "yazi" {
+		t.Errorf("linux layoutCommand = %q, want the bare name", got)
+	}
+	// Nothing to resolve stays as it was, so the error still names the program.
+	if got := layoutCommand(p, "nosuchprogram"); got != "nosuchprogram" {
+		t.Errorf("unresolvable = %q, want the name back", got)
 	}
 }

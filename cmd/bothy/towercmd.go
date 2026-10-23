@@ -319,7 +319,7 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	defer watching(p, cfg, towerSession)()
 	err = backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: towerSession, Dir: p.Home,
-		Profile: prof, Commands: install.Commands(cfg), Env: env, Live: live,
+		Profile: prof, Commands: install.Commands(p, cfg), Env: env, Live: live,
 	})
 	toggle(backend, bin, env, collapsible(expanded, panesOf, agent))
 	return err

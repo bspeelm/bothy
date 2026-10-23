@@ -269,14 +269,14 @@ func launch(p platform.Info, cfg config.Config, dir, profileName, agentOverride 
 	}
 	return backend.Open(mux.Request{
 		Platform: p, Bin: bin, Session: session, Dir: dir,
-		Profile: prof, Commands: commandsWith(cfg, agentOverride), Env: env,
+		Profile: prof, Commands: commandsWith(p, cfg, agentOverride), Env: env,
 		Live: backend.Live(bin, env),
 	})
 }
 
 // commandsWith is the pane commands, with the agent replaced when confined.
-func commandsWith(cfg config.Config, agentOverride string) layout.Commands {
-	cmds := install.Commands(cfg)
+func commandsWith(p platform.Info, cfg config.Config, agentOverride string) layout.Commands {
+	cmds := install.Commands(p, cfg)
 	if agentOverride != "" {
 		cmds["agent"] = agentOverride
 	}
