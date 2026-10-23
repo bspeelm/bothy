@@ -46,6 +46,10 @@ group = "git"
 [preview]
 max_width  = 900
 max_height = 900
+# Thumbnails are the one thing XDG_CACHE_HOME does not reach: an unset
+# cache_dir defaults to $TMPDIR/yazi-<uid>, not to Yazi's cache directory, so
+# naming it is the only way they land inside bothy's tree and leave with it.
+cache_dir = '{{ .YaziCacheDir }}'
 # Yazi's default opener is xdg-open, which is a freedesktop convention: macOS
 # has `open` instead, and inside a container the app databases live on the host
 # — `gio mime image/png` there reports "No default applications", so a local
