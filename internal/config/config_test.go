@@ -295,3 +295,23 @@ func writeConfig(t *testing.T, body string) platform.Info {
 	}
 	return p
 }
+
+// ghostty has no Windows build and never will have one on the current
+// evidence, so starting a Windows machine with slots.terminal = ghostty names
+// a program that cannot arrive -- and the advice for installing it is for
+// package managers that are not there either.
+func TestTheDefaultTerminalExistsOnThePlatform(t *testing.T) {
+	for _, tc := range []struct{ goos, want string }{
+		{"linux", "ghostty"},
+		{"darwin", "ghostty"},
+		{"windows", "wezterm"},
+	} {
+		cfg, err := Load(platform.Info{OS: tc.goos, ConfigDir: t.TempDir()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Slots.Terminal != tc.want {
+			t.Errorf("%s default terminal = %q, want %q", tc.goos, cfg.Slots.Terminal, tc.want)
+		}
+	}
+}

@@ -162,6 +162,32 @@ func GhosttyConf(p platform.Info) string {
 	return filepath.Join(p.ConfigRoot(), "ghostty.conf")
 }
 
+// TerminalSpawn is how a terminal provider is opened. The error names the
+// slot, because an unknown terminal and one that cannot be spawned are
+// different problems with different fixes.
+func TerminalSpawn(term string) (slots.Spawn, error) {
+	if term == "" || term == "none" {
+		return slots.Spawn{}, fmt.Errorf("no terminal is configured")
+	}
+	pr, ok := slots.Get(term)
+	if !ok {
+		return slots.Spawn{}, fmt.Errorf("%s is not a terminal bothy knows", term)
+	}
+	if pr.Spawn == nil {
+		return slots.Spawn{}, fmt.Errorf("%s does not say how to open a window", term)
+	}
+	return *pr.Spawn, nil
+}
+
+// TerminalConf is the config file bothy writes for a terminal provider.
+func TerminalConf(p platform.Info, term string) (string, error) {
+	sp, err := TerminalSpawn(term)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(p.ConfigRoot(), sp.Config), nil
+}
+
 // plan lists every file to write. Adding a provider should mean adding entries
 // here and templates beside them — never new logic.
 func plan(p platform.Info, cfg config.Config, data Data) []file {

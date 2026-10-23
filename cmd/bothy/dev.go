@@ -74,7 +74,7 @@ func cmdDev(args []string) error {
 	}
 
 	if plan.Spawn {
-		if err := spawnTerminal(p, plan.Dir, plan.Profile); err != nil {
+		if err := spawnTerminal(p, cfg.Slots.Terminal, plan.Dir, plan.Profile); err != nil {
 			// Not fatal: the workspace still runs here, without image previews.
 			fmt.Fprintf(os.Stderr, "bothy: %v\n         running in this terminal instead\n", err)
 		} else {
@@ -411,7 +411,7 @@ func planLaunch(p platform.Info, cfg config.Config, cwd string, f launchFlags) (
 	}
 
 	// Before the container hop, so the window opens once and on the host.
-	if d := decide(p, launchModeFor(cfg, f.Window, f.InPlace)); d.Spawn {
+	if d := decide(p, cfg.Slots.Terminal, launchModeFor(cfg, f.Window, f.InPlace)); d.Spawn {
 		plan.Spawn, plan.Reason = true, d.Reason
 	}
 	// Home is shared, so $PWD means the same thing on both sides.

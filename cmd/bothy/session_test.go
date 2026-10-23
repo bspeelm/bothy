@@ -54,7 +54,7 @@ func TestLaunchModeIsASettingTheFlagsOverride(t *testing.T) {
 func TestAutoLeavesTheDecisionToTheTerminal(t *testing.T) {
 	clearDisplay(t)
 	for _, mode := range []string{"", "auto"} {
-		m := decideLaunch(platform.Info{Terminal: "ghostty"}, mode)
+		m := decideLaunch(platform.Info{Terminal: "ghostty"}, "ghostty", mode)
 		if m.Reason == "asked for a window" || m.Reason == "asked to run in this terminal" {
 			t.Errorf("mode %q was treated as a forced answer: %q", mode, m.Reason)
 		}
@@ -70,7 +70,7 @@ func TestPlanLaunchDecidesWhereTheWorkspaceOpens(t *testing.T) {
 	// makes this matrix about the rest, on any machine.
 	restore := decide
 	t.Cleanup(func() { decide = restore })
-	decide = func(platform.Info, string) launchMode { return launchMode{} }
+	decide = func(platform.Info, string, string) launchMode { return launchMode{} }
 
 	here := platform.Info{Home: "/home/u", Terminal: "ghostty"}
 
@@ -154,7 +154,7 @@ func TestPlanLaunchRefusesContradictoryFlags(t *testing.T) {
 func TestPlanLaunchSpawnsOrHopsButSaysBoth(t *testing.T) {
 	restore := decide
 	t.Cleanup(func() { decide = restore })
-	decide = func(platform.Info, string) launchMode {
+	decide = func(platform.Info, string, string) launchMode {
 		return launchMode{Spawn: true, Reason: "this terminal cannot draw images"}
 	}
 

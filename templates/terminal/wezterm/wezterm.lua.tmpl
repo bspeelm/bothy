@@ -1,0 +1,37 @@
+-- bothy hands this file to wezterm with --config-file, so your own
+-- wezterm.lua is neither read nor written.
+--
+-- The palette is written out here rather than named as a built-in scheme, for
+-- the same reason as ghostty's: a named scheme is looked up in the user's own
+-- config directory, which is the directory this file exists to avoid.
+--
+-- WezTerm falls back to its built-in defaults, silently, when a config file
+-- fails to load. bothy checks the file exists before spawning; a Lua error
+-- here would still pass that check and lose the theme without saying so.
+local wezterm = require("wezterm")
+
+return {
+  colors = {
+    background = "{{ .Theme.Bg }}",
+    foreground = "{{ .Theme.Fg }}",
+    cursor_bg  = "{{ .Theme.Comment }}",
+    cursor_fg  = "{{ .Theme.Bg }}",
+    selection_bg = "{{ .Theme.Selection }}",
+    selection_fg = "{{ .Theme.Fg }}",
+    ansi = {
+      "{{ .Theme.Bg }}", "{{ .Theme.Red }}", "{{ .Theme.Green }}", "{{ .Theme.Yellow }}",
+      "{{ .Theme.Purple }}", "{{ .Theme.Pink }}", "{{ .Theme.Cyan }}", "{{ .Theme.Fg }}",
+    },
+    brights = {
+      "{{ .Theme.Comment }}", "{{ .Theme.Red }}", "{{ .Theme.Green }}", "{{ .Theme.Yellow }}",
+      "{{ .Theme.Purple }}", "{{ .Theme.Pink }}", "{{ .Theme.Cyan }}", "{{ .Theme.Fg }}",
+    },
+  },
+{{- if .Font }}
+  font = wezterm.font("{{ .Font }}"),
+{{- end }}
+  hide_tab_bar_if_only_one_tab = true,
+  -- zellij draws its own; two sets of tabs is one too many.
+  enable_tab_bar = false,
+  window_close_confirmation = "NeverPrompt",
+}
