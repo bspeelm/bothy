@@ -34,6 +34,8 @@ a documented non-goal for v1, not a rejection forever.
 
 ## ADR-004 — Windows means WSL2
 
+**See also ADR-054.** The WSL2 advice stands as advice; it is no longer the only story.
+
 **Superseded by ADR-018.** The cost stands; the refusal does not.
 
 Zellij and Yazi's plugin ecosystem are Unix-native. Native Windows without WSL is
@@ -460,6 +462,8 @@ worth reproducing anywhere.
 `docs/north-star.md` carries the long form.
 
 ## ADR-018 — Supersedes ADR-003 and ADR-004: scope is a CI table, not a refusal
+
+**Amended by ADR-054.** The bootstrap cost stands; the second-renderer cost does not.
 
 ADR-003 made Zellij the only multiplexer and ADR-004 made native Windows a
 non-goal "that will not change". Both stated a scope by refusing something, and
@@ -2276,3 +2280,60 @@ has to be taken again.
 being done anyway, with the warning quoted. The difference from the case it
 warned against is that the comment ratio is at its ceiling independent of this
 work: it would fail on the next comment anywhere in the codebase.
+
+## ADR-054 — Windows is beta: shipped, installable, and not in the table
+
+Three platforms were on the road since ADR-031 and Windows was "neither
+promised nor refused" (ADR-018). It is now built, locked, documented and
+tested. This records what changed, what it costs, and what beta means, because
+ADR-012 made *supported* mean the table and a channel without a third state
+would quietly contradict it.
+
+**The premise under the old refusal has gone.** ADR-018 priced native Windows
+as a second bootstrap in a second language, and `north-star.md` priced it as a
+second multiplexer: "Windows Terminal's own panes are the 'multiplexer': panes
+and isolation, no sessions, no theme". Checked against the release API on
+2026-10-23: zellij v0.45.1 — the version `bothy.lock` already pinned — publishes
+`zellij-x86_64-pc-windows-msvc.zip`, and has since 0.44.0. The mux slot needs no
+new renderer. And goreleaser's `scoops:` publisher discharges the bootstrap cost
+without a second shell: the repo still holds exactly one, and ADR-001 is
+untouched.
+
+**Beta is a third state, defined here.** Supported means the table: CI installs
+it, runs the doctor and matches an expected report. Absent means untested. Beta
+means shipped, installable from a channel, named in the documentation, absent
+from the table, with the unproven parts listed — and an explicit way out. It
+ends when the Windows job has been green across several releases and somebody
+has taken a session by hand, or it is withdrawn. Without this record a scoop
+channel would be a claim ADR-012 does not allow.
+
+**What was found by running it rather than reasoning about it**, each now a
+test or a check: a binary is looked up without `.exe` and identified by an
+execute bit Windows does not have, so every tool read "not installed" on a
+machine where they were demonstrably present; the manifest recorded a path the
+installer had not written, so a fresh install declared itself stale; yazi needs
+the Microsoft C runtime and a `file(1)`, and without either its pane is empty
+with nothing on screen to say why; winget ships its shims as symlinks that
+zellij will not resolve from PATH; and a command assembled from parts is split
+back apart with POSIX rules, where a backslash escapes — which ate every
+Windows path in the tower.
+
+**The costs, kept as costs.** x86_64 only, because zellij publishes no Windows
+arm64 build and a workspace without a multiplexer is not one. No image
+previews, on any Windows terminal: Yazi sends the iTerm2 protocol there and no
+multiplexer bothy supports carries it. `confine`, `box` and `connect` want
+podman, toolbox, flatpak-spawn and FUSE, and report themselves unavailable.
+Closing a window does not end a session, because the SIGHUP that does it
+elsewhere has no equivalent. And the isolation guarantee holds for config and
+not for cache: `ZELLIJ_CONFIG_DIR` and `YAZI_CONFIG_HOME` are honoured, while
+`%LOCALAPPDATA%\Zellij` and `%TEMP%\zellij` cannot be redirected at all — so
+"uninstall is one directory" becomes one directory and two named paths there.
+
+**ADR-004** gains: *See also ADR-054. The WSL2 advice stands as advice; it is no
+longer the only story.* **ADR-018** gains: *Amended by ADR-054. The bootstrap
+cost stands; the second-renderer cost does not.*
+
+**One guard's reason narrows.** `TestPlatformSplitsStayShims` says "CI never
+compiles the other side of a build tag". With a Windows runner it now does, for
+`!unix`, so the shim budget is justified by the cost of divergence rather than
+by the absence of a compiler.

@@ -95,6 +95,28 @@ hop to the host, which
 
 With no podman at all it fails and says so; it never silently runs unconfined.
 
+## Windows: the file pane is empty, or every file says it has no type
+
+Two things Windows does not ship and Yazi needs. If the pane is blank the
+moment it opens, the Microsoft C runtime is missing — Yazi's build links it,
+and without it Yazi exits immediately with nothing on screen:
+
+```
+winget install Microsoft.VCRedist.2015+.x64
+```
+
+If the pane opens but every entry reads "Cannot find `file` to detect the
+file's MIME type", install [Git for Windows](https://git-scm.com/download/win):
+Yazi works out what a file is by shelling out to the `file.exe` it ships, and
+has no fallback. `bothy doctor` names both before you hit either.
+
+## Windows: previews are never pictures
+
+They will not be, on any Windows terminal. Yazi sends the iTerm2 protocol
+there and the multiplexer does not carry it, so there is nothing to tune.
+Enter still opens the file in whatever Windows opens it with, which is the
+same thing the preview would have shown you.
+
 ## macOS refuses to run it
 
 Gatekeeper, because bothy is unsigned. `xattr -dr com.apple.quarantine "$(which

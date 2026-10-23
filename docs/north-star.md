@@ -197,17 +197,20 @@ stays at `~/.local/share/bothy`, which Yazi and Zellij honour on macOS.
 
 ### After 1.0
 
-Native Windows and a second multiplexer are direction, not content. Both become
-additive once the mux backend interface exists and providers declare their
-platforms, which is why those two land before 1.0 and these two do not.
+A second multiplexer is direction, not content. It becomes additive once the
+mux backend interface exists and providers declare their platforms, which is
+why that lands before 1.0 and this does not.
 
 - **tmux.** The second backend, and the first time the invariant is produced two
   ways. It buys the Linux and macOS common stacks a multiplexer their users
   already have.
-- **Native Windows.** Windows Terminal's own panes are the "multiplexer": panes
-  and isolation, no sessions, no theme. It needs windows entries across the tool
-  matrix, and a second bootstrap in a second language — ADR-001 permits exactly
-  one shell file, and it rejects Windows by name.
+
+Native Windows was the other item here, priced at a second multiplexer and a
+second bootstrap. Both prices turned out not to be payable in that currency:
+zellij publishes a Windows build, and goreleaser publishes a scoop manifest, so
+the port was windows entries across the tool matrix and a handful of runtime
+branches. It shipped in beta rather than after 1.0 — see ADR-054 for what beta
+means and what it still cannot do.
 
 ## 7. What this costs
 
