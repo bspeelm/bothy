@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"runtime"
 	"slices"
 	"strconv"
@@ -63,6 +62,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	rows := paneRows()
+	note("%s: mirror starts with rows=%d", session, rows)
 	replyPrompt(os.Stdout, rows)
 	last := ""
 	for {
@@ -87,6 +87,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			// taller, and a height read at startup leaves the rest of it dead
 			// with the reply line stranded where the bottom used to be.
 			if r := paneRows(); r != rows {
+				note("%s: rows %d -> %d", session, rows, r)
 				rows, last = r, ""
 				replyPrompt(os.Stdout, rows)
 			}
@@ -363,20 +364,14 @@ func envInt(env []string, key string) int {
 
 // paneRows is how tall this pane is, 0 when it cannot be found out.
 //
-// stty rather than an ioctl, which would need unsafe and a constant that differs
-// between Linux and macOS; stty is in coreutils and present even in a minimal
-// build root. A pane that will not say its size is painted whole.
+// The platform is asked rather than stty, which does not exist on Windows --
+// so every mirror there reported 0, drew no reply line, and spun the whole
+// take-over wait (ADR-059). It is also called forty times in that wait, which
+// was forty processes. A pane that will not say its size is painted whole.
 func paneRows() int {
-	cmd := exec.Command("stty", "size")
-	cmd.Stdin = os.Stdin
-	out, err := cmd.Output()
-	if err != nil {
+	_, rows, ok := platform.TerminalSize()
+	if !ok {
 		return 0
 	}
-	f := strings.Fields(string(out))
-	if len(f) != 2 {
-		return 0
-	}
-	n, _ := strconv.Atoi(f[0])
-	return n
+	return rows
 }

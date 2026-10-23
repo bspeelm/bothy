@@ -81,6 +81,14 @@ than looking at it. The other mirrors carry on behind you.
 own window. While you are taken over the keys are the session's, so bothy cannot
 catch that one for you. `Ctrl-o d` is the way out.
 
+**On Windows the keys go the other way, and there is no way back.** Measured on
+Windows 11: during a take-over the *tower's* session receives zellij's
+bindings, not the session you took over. `Ctrl-q` quits the tower and leaves
+that session running; `Ctrl-o d` detaches the tower. Either way you leave the
+tower rather than the take-over, and reopening it is how you get back. This is
+zellij's handling of a nested session there, not something bothy can intercept
+([ADR-059](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-059--nothing-on-windows-could-measure-a-pane-and-a-mirror-that-wraps-scrolls-its-own-reply-away)).
+
 ### What it does to the windows
 
 The pane is made full size before the session arrives and put back when you

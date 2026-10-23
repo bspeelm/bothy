@@ -2581,3 +2581,52 @@ reset; then the conservative rule costs nothing and should be taken.
 read a file that does not exist, skipped it, and reported that the palette had
 reached everything without ever looking at the terminal. It now asks the
 configured provider for its path.
+
+## ADR-059 — Nothing on Windows could measure a pane, and a mirror that wraps scrolls its own reply away
+
+**Status:** accepted. Follows ADR-057; retires one of ADR-054's costs.
+
+The tower on Windows had no reply line, and every `/take` paused a full second.
+Both came from one gap: **nothing there could answer how tall a pane is.**
+`paneRows` shelled out to `stty size`, which Windows does not have, and
+`TerminalSize` was a `!unix` stub returning nothing. So `paneRows` returned 0
+forever, and every consumer of it quietly took its degraded branch —
+`replyPrompt` returns without drawing for any pane it believes is two rows or
+shorter; `paint` reserved nothing and painted the whole dump; and
+`ownFullscreen`, which waits for the pane to finish resizing by watching the
+number change, compared 0 with 0 forty times at 25ms and then gave up. The
+take-over still worked, on a blind one-second sleep rather than the read-back
+it was written to be.
+
+`internal/platform/termsize_windows.go` answers it with
+`GetConsoleScreenBufferInfo`, reading the window rectangle rather than the
+scroll buffer. The stdlib exports `GetConsoleMode` and no console geometry, so
+the call goes through `syscall.NewLazyDLL("kernel32.dll")` — still the standard
+library, so PLAN.md §13 holds, and kernel32 is loaded in every process already.
+`paneRows` then asks the platform instead of forking a process, which it was
+doing forty times per take-over on Linux too. Measured in a mirror pane on
+Windows 11: `rows=9` where it had been 0, and `waited 0x25ms` where the wait had
+always been the full second.
+
+**That exposed a second defect, and it is not Windows-only.** With the rows
+known, the reply line was still missing. `paint` wrote each line of the watched
+pane's dump verbatim, and a line wider than the mirror **wraps**, costing a
+second row; enough of them and the paint scrolls the pane, carrying the
+reserved rows and the prompt off the bottom. The design assumed a mirror is as
+wide as the pane it watches, which holds only when the mirrors sit abreast —
+and on Windows they never did, because the width was also 0. Painting now turns
+autowrap off and back on around the frame, so an over-long line is clipped at
+the edge instead. One escape pair, and no parsing of the ANSI dump.
+
+**What is not fixed, because bothy does not own it.** During a take-over on
+Windows the *outer* session receives zellij's keybindings: measured, Ctrl+q
+quits the tower and leaves the taken-over session running, and `Ctrl-o d`
+detaches the tower rather than the session. So there is no key that returns
+from a take-over to mirroring there; the way back is to reopen the tower. On
+Linux the inner session has the keys, which is what makes `Ctrl-o d` the
+documented exit. This is zellij's nested-input behaviour under ConPTY and is
+recorded here and in the wiki rather than worked around.
+
+**ADR-054** gains: *Amended by ADR-059. The tower stacking regardless of window
+width was a consequence of the missing measurement, not a platform limit, and
+is retired.*

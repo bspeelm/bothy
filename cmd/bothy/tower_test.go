@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -305,8 +307,13 @@ func TestPaintNeverReachesTheReplyLine(t *testing.T) {
 	if strings.Contains(out, "\033[J") {
 		t.Error("the frame clears to the end of the screen, which wipes the reply line")
 	}
-	if !strings.HasPrefix(out, "\0337") || !strings.HasSuffix(out, "\0338") {
-		t.Error("the frame does not save and restore the cursor, so typing resumes in the wrong place")
+	if !strings.HasPrefix(out, "\033[?7l\0337") {
+		t.Error("the frame does not turn wrapping off and save the cursor before it draws; " +
+			"a line wider than the pane then scrolls the reply line away")
+	}
+	if !strings.HasSuffix(out, "\0338\033[?7h") {
+		t.Error("the frame does not restore the cursor and wrapping, so typing resumes in the " +
+			"wrong place and the pane stops wrapping for whatever draws next")
 	}
 	// Six rows, two reserved: four painted, and they are the last four, because
 	// the bottom is where an agent says what it is waiting for.
@@ -808,5 +815,46 @@ func TestTheAgentPaneIsFoundWhenTheCommandCarriesExe(t *testing.T) {
 	// And the suffix is not invented where it does not belong.
 	if _, ok := agentPane(panes, "claude", "linux"); ok {
 		t.Error("a Windows command matched on linux, where no binary is named claude.exe")
+	}
+}
+
+// The Windows shape of the painting bug. Nothing there could measure a pane --
+// paneRows shelled out to stty -- so rows arrived as 0, the mirror painted
+// every line of a dump taller than the pane, and the reply line was never
+// reserved or drawn. What the user saw was their typing appearing in the
+// middle of the agent's output and vanishing on the next frame (ADR-059).
+func TestAMeasuredPaneReservesTheReplyLineAndAnUnmeasuredOneCannot(t *testing.T) {
+	var tall []string
+	for i := 0; i < 40; i++ {
+		tall = append(tall, fmt.Sprintf("line %d", i))
+	}
+	screen := strings.Join(tall, "\n")
+
+	// Measured: the last rows-2 lines, and a prompt parked on the last row.
+	var measured bytes.Buffer
+	paint(&measured, screen, 10)
+	replyPrompt(&measured, 10)
+	if got := strings.Count(measured.String(), "\r\n") + 1; got != 8 {
+		t.Errorf("a 10-row pane was painted with %d lines, want 8 -- two are the reply's", got)
+	}
+	if !strings.Contains(measured.String(), "\033[10;1H\033[K> ") {
+		t.Error("no reply prompt on the last row of a pane whose height is known")
+	}
+	if strings.Contains(measured.String(), "line 0") {
+		t.Error("the top of a 40-line dump was painted into a 10-row pane")
+	}
+
+	// Unmeasured: everything is painted and there is no prompt. This is what
+	// Windows did on every frame, and it is still the right answer when a
+	// pane genuinely will not say -- but it must not be reachable merely
+	// because the platform has no stty.
+	var unmeasured bytes.Buffer
+	paint(&unmeasured, screen, 0)
+	replyPrompt(&unmeasured, 0)
+	if !strings.Contains(unmeasured.String(), "line 0") {
+		t.Error("an unmeasured pane should be painted whole")
+	}
+	if strings.Contains(unmeasured.String(), "> ") {
+		t.Error("a prompt was drawn on a pane of unknown height")
 	}
 }

@@ -175,8 +175,11 @@ func TestEveryRelativeDocLinkResolves(t *testing.T) {
 var buildTagged = map[string]int{
 	"internal/platform/termsize_unix.go":  30, // ioctl TIOCGWINSZ; no such constant on Windows
 	"internal/platform/termsize_other.go": 12,
-	"internal/platform/mounted_unix.go":   34, // syscall.Stat_t.Dev; Windows has no st_dev
-	"internal/platform/mounted_other.go":  8,
+	// The console API the stdlib does not export, and which no runtime branch
+	// can reach: without it nothing on Windows can measure a pane (ADR-059).
+	"internal/platform/termsize_windows.go": 41,
+	"internal/platform/mounted_unix.go":     34, // syscall.Stat_t.Dev; Windows has no st_dev
+	"internal/platform/mounted_other.go":    8,
 	// The one split where the Unix answer compiles on Windows and is wrong:
 	// os.SameFile against NUL is true for every handle there (ADR-057).
 	"internal/platform/isterm_unix.go":    20,

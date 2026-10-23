@@ -172,7 +172,12 @@ func paint(w io.Writer, screen string, rows int) {
 	if len(lines) > area {
 		lines = lines[len(lines)-area:]
 	}
-	fmt.Fprint(w, "\0337\033[H")
+	// Autowrap off for the duration. A mirror is as wide as the pane it
+	// watches only when the mirrors sit abreast; stacked, the watched pane is
+	// usually wider, and a line that wraps costs a second row. Enough of them
+	// and the paint scrolls the pane, which carries the reply line off the
+	// bottom -- measured on Windows, where a mirror is always stacked.
+	fmt.Fprint(w, "\033[?7l\0337\033[H")
 	for i := 0; i < area; i++ {
 		line := ""
 		if i < len(lines) {
@@ -183,7 +188,7 @@ func paint(w io.Writer, screen string, rows int) {
 		}
 		fmt.Fprint(w, line, "\033[K")
 	}
-	fmt.Fprint(w, "\0338")
+	fmt.Fprint(w, "\0338\033[?7h")
 }
 
 // continues reports whether a line asks for the next one, and returns it with

@@ -51,10 +51,18 @@ func TestNoTerminalMeansNoSizeInTheEnvironment(t *testing.T) {
 	}
 }
 
-// The real one, run by `go test`, has no terminal on any of the three.
-func TestTerminalSizeIsHonestWhenThereIsNoTerminal(t *testing.T) {
-	if _, _, ok := platform.TerminalSize(); ok {
-		t.Skip("this test runs on a terminal; nothing to assert")
+// The real one. Under `go test` the three streams are pipes, so the answer
+// must be "no terminal" -- and must say so by returning false rather than by
+// returning a size nobody can use. Both arms assert: a Windows console API
+// that succeeds on a pipe would report a size here, which is how the old
+// stty-shaped answer hid on that platform for five releases (ADR-059).
+func TestTerminalSizeIsHonestAboutWhatItMeasured(t *testing.T) {
+	cols, rows, ok := platform.TerminalSize()
+	if ok && (cols <= 0 || rows <= 0) {
+		t.Errorf("TerminalSize() = %d x %d, ok -- a size nothing can use", cols, rows)
+	}
+	if !ok && (cols != 0 || rows != 0) {
+		t.Errorf("TerminalSize() = %d x %d with ok false; the caller reads these", cols, rows)
 	}
 }
 
