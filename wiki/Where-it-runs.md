@@ -1,8 +1,9 @@
 # Where it runs
 
-If your terminal can draw images (Ghostty, Kitty, WezTerm), bothy runs in it.
-If it cannot, bothy opens a Ghostty window instead, so that previews come out
-as pictures rather than as a suggestion of pictures. `--in-place` and
+If your terminal carries the Kitty keyboard protocol (Ghostty, Kitty, WezTerm,
+iTerm2), bothy runs in it. If it does not, bothy opens a Ghostty window
+instead, so that Shift+Enter and Ctrl+Enter reach an agent rather than arriving
+as plain Enter. `--in-place` and
 `--window` overrule that judgement in either direction. If you overrule it every time, make it the standing
 answer with `bothy config set workspace.launch here`, or `window` for the
 opposite; the flags still win for a single run. With no graphical display —
@@ -13,9 +14,12 @@ That is bothy noticing you are somewhere else. `bothy connect` is the other
 direction: you stay here and the workspace opens against another machine's
 files, with nothing installed on it. See [Connecting](Connecting).
 
-iTerm2 draws images too, by a protocol of its own that Zellij does not carry,
-so previews there arrive as characters after all. The doctor says which of the
-two is at fault rather than leaving you to adjust the wrong setting.
+No terminal gets inline image previews, on any platform: Yazi picks its
+protocol from what the terminal says it is, Zellij answers that in its own
+name, and what Yazi then sends is not what Zellij renders. The file pane says
+`(press Enter to preview)` and Enter opens the file in your system's own
+viewer. The doctor names the cause rather than leaving you to adjust the wrong
+setting.
 
 Inside a Toolbx or Distrobox container, bothy remembers which container it
 put its tools in and goes back there when you launch it from the host. If you
@@ -37,14 +41,11 @@ of `%APPDATA%`, opens the workspace, and the session survives closing the
 window and comes back with its panes where you left them. All of that was done
 on a Windows 11 machine rather than reasoned about.
 
-It is beta and not supported because supported here means the table above, and
-the table is what CI proves — there is a Windows job now, and it has not been
-green for long enough to mean anything yet. Four things are known rather than
-guessed:
+It is beta and not supported because supported here means the machines named
+in the paragraph above, which CI installs and checks on every release. There is
+a Windows job now, and it has not been green for long enough to mean anything
+yet. Three things are known rather than guessed:
 
-- **No image previews.** None, on any Windows terminal. Yazi sends the iTerm2
-  protocol on WezTerm and the multiplexer does not carry it. The doctor says so
-  and Enter still opens the file in whatever Windows opens it with.
 - **No arm64.** Zellij publishes no Windows build for it, and a workspace with
   no multiplexer is not a workspace.
 - **Two things must be installed first.** The Microsoft C runtime, or Yazi

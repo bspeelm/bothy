@@ -58,10 +58,10 @@ func decideLaunch(p platform.Info, term, mode string) launchMode {
 		return launchMode{Spawn: true, Reason: "started without a terminal"}
 	}
 
-	if g := probe.CheckGraphics(p.Terminal, probe.MuxGraphics{None: true}); !g.Supported {
-		return launchMode{Spawn: true, Reason: g.Reason}
+	if k := probe.Keyboard(p.Terminal); !k.Supported {
+		return launchMode{Spawn: true, Reason: k.Reason}
 	}
-	return launchMode{Reason: "this terminal can draw images; running here"}
+	return launchMode{Reason: "this terminal carries the keys an agent needs; running here"}
 }
 
 // isTerminal reports whether a stream is an interactive terminal. /dev/null is

@@ -13,9 +13,10 @@ The first run is slower than the rest: bothy looks at the machine, lists what
 is missing, asks before downloading anything, writes its configs, then opens
 the window. Afterwards it is just the window.
 
-If your terminal cannot draw images, bothy opens a **new Ghostty window**
-rather than running where you are — image previews are the reason. Force it
-either way with `--in-place` or `--window`.
+If your terminal does not carry the Kitty keyboard protocol, bothy opens a
+**new Ghostty window** rather than running where you are, so that the keys an
+agent needs are not flattened on the way in. Force it either way with
+`--in-place` or `--window`.
 
 ## The room
 

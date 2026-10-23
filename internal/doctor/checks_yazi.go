@@ -156,7 +156,9 @@ func checkYaziPlugins(env Env) Result {
 	return pass(fmt.Sprintf("all %d yazi plugins installed", len(plugins)))
 }
 
-// checkImagePreviews reports which side of the ADR-007 gate this machine is on. Never a failure.
+// checkImagePreviews reports whether the generated config and the live verdict
+// agree about previews. Never a failure: a capability the stack cannot deliver
+// is not a misconfiguration (ADR-056).
 func checkImagePreviews(env Env) Result {
 	if env.Config.Slots.Browser != "yazi" {
 		return skip("browser slot is not yazi")

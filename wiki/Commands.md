@@ -43,7 +43,8 @@ A session someone is actually looking at is still refused; see [ADR-042]
 the two apart.
 
 `--window` and `--in-place` override bothy's own judgement for one run. It
-normally decides by asking whether your terminal can draw images. To make the
+normally decides by asking whether your terminal carries the Kitty keyboard
+protocol an agent needs. To make the
 override permanent, `bothy config set workspace.launch here` (or `window`); the
 flags still win for a single run.
 

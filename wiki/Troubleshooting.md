@@ -16,15 +16,18 @@ export PATH="$HOME/.local/bin:$PATH"
 Put it in your shell's startup file. bothy will not do that for you — it does
 not edit your dotfiles.
 
-## Previews are block art, not pictures
+## There are no image previews
 
-Your terminal cannot draw inline images. That is a fact about the terminal, not
-a misconfiguration, which is why the doctor reports it as a capability you do
-not have rather than as a failure.
+There are none on any terminal, and the doctor says so rather than reporting a
+failure. The file pane shows `(press Enter to preview)` on an image, and Enter
+opens it in whatever your system opens images with.
 
-Ghostty, Kitty and WezTerm can. In anything else bothy falls back to an
-approximation made of characters. If you have Ghostty installed, bothy opens a
-new window in it by default; `--in-place` overrules that.
+The cause is upstream and measurable: Yazi picks its image protocol from what
+the terminal says it is, zellij answers that question in its own name, and the
+protocol Yazi then sends is one zellij renders as garbage. Ghostty and Kitty
+draw images perfectly with nothing in the way; through a multiplexer nothing
+does. If Yazi or zellij changes that, bothy turns previews back on by itself —
+it asks on every launch.
 
 ## The agent pane is empty
 
@@ -109,13 +112,6 @@ If the pane opens but every entry reads "Cannot find `file` to detect the
 file's MIME type", install [Git for Windows](https://git-scm.com/download/win):
 Yazi works out what a file is by shelling out to the `file.exe` it ships, and
 has no fallback. `bothy doctor` names both before you hit either.
-
-## Windows: previews are never pictures
-
-They will not be, on any Windows terminal. Yazi sends the iTerm2 protocol
-there and the multiplexer does not carry it, so there is nothing to tune.
-Enter still opens the file in whatever Windows opens it with, which is the
-same thing the preview would have shown you.
 
 ## macOS refuses to run it
 

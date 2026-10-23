@@ -116,9 +116,8 @@ not change what `zellij` means in your shell.
 Worked example, from the machine bothy was built on: Fedora's COPR ships zellij
 **0.42.2**, which cannot pass the Kitty graphics protocol — the cause of
 block-art previews and the phantom "Find next" keypress. Upstream **0.45.1**
-fixes it. The minimum is therefore 0.45.1, bothy fetches it, image previews
-work, and dnf is never involved. On a machine with a current zellij, bothy
-downloads nothing.
+fixes it. The minimum is therefore 0.45.1, bothy fetches it, and dnf is never
+involved. On a machine with a current zellij, bothy downloads nothing.
 
 Full download cost if *every* tool has to be filled in — measured, not
 estimated:
@@ -179,8 +178,8 @@ Same gap-filling rule, applied to where bothy runs:
   → **spawn Ghostty** with `--config-file=<bothy's>`, falling back to running in
   place with a doctor warning if Ghostty is not installed.
 
-The reason is not aesthetics: image previews need a terminal that can draw them,
-and degrading silently to block art is the exact class of failure bothy exists
+The reason is not aesthetics: a capability that silently degrades, as image
+previews did for every terminal, is the exact class of failure bothy exists
 to catch. Ghostty is never installed by bothy — it is a GUI application that
 belongs to the host, and on an immutable distro it needs `rpm-ostree` and a
 reboot. bothy advises; the doctor checks.
@@ -236,10 +235,10 @@ apply inside bothy unless you pass Yazi through. That is the price of isolation
 and it cuts both ways
 ([ADR-009](decisions.md#adr-009--bothy-is-isolated-it-brings-its-own-config-tree)).
 
-**Spawning a window is a behaviour to keep correct.** On a terminal that cannot
-draw images bothy opens Ghostty instead; on a headless box there is nothing to
-spawn. The run-in-place path is not an afterthought, and a doctor check covers
-which one this machine gets.
+**Spawning a window is a behaviour to keep correct.** On a terminal that does
+not carry the Kitty keyboard protocol bothy opens Ghostty instead; on a
+headless box there is nothing to spawn. The run-in-place path is not an
+afterthought, and a doctor check covers which one this machine gets.
 
 **Every supported platform is a job forever.** ADR-012 is what makes
 "supported" mean anything and it is also the bill: each one is a CI job that can

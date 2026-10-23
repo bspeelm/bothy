@@ -38,10 +38,11 @@ one. `~` is expanded.
 **Which profile.** `--profile`, then `profile` in the config. A profile is a
 short TOML file describing rows and panes.
 
-**Whether this terminal will do.** Inline image previews need the Kitty
-graphics protocol. If this terminal cannot draw them and Ghostty is available,
-bothy opens a window that can — before any container hop, so the window opens
-once and on the host. `workspace.launch` settles this standing; `--window` and
+**Whether this terminal will do.** zellij asks every terminal for the Kitty
+keyboard protocol, and a terminal that does not answer delivers Shift+Enter to
+an agent as plain Enter. If this one does not and Ghostty is available, bothy
+opens a window that does — before any container hop, so the window opens once
+and on the host. `workspace.launch` settles this standing; `--window` and
 `--in-place` settle it for one run.
 
 **Which toolbox.** A short list of rules decides, and

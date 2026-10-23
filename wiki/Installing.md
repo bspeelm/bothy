@@ -15,7 +15,7 @@ and inside Toolbx and Distrobox.
 |---|---|
 | **git** | Required. bothy uses it to fetch its Yazi plugins. You have it. Everyone has it — except on Windows, where you want [Git for Windows](https://git-scm.com/download/win): Yazi also uses the `file.exe` it ships to work out what a file is. |
 | **curl** or **wget** | Only for the install script below, and only one of them. |
-| **[Ghostty](https://ghostty.org)** | Recommended, not required. Yazi can only draw real image previews in a terminal that can draw images, which means Ghostty, Kitty or WezTerm. In anything else previews fall back to block art. |
+| **[Ghostty](https://ghostty.org)** | Recommended, not required. Ghostty, Kitty, WezTerm and iTerm2 carry the Kitty keyboard protocol, which is what lets Shift+Enter and Ctrl+Enter reach an agent instead of arriving as plain Enter. In anything else bothy opens a Ghostty window to get them. |
 | **an AI agent** | Optional, though it is rather the point. The middle pane runs `claude` unless told otherwise, and sits empty if there is nothing to run. |
 | **the Microsoft C runtime** | Windows only, and required: Yazi's build links it, and without it Yazi exits the moment it starts with nothing on screen to say why. `winget install Microsoft.VCRedist.2015+.x64`. |
 | **Go** and **make** | Only if you build from source, which nobody has to. |

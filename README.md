@@ -50,9 +50,9 @@ The same thing in order, with the reasons for the order, is
 ## Install
 
 You need **git**. Everything else bothy brings, or tells you how to get. A
-terminal that can draw images — Ghostty, Kitty, WezTerm — makes previews real
-pictures rather than block art, and an AI agent is optional, though it is what
-the middle pane is for (and sort of the point).
+terminal that carries the Kitty keyboard protocol — Ghostty, Kitty, WezTerm,
+iTerm2 — lets Shift+Enter reach the agent pane, and an AI agent is optional,
+though it is what the middle pane is for (and sort of the point).
 
 Pick the one that fits your machine:
 

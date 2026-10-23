@@ -78,6 +78,9 @@ your machine, and the way in for it is the same route every other theme uses.
 
 ## ADR-007 — Version-gated workarounds, not permanent ones
 
+**Amended by ADR-056:** the gate is the right shape and the capability behind
+it has never worked.
+
 The origin cheat sheet disables Yazi image previews inside Zellij, because
 Zellij 0.42 could not pass the Kitty graphics protocol and its mangled query
 replies were parsed as keystrokes (a phantom "Find next" on every preview).
@@ -2397,3 +2400,73 @@ belongs in `north-star.md` rather than in the Makefile.
 **ADR-053** gains: *Amended by ADR-055. The code cap and the comment ratio both
 moved again, one platform later; the promise not to nudge them is the thing
 ADR-055 has to answer.*
+
+## ADR-056 — Images do not survive the multiplexer, so bothy stops claiming them, and the window is for the keys
+
+**Status:** accepted. Amends ADR-007, and gives the window behaviour the
+record it never had.
+
+**The strongest argument against this is that it withdraws the headline
+capability** -- the one the README led on, the one `enter-hint` apologises for,
+and the stated reason bothy opens a window at all. ADR-007 built a version gate
+precisely so that previews could be turned *on* when zellij was fixed, and
+zellij was fixed: 0.45.1 passes the Kitty graphics protocol, which is why
+`bothy.lock` pins it. Turning previews off now reads as giving up on a solved
+problem.
+
+It is not solved. Measured with `ya env` in live sessions on Linux and Windows:
+
+    Brand.from_env  : Some(Ghostty)
+    Emulator.probe  : brand: Zellij, version: "Zellij(4501)", kgp: true, mux: None
+    Drivers.matches : KgpOld
+
+Yazi derives `Ghostty` from `TERM`, then probes the terminal. zellij answers the
+version query in its own name, Yazi overrides the brand it had just derived, and
+the driver it selects for `Brand::Zellij` is `KgpOld` -- a variant zellij renders
+as garbage, whose mangled reply comes back as the phantom keypress ADR-007
+describes. The protocol zellij carries is not the protocol Yazi sends. Through
+zellij today: ghostty and kitty get `KgpOld` and see garbage; WezTerm and iTerm2
+get `Iip`, which zellij does not carry at all. **No terminal gets working image
+previews through this multiplexer**, so the gate was reporting a capability the
+stack has never once delivered. On this machine, before and after:
+
+    image previews: true -- zellij 0.45.1 implements the Kitty graphics protocol and ghostty speaks it
+    image previews: false -- ghostty draws images with the Kitty graphics protocol, but inside a
+                             multiplexer Yazi sends an older Kitty graphics variant instead
+
+**The fix is data, not a new mechanism.** `carried` already means "the protocol
+Yazi uses inside a multiplexer", and for ghostty and kitty it said `kgp`, which
+is false. It now says `kgpOld`, which nothing bothy runs renders -- the same
+shape WezTerm and iTerm2 have had since ADR-049. The version gate is untouched
+and keeps its meaning: if Yazi stops overriding the brand, those two rows go
+back to `kgp` and previews return without an argument.
+
+**Nothing was lost that was working.** Pressing Enter on a file has always
+opened it in the platform's own viewer, independent of previews -- `xdg-open`,
+`flatpak-spawn --host xdg-open` in a container, `open`, `start ""` -- and
+`enter-hint` now installs everywhere, so every platform gets the hint that says
+so instead of garbage. What changes is that bothy no longer promises the
+picture.
+
+**The window needed a new reason, and has one.** It also needed a record:
+`decideLaunch` has opened a window since before ADR-012 and no ADR describes
+it, while the code cited ADR-011 -- which is about detecting Toolbx. bothy
+opened a window when the terminal could not draw images; with previews off
+everywhere that bought nothing. Measured under a pty: zellij writes `CSI > 1 u` -- the Kitty
+*keyboard* protocol -- on startup under `xterm-ghostty` and `xterm-256color`
+alike, so it asks every terminal and the terminal's answer is the whole
+question. Without it Shift+Enter and Ctrl+Enter arrive at an agent as plain
+Enter. So the window is for the keys, and `decideLaunch` asks
+`probe.Keyboard` rather than `probe.CheckGraphics`.
+
+No terminal's behaviour changed, because the two sets coincide: the four
+emulators bothy has written down draw images *and* carry the keyboard protocol.
+`TestTheTwoCapabilitiesStillCoincide` fails the day one is added to a column and
+not the other, which is the day a user would otherwise find out by surprise.
+
+**What would reverse this.** A Yazi that respects its env-derived brand inside a
+multiplexer, or a zellij that renders `KgpOld`. Either one is two table rows.
+
+**ADR-007** gains: *Amended by ADR-056. The version gate stands and is still
+the right shape; the capability behind it has never worked, because Yazi sends
+a protocol the gate does not describe.*

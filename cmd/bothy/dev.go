@@ -409,7 +409,7 @@ type launchPlan struct {
 	Container string
 }
 
-// decide is a seam: the real one asks the terminal and the host (ADR-011).
+// decide is a seam: the real one asks the terminal and the host (ADR-056).
 var decide = decideLaunch
 
 // planLaunch decides, touching no disk, so the tree can be tested rather than
