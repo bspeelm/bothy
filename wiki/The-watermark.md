@@ -40,8 +40,8 @@ Those numbers put a 232×324 image inside the shell pane on a 1920×1080 screen.
 Yours will differ; the arithmetic is *fraction of the window*, so measure once
 and it holds when you resize.
 
-For source art you already have, `docs/images/bothy-dark.png` in this
-repository is the shelter from the README.
+A single-colour image on a transparent ground works best: a logo or a line
+drawing rather than a photograph, which turns to mud at the opacity bothy uses.
 
 ## Tuning it
 
