@@ -18,6 +18,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
+	"github.com/bspeelm/bothy/internal/state"
 	"github.com/bspeelm/bothy/internal/theme"
 )
 
@@ -273,7 +274,7 @@ func Save(p platform.Info, cfg Config) error {
 		"# Dracula; for any other palette, including one you have licensed,\n" +
 		"# write the eleven colours into a file of your own and set\n" +
 		"# theme.palette to it (bothy theme example prints a blank one).\n\n"
-	return os.WriteFile(path, append([]byte(header), out...), 0o644)
+	return state.WriteFile(path, append([]byte(header), out...), 0o644)
 }
 
 // slotNames are the slots a passthrough entry may name. A test asserts it

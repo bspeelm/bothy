@@ -265,6 +265,29 @@ func TestSplitCommandKeepsBackslashesAShellWouldKeep(t *testing.T) {
 	}
 }
 
+// A confined agent's podman argv goes through a command line on its way to
+// zellij. A project path is untrusted -- it comes from whatever was cloned --
+// so it must come back as the one argument it went in as, never as flags.
+func TestAProjectPathWithSpacesStaysOneMount(t *testing.T) {
+	for _, dir := range []string{
+		"/home/me/my project",
+		"/home/me/x -v /home:/h",
+		"/home/me/a --privileged b",
+		"/home/me/it's",
+		`/home/me/back\slash "quoted"`,
+		"",
+	} {
+		want := []string{"podman", "run", "-v", dir + ":/work:rw", "img", "claude"}
+		got, err := splitCommand(JoinCommand(want))
+		if err != nil {
+			t.Fatalf("%q: %v", dir, err)
+		}
+		if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
+			t.Errorf("%q came back as %q", dir, got)
+		}
+	}
+}
+
 // Turning a slot off put `command "none"` in the layout, so zellij tried to
 // run a program called none and the pane died with "Command not found" where
 // the agent should have been. "none" is the spelling bothy already documents

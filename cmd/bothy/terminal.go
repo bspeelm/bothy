@@ -91,6 +91,10 @@ func hasDisplay(p platform.Info) bool {
 	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""
 }
 
+// systemApplications is /Applications, a var so a test can hand it a directory
+// it built rather than read the machine's own installs.
+var systemApplications = "/Applications"
+
 // terminalCommand returns how to run the configured terminal. Inside a
 // container it is a host application, reached through flatpak-spawn --host.
 func terminalCommand(p platform.Info, term string) ([]string, error) {
@@ -102,12 +106,12 @@ func terminalCommand(p platform.Info, term string) ([]string, error) {
 	if path, err := exec.LookPath(bin); err == nil {
 		return []string{path}, nil
 	}
-	// macOS installs applications as bundles and Ghostty's installer puts
-	// nothing on PATH. The binary inside takes the same arguments, so this is
-	// a path to find rather than a different way to launch.
+	// macOS installs applications as bundles and their installers put nothing
+	// on PATH. The binary inside takes the same arguments, so this is a path to
+	// find rather than a different way to launch.
 	if p.OS == "darwin" {
 		app := strings.ToUpper(sp.Binary[:1]) + sp.Binary[1:] + ".app"
-		for _, dir := range []string{"/Applications", filepath.Join(p.Home, "Applications")} {
+		for _, dir := range []string{systemApplications, filepath.Join(p.Home, "Applications")} {
 			inside := filepath.Join(dir, app, "Contents", "MacOS", sp.Binary)
 			if fi, err := os.Stat(inside); err == nil && !fi.IsDir() {
 				return []string{inside}, nil

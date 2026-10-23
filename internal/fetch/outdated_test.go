@@ -121,6 +121,28 @@ func TestCheckOutdatedComparesDedecoratedVersions(t *testing.T) {
 	}
 }
 
+// Issue #283. A pin ahead of the latest release -- taken with `lock -tag`, or
+// left behind when upstream's latest moved backwards -- was reported as an
+// update, because the check was only that the strings differed.
+func TestAPinAheadOfLatestIsNotAnUpdate(t *testing.T) {
+	for _, tc := range []struct {
+		pinned, latest string
+		want           bool
+	}{
+		{"0.66.2", "0.66.1", false}, // ahead
+		{"0.66.1", "0.66.2", true},  // behind
+		{"0.9.0", "0.12.1", true},   // a string compare gets this one backwards
+		{"0.12.1", "0.9.0", false},
+		{"1.8.2", "1.8.2", false},
+		{"nightly", "0.66.2", false}, // nothing to order, so no advice
+	} {
+		u := Update{Name: "x", Pinned: tc.pinned, Latest: tc.latest}
+		if got := u.Outdated(); got != tc.want {
+			t.Errorf("pinned %s, latest %s: Outdated() = %v, want %v", tc.pinned, tc.latest, got, tc.want)
+		}
+	}
+}
+
 // GitHub asks for a User-Agent, and a token is what keeps a shared CI runner
 // off the sixty-an-hour unauthenticated limit.
 func TestLatestReleaseIdentifiesItselfAndSendsAToken(t *testing.T) {

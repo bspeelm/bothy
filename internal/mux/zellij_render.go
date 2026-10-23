@@ -146,6 +146,17 @@ func writeCommand(b *strings.Builder, indent, cmd string) error {
 	return nil
 }
 
+// JoinCommand is the inverse of splitCommand: a command line that splits back
+// into exactly args. Every word is single-quoted, so a path holding spaces or
+// a crafted "x -v /home:/h" stays one argument rather than becoming flags.
+func JoinCommand(args []string) string {
+	quoted := make([]string, len(args))
+	for i, a := range args {
+		quoted[i] = "'" + strings.ReplaceAll(a, "'", `'\''`) + "'"
+	}
+	return strings.Join(quoted, " ")
+}
+
 // splitCommand splits a command line into words the way a shell would,
 // honouring quotes, so `claude --append-system-prompt "be terse"` yields
 // three arguments. It is deliberately not a shell: no expansion, globbing

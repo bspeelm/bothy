@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
 )
 
@@ -74,8 +76,7 @@ func isHelpFlag(s string) bool {
 func main() {
 	if len(os.Args) < 2 {
 		if err := cmdDev(nil); err != nil {
-			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
-			os.Exit(1)
+			fail(err)
 		}
 		return
 	}
@@ -85,13 +86,16 @@ func main() {
 	// that alias outlived the shell function it was kept for.
 	if strings.HasPrefix(os.Args[1], "-") && !isHelpFlag(os.Args[1]) {
 		if err := cmdDev(os.Args[1:]); err != nil {
-			fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
-			os.Exit(1)
+			fail(err)
 		}
 		return
 	}
 
 	cmd, args := os.Args[1], os.Args[2:]
+	if lines, ok := helpFor(cmd, args); ok {
+		fmt.Print(lines)
+		return
+	}
 	var err error
 	switch cmd {
 	case "install":
@@ -144,9 +148,51 @@ func main() {
 	}
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
-		os.Exit(1)
+		fail(err)
 	}
+}
+
+// parsesFlags are the commands whose flag set answers -h itself, listing the
+// flags as well. The rest take positional words, and without this a --help
+// is taken for one: kill looks for a session called "--help", attach hands it
+// to zellij.
+var parsesFlags = map[string]bool{
+	"completion": true, "confine": true, "connect": true, "desktop-entry": true,
+	"doctor": true, "install": true, "layout": true, "lock": true, "ls": true,
+	"outdated": true, "tower": true, "uninstall": true, "upgrade": true,
+}
+
+// helpFor answers -h or --help for a command that takes only positional words.
+func helpFor(cmd string, args []string) (string, bool) {
+	if len(args) == 0 || (args[0] != "-h" && args[0] != "--help") || parsesFlags[cmd] {
+		return "", false
+	}
+	lines := commandUsage(cmd)
+	return lines, lines != ""
+}
+
+// commandUsage is cmd's lines from the usage text, "" for a command it does
+// not list.
+func commandUsage(cmd string) string {
+	var out strings.Builder
+	for _, line := range strings.Split(usage, "\n") {
+		f := strings.Fields(line)
+		if len(f) >= 2 && f[0] == "bothy" && f[1] == cmd {
+			out.WriteString(line + "\n")
+		}
+	}
+	return out.String()
+}
+
+// fail exits for err. A child's exit status passes through as the child's own
+// code with nothing printed: the child has already said what it had to.
+func fail(err error) {
+	var status mux.ExitStatus
+	if errors.As(err, &status) {
+		os.Exit(status.Code)
+	}
+	fmt.Fprintf(os.Stderr, "bothy: %v\n", err)
+	os.Exit(1)
 }
 
 func load() (platform.Info, config.Config, error) {

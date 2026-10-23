@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/bspeelm/bothy/internal/state"
 )
 
 // Marker identifies a bothy-generated file. It appears inside a comment whose
@@ -167,7 +169,7 @@ func (w *Writer) Write(dest string, content []byte) (changed bool, err error) {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return false, fmt.Errorf("render: %s: %w", dest, err)
 	}
-	if err := writeAtomic(dest, content, 0o644); err != nil {
+	if err := state.WriteFile(dest, content, 0o644); err != nil {
 		return false, fmt.Errorf("render: %s: %w", dest, err)
 	}
 	return true, nil
@@ -201,34 +203,6 @@ func (w *Writer) inRoot(dest string) error {
 			"      bothy only writes inside %s", dest, root)
 	}
 	return nil
-}
-
-// writeAtomic writes via a temporary file and renames, so an interrupted write
-// cannot leave a tool reading a truncated config.
-func writeAtomic(dest string, content []byte, mode fs.FileMode) error {
-	// Unique temp name, so concurrent writers cannot rename each other's
-	// half-written file.
-	f, err := os.CreateTemp(filepath.Dir(dest), filepath.Base(dest)+".bothy-*")
-	if err != nil {
-		return err
-	}
-	tmp := f.Name()
-	defer os.Remove(tmp) // no-op once the rename below succeeds
-
-	if _, err := f.Write(content); err != nil {
-		f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	// CreateTemp makes the file 0600; the caller's mode is the one that
-	// matters, and it must be set before the rename so nothing observes the
-	// file at the wrong permissions.
-	if err := os.Chmod(tmp, mode); err != nil {
-		return err
-	}
-	return os.Rename(tmp, dest)
 }
 
 // funcs is the template function set; it stays small on purpose.

@@ -85,8 +85,12 @@ func EnsureTools(p platform.Info, cfg config.Config, offline bool, bothyVer stri
 
 		entry, ok := lock.Get(d.Tool.Name)
 		if !ok {
+			advice := "this bothy was built without a pin for it; 'bothy upgrade' says how to get one that has"
+			if fetch.InCheckout() {
+				advice = fmt.Sprintf("run 'bothy lock -tool %s'", d.Tool.Name)
+			}
 			rep.Failed = append(rep.Failed, ToolFailure{d,
-				fmt.Errorf("%s is not pinned in bothy.lock; run 'bothy lock'", d.Tool.Name)})
+				fmt.Errorf("%s is not pinned in bothy.lock; %s", d.Tool.Name, advice)})
 			continue
 		}
 		// Already ours, at the version this bothy pins. Skipping the download

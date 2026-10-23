@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -95,6 +96,9 @@ func TestALaunchIsNeverBlockedByAProbeThatFailed(t *testing.T) {
 // wrote would never go stale and the project would be shut permanently. This
 // guards the guard: without it the fix becomes a worse version of the bug.
 func TestABothyInsideTheContainerDoesNotClaimTheSession(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("reads /proc")
+	}
 	cfg := config.Default()
 
 	outside := sandbox(t, true)
@@ -209,6 +213,31 @@ func TestABothyInsideTheContainerEndsNothing(t *testing.T) {
 	if _, err := os.Stat(record); err != nil {
 		t.Error("a bothy inside the container tore down a session it does not own")
 	}
+}
+
+// The window closing kills zellij and bothy together, and the zellij client
+// dying returns control to main, which unhooks on its way out. Unhooking must
+// not let the process exit under a cleanup already running, or the session
+// the cleanup was ending outlives the window.
+func TestUnhookingWaitsForACleanupAlreadyUnderWay(t *testing.T) {
+	started := make(chan struct{})
+	var finished atomic.Bool
+	stop := onHangup(func() {
+		close(started)
+		time.Sleep(300 * time.Millisecond)
+		finished.Store(true)
+	})
+	hangup(t)
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the hangup never reached the cleanup")
+	}
+	stop()
+	if !finished.Load() {
+		t.Error("unhooking returned while the cleanup was still running")
+	}
+	awaitHangups(t, 2)
 }
 
 func hangup(t *testing.T) {

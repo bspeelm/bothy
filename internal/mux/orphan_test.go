@@ -37,6 +37,9 @@ func TestAClientArgvIsTheOneAttachedToThisSession(t *testing.T) {
 }
 
 func TestOwningASessionAndForgettingIt(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("reads /proc")
+	}
 	dir := t.TempDir()
 	forget := Own(dir, "bothy-work")
 	if !Owned(dir, "bothy-work") {
@@ -54,6 +57,9 @@ func TestOwningASessionAndForgettingIt(t *testing.T) {
 // The window closing kills the bothy that wrote the record, so it never runs
 // the forget func. That is the whole signal: a record whose process is gone.
 func TestAnOwnerRecordGoesStaleWhenItsProcessDoes(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("reads /proc")
+	}
 	dir := t.TempDir()
 	done := exec.Command("/bin/true")
 	if err := done.Run(); err != nil {
@@ -68,6 +74,9 @@ func TestAnOwnerRecordGoesStaleWhenItsProcessDoes(t *testing.T) {
 // Pids are reused. Without the start time, a record would come back to life
 // under whatever process next took its number.
 func TestAReusedPidDoesNotLookLikeAnOwner(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("reads /proc")
+	}
 	dir := t.TempDir()
 	write(t, dir, "bothy-work", strconv.Itoa(os.Getpid())+" 1")
 	if Owned(dir, "bothy-work") {

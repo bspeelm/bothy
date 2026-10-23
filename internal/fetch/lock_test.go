@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -393,6 +395,22 @@ func TestRelockAtTakesTheTagAndNeverAsksWhatIsLatest(t *testing.T) {
 	// claim to have been.
 	if len(e.Verified) != 0 {
 		t.Errorf("recorded %v as cross-checked with no checksum published", e.Verified)
+	}
+}
+
+// The advice for a pin depends on where bothy is run: `bothy lock` is the
+// maintainer's answer in a checkout and a stray file anywhere else.
+func TestACheckoutIsWhereTheLockfileIs(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if InCheckout() {
+		t.Error("a directory with no bothy.lock reads as a checkout")
+	}
+	if err := os.WriteFile(filepath.Join(dir, LockPath), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !InCheckout() {
+		t.Error("a directory holding bothy.lock does not read as a checkout")
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
+	"github.com/bspeelm/bothy/internal/state"
 )
 
 // Plugin is a package a provider's generated config depends on, pinned to a
@@ -115,7 +116,7 @@ func writePackageFile(p platform.Info, plugins []Plugin) error {
 	if err != nil {
 		return fmt.Errorf("install: %w", err)
 	}
-	return os.WriteFile(packagePath(p), out, 0o644)
+	return state.WriteFile(packagePath(p), out, 0o644)
 }
 
 // EnsureYaziPlugins installs the plugins bothy's config references, at the
