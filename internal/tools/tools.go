@@ -29,8 +29,19 @@ type Tool struct {
 	slots.Fetch
 }
 
-// Binaries is every binary this tool installs.
+// Binaries is every binary this tool installs, by its plain name.
 func (t Tool) Binaries() []string { return append([]string{t.Binary}, t.Extra...) }
+
+// BinaryFiles is Binaries as the files are actually named on an operating
+// system -- which is the same thing everywhere except Windows, where both the
+// archive member and the installed file carry .exe.
+func (t Tool) BinaryFiles(goos string) []string {
+	out := t.Binaries()
+	for i, n := range out {
+		out[i] = platform.ExeName(goos, n)
+	}
+	return out
+}
 
 // Asset returns the release asset name for a platform, with {version}
 // substituted. version is the tag with any leading "v" or "<name>-" removed,
@@ -188,15 +199,15 @@ func Resolve(t Tool, lookPath func(string) (string, error), version func(string)
 // callers set to bothy's own bin. That directory is on PATH inside the
 // session, so a plain exec.LookPath answers "does the system have this?"
 // differently depending on where it was asked from.
-func SystemLookPath(skip string) func(string) (string, error) {
+func SystemLookPath(goos, skip string) func(string) (string, error) {
 	skip = filepath.Clean(skip)
 	return func(bin string) (string, error) {
 		for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
 			if dir == "" || (skip != "." && filepath.Clean(dir) == skip) {
 				continue
 			}
-			path := filepath.Join(dir, bin)
-			if fi, err := os.Stat(path); err == nil && !fi.IsDir() && fi.Mode()&0o111 != 0 {
+			path := filepath.Join(dir, platform.ExeName(goos, bin))
+			if fi, err := os.Stat(path); err == nil && platform.Runnable(goos, fi) {
 				return path, nil
 			}
 		}
@@ -212,14 +223,14 @@ func SystemVersion(path string) (string, error) {
 // ResolveAll decides for every named tool, judging what the system has.
 // ownBin is bothy's own directory, left out of the search so that the same
 // question gets the same answer inside a bothy session and outside one.
-func ResolveAll(names []string, ownBin string) ([]Decision, error) {
+func ResolveAll(goos string, names []string, ownBin string) ([]Decision, error) {
 	var out []Decision
 	for _, n := range names {
 		t, err := Get(n)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, Resolve(t, SystemLookPath(ownBin), SystemVersion))
+		out = append(out, Resolve(t, SystemLookPath(goos, ownBin), SystemVersion))
 	}
 	return out, nil
 }

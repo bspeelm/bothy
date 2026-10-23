@@ -111,6 +111,37 @@ func (i Info) CacheDir() string { return filepath.Join(i.BothyDir(), "cache") }
 // overrides. bothy reads it and writes only config.toml there.
 func (i Info) UserConfigDir() string { return filepath.Join(i.ConfigDir, "bothy") }
 
+// ExeName is what a binary is called on an operating system. Windows needs the
+// suffix at both ends: looking a tool up on PATH, and matching it inside a
+// release archive. Taking the OS rather than reading runtime.GOOS is ADR-031:
+// the Windows arm stays reachable from a test on any machine.
+func ExeName(goos, name string) string {
+	if name == "" || goos != "windows" || strings.HasSuffix(strings.ToLower(name), ".exe") {
+		return name
+	}
+	return name + ".exe"
+}
+
+// Runnable reports whether a file is a program bothy can run. Windows has no
+// execute bit -- Go reports 0666 or 0444 for every file -- so testing for one
+// there asks the filesystem a question it cannot answer, and the answer would
+// be no for every tool bothy had just installed.
+func Runnable(goos string, fi os.FileInfo) bool {
+	if fi == nil || fi.IsDir() {
+		return false
+	}
+	if goos == "windows" {
+		return true
+	}
+	return fi.Mode()&0o111 != 0
+}
+
+// ExeName is ExeName for this machine.
+func (i Info) ExeName(name string) string { return ExeName(i.OS, name) }
+
+// Runnable is Runnable for this machine.
+func (i Info) Runnable(fi os.FileInfo) bool { return Runnable(i.OS, fi) }
+
 // Detect probes the machine. It never fails: an undetectable field is left
 // zero, and the doctor is what turns a missing field into a visible problem.
 func Detect() Info {

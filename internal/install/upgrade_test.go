@@ -3,6 +3,7 @@ package install
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/slots"
@@ -26,7 +27,7 @@ func TestSystemLookupIgnoresBothysOwnBin(t *testing.T) {
 	// bothy's bin first, exactly as a bothy session puts it.
 	t.Setenv("PATH", own+string(os.PathListSeparator)+other)
 
-	got, err := tools.SystemLookPath(own)("zellij")
+	got, err := tools.SystemLookPath(runtime.GOOS, own)("zellij")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func TestSystemLookupIgnoresBothysOwnBin(t *testing.T) {
 
 	// And with only bothy's copy present, the system has none.
 	t.Setenv("PATH", own)
-	if path, err := tools.SystemLookPath(own)("zellij"); err == nil {
+	if path, err := tools.SystemLookPath(runtime.GOOS, own)("zellij"); err == nil {
 		t.Errorf("bothy's own copy at %q counted as the system's", path)
 	}
 }

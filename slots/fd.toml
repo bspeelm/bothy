@@ -7,7 +7,7 @@
 
 name      = "fd"
 what      = "a faster find"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 
 [fetch]
 binary      = "fd"
@@ -19,3 +19,4 @@ linux_x86_64   = "fd-v{version}-x86_64-unknown-linux-musl.tar.gz"
 linux_aarch64  = "fd-v{version}-aarch64-unknown-linux-gnu.tar.gz"
 darwin_x86_64  = "fd-v{version}-x86_64-apple-darwin.tar.gz"
 darwin_aarch64 = "fd-v{version}-aarch64-apple-darwin.tar.gz"
+windows_x86_64 = "fd-v{version}-x86_64-pc-windows-msvc.zip"

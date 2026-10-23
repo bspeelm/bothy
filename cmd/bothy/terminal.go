@@ -78,11 +78,14 @@ func isTerminal(f *os.File) bool {
 	return true
 }
 
-// hasDisplay reports whether there is a session to open a window into. On
-// darwin an SSH login has no window server either, and $SSH_CONNECTION says so
-// without the machinery of asking launchd.
+// hasDisplay reports whether there is a session to open a window into. darwin
+// and windows have a window server whenever anyone is logged in at all, so the
+// question there is only whether this is a remote login -- $SSH_CONNECTION
+// says so without the machinery of asking launchd or the session manager.
+// Neither sets DISPLAY, so the X and Wayland test would answer no on every
+// Mac and every Windows machine.
 func hasDisplay(p platform.Info) bool {
-	if p.OS == "darwin" {
+	if p.OS == "darwin" || p.OS == "windows" {
 		return os.Getenv("SSH_CONNECTION") == "" && os.Getenv("SSH_TTY") == ""
 	}
 	return os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != ""

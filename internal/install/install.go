@@ -292,14 +292,24 @@ func opener(p platform.Info) string {
 		return "flatpak-spawn --host xdg-open"
 	case p.OS == "darwin":
 		return "open"
+	case p.OS == "windows":
+		// `start` is a cmd builtin, not a program, and Yazi runs openers
+		// through cmd.exe -- so this works where naming a binary would not.
+		// The empty argument is the window title: `start` reads a lone quoted
+		// first argument as one, and Yazi quotes the path it substitutes.
+		return `start ""`
 	}
 	return "xdg-open"
 }
 
 // OpenerBinary is the program the opener runs, for a check that wants to know
 // whether it is there. The container opener forwards through flatpak-spawn, so
-// that is the binary that has to exist here.
+// that is the binary that has to exist here. On Windows the opener is a cmd
+// builtin, so the program that has to exist is the shell Yazi runs it through.
 func OpenerBinary(p platform.Info) string {
+	if p.OS == "windows" {
+		return "cmd"
+	}
 	return strings.Fields(opener(p))[0]
 }
 

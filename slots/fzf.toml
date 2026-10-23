@@ -2,7 +2,7 @@
 
 name      = "fzf"
 what      = "the fuzzy finder"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 
 [fetch]
 binary      = "fzf"
@@ -15,3 +15,4 @@ linux_x86_64   = "fzf-{version}-linux_amd64.tar.gz"
 linux_aarch64  = "fzf-{version}-linux_arm64.tar.gz"
 darwin_x86_64  = "fzf-{version}-darwin_amd64.tar.gz"
 darwin_aarch64 = "fzf-{version}-darwin_arm64.tar.gz"
+windows_x86_64 = "fzf-{version}-windows_amd64.zip"

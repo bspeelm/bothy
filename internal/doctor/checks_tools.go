@@ -40,8 +40,8 @@ func checkToolProvenance(env Env) Result {
 		if err != nil {
 			continue
 		}
-		own := filepath.Join(env.Platform.BinDir(), t.Binary)
-		if fi, err := os.Stat(own); err == nil && fi.Mode()&0o111 != 0 {
+		own := filepath.Join(env.Platform.BinDir(), env.Platform.ExeName(t.Binary))
+		if fi, err := os.Stat(own); err == nil && env.Platform.Runnable(fi) {
 			supplied = append(supplied, name)
 			if lockErr == nil && mErr == nil {
 				if entry, ok := lock.Get(name); ok && !install.Supplied(env.Platform, m, name, entry.Version) {
@@ -50,7 +50,7 @@ func checkToolProvenance(env Env) Result {
 			}
 			continue
 		}
-		d := tools.Resolve(t, tools.SystemLookPath(env.Platform.BinDir()), tools.SystemVersion)
+		d := tools.Resolve(t, tools.SystemLookPath(env.Platform.OS, env.Platform.BinDir()), tools.SystemVersion)
 		if d.Action == tools.Fetch {
 			missing = append(missing, name+" ("+d.Reason+")")
 			continue

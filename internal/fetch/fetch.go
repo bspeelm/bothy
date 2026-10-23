@@ -69,13 +69,17 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 			t.Name, url, want, got)
 	}
 
-	found, err := Extract(body, asset, t.Binaries())
+	// Windows archives carry zellij.exe where every other platform carries
+	// zellij, so the names matched here and written below are the file names
+	// rather than the tool's plain name.
+	wanted := t.BinaryFiles(p.OS)
+	found, err := Extract(body, asset, wanted)
 	if err != nil {
 		return nil, fmt.Errorf("fetch: %s: %w", t.Name, err)
 	}
 	// The primary binary is not optional; a missing extra is worth failing on
 	// too, because a half-installed tool is harder to diagnose than a refusal.
-	for _, want := range t.Binaries() {
+	for _, want := range wanted {
 		if _, ok := found[want]; !ok {
 			return nil, fmt.Errorf("fetch: %s not found inside %s", want, asset)
 		}
@@ -98,7 +102,7 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 			_ = os.Remove(tmp) // no-op for the ones already renamed
 		}
 	}()
-	for _, name := range t.Binaries() {
+	for _, name := range wanted {
 		tmp, err := stageExecutable(filepath.Join(destDir, name), found[name])
 		if tmp != "" {
 			staged = append(staged, tmp)
@@ -108,7 +112,7 @@ func Install(t tools.Tool, p platform.Info, lock Entry, destDir string) (*Result
 		}
 		installed = append(installed, filepath.Join(destDir, name))
 	}
-	for i, name := range t.Binaries() {
+	for i, name := range wanted {
 		if err := os.Rename(staged[i], filepath.Join(destDir, name)); err != nil {
 			return nil, fmt.Errorf("fetch: %s: %w", filepath.Join(destDir, name), err)
 		}

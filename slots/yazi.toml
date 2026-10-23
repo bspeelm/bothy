@@ -7,7 +7,7 @@
 name      = "yazi"
 what      = "the file browser"
 slot      = "browser"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 provides  = ["images", "theme"]
 
 [fetch]
@@ -22,6 +22,7 @@ linux_x86_64   = "yazi-x86_64-unknown-linux-musl.zip"
 linux_aarch64  = "yazi-aarch64-unknown-linux-musl.zip"
 darwin_x86_64  = "yazi-x86_64-apple-darwin.zip"
 darwin_aarch64 = "yazi-aarch64-apple-darwin.zip"
+windows_x86_64 = "yazi-x86_64-pc-windows-msvc.zip"
 
 [[file]]
 template = "templates/browser/yazi/yazi.toml.tmpl"

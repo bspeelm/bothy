@@ -196,3 +196,53 @@ func TestAnUnfamiliarShapeIsNotGuessedAt(t *testing.T) {
 		t.Errorf("BothyDir = %q, want the ordinary derivation", got)
 	}
 }
+
+// Windows has no execute bit: Go reports 0666 or 0444 for every file there.
+// Testing for one is asking the filesystem a question it cannot answer, and
+// the answer would be "no" for every tool bothy had just installed -- so
+// bothy would re-download the whole toolchain on every launch and the doctor
+// would report everything missing.
+func TestRunnableDoesNotAskWindowsForAnExecuteBit(t *testing.T) {
+	dir := t.TempDir()
+	plain := filepath.Join(dir, "zellij.exe")
+	if err := os.WriteFile(plain, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Stat(plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !Runnable("windows", fi) {
+		t.Error("a 0644 file is not runnable on windows; every installed tool would look missing")
+	}
+	if Runnable("linux", fi) {
+		t.Error("a 0644 file reported runnable on linux, where the bit is the whole question")
+	}
+	if Runnable("windows", nil) {
+		t.Error("a missing file is not runnable anywhere")
+	}
+	d, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if Runnable("windows", d) {
+		t.Error("a directory is not a program")
+	}
+}
+
+// The same tool is `zellij` in slots/ and `zellij.exe` on disk and inside the
+// Windows archive. One name, two spellings, and the suffix is never doubled.
+func TestExeNameSpellsTheFileNotTheTool(t *testing.T) {
+	for _, tc := range []struct{ goos, in, want string }{
+		{"linux", "zellij", "zellij"},
+		{"darwin", "zellij", "zellij"},
+		{"windows", "zellij", "zellij.exe"},
+		{"windows", "zellij.exe", "zellij.exe"},
+		{"windows", "zellij.EXE", "zellij.EXE"},
+		{"windows", "", ""},
+	} {
+		if got := ExeName(tc.goos, tc.in); got != tc.want {
+			t.Errorf("ExeName(%q, %q) = %q, want %q", tc.goos, tc.in, got, tc.want)
+		}
+	}
+}
