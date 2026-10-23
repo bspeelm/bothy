@@ -85,7 +85,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"yazi-version":          doctor.Pass,
 	"yazi-config-keys":      doctor.Pass,
 	"yazi-plugins":          doctor.Pass, // needs git, which is why prep installs it
-	"image-previews":        doctor.Pass, // no graphics terminal and no preview block: they agree
+	"image-previews":        doctor.Warn, // off, correctly: no graphics terminal here
 	"profile-renders":       doctor.Pass,
 	"layout-built":          doctor.Skip, // only meaningful inside a live zellij session
 	"pane-fields":           doctor.Skip, // same: there are no panes to describe

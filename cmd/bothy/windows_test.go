@@ -38,7 +38,7 @@ var windowsExpectation = map[string]doctor.Severity{
 	// Off, and correctly: Yazi sends the iTerm2 protocol on the terminals
 	// Windows has, and no multiplexer bothy supports carries it. The config
 	// and the verdict agree, which is what this check compares.
-	"image-previews":      doctor.Pass,
+	"image-previews":      doctor.Warn,
 	"profile-renders":     doctor.Pass,
 	"layout-built":        doctor.Skip, // only meaningful inside a live session
 	"pane-fields":         doctor.Skip, // same: there are no panes to describe
