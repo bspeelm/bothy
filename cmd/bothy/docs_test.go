@@ -177,6 +177,10 @@ var buildTagged = map[string]int{
 	"internal/platform/termsize_other.go": 12,
 	"internal/platform/mounted_unix.go":   34, // syscall.Stat_t.Dev; Windows has no st_dev
 	"internal/platform/mounted_other.go":  8,
+	// The one split where the Unix answer compiles on Windows and is wrong:
+	// os.SameFile against NUL is true for every handle there (ADR-057).
+	"internal/platform/isterm_unix.go":    20,
+	"internal/platform/isterm_windows.go": 21,
 }
 
 func TestPlatformSplitsStayShims(t *testing.T) {

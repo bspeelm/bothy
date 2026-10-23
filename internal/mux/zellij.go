@@ -120,8 +120,16 @@ func socketRoom(goos, dir string) int {
 // Open writes the rendered layout where zellij reads it, then attaches. The
 // file is regenerated every launch; editing it does nothing.
 func (z Zellij) Open(r Request) error {
-	if n, ok := attachedClients(r.Bin, r.Env, r.Session, r.Live); ok && n > 0 {
+	n, answered := attachedClients(r.Bin, r.Env, r.Session, r.Live)
+	if answered && n > 0 {
 		return InUse(r.Session)
+	}
+	if !answered && slices.Contains(r.Live, r.Session) {
+		live, err := z.clear(r)
+		if err != nil {
+			return err
+		}
+		r.Live = live
 	}
 
 	kdl, err := render(r.Profile, r.Commands)
@@ -144,6 +152,24 @@ func (z Zellij) Open(r Request) error {
 		z.discardDead(r.Bin, r.Env, r.Session)
 	}
 	return RunAttached(r.Env, r.Bin, z.launchArgs(r.Session, file, r.Live)...)
+}
+
+// clear deals with a session zellij lists and will not answer. Measured on
+// Windows, where a closed window leaves no SIGHUP to end the client (ADR-054):
+// the record survives with no server behind it, `attach` draws a black screen
+// that never returns, and `delete-session` -- with or without --force --
+// refuses it as "not found". So it is removed if it can be, and refused with
+// the reason if it cannot, because hanging is the one answer that explains
+// nothing. Discard declines a session that is genuinely running, so a merely
+// slow answer costs a failed delete rather than somebody's work.
+func (z Zellij) clear(r Request) ([]string, error) {
+	if err := z.Discard(r.Bin, r.Env, r.Session); err != nil {
+		return nil, fmt.Errorf("session %s is recorded but does not answer, and "+
+			"zellij will not remove it:\n      %w\n"+
+			"      attaching would show a screen that never draws. Clearing "+
+			"zellij's own session state is what frees the name", r.Session, err)
+	}
+	return slices.DeleteFunc(slices.Clone(r.Live), func(s string) bool { return s == r.Session }), nil
 }
 
 // launchArgs must not carry --layout into a live session: zellij applies one

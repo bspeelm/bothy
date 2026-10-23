@@ -951,6 +951,10 @@ meaningless, which is why ADR-018's guard is a runtime check. Neither is a build
 tag. An `ioctl` naming `TIOCGWINSZ` is, because no runtime branch saves a file
 the compiler has already refused.
 
+**Amended by ADR-057:** a third split, `isterm_{unix,windows}.go`, for the one
+case this rule did not anticipate -- a Unix answer that compiles on Windows and
+is wrong there.
+
 **When forced, the tagged file is a shim.** `termsize_unix.go` is twelve lines
 of syscall with no branching; the decision that uses it lives behind
 `install.go`'s `terminalSize` seam, which tests replace. What CI never compiles
@@ -2287,6 +2291,9 @@ work: it would fail on the next comment anywhere in the codebase.
 
 ## ADR-054 — Windows is beta: shipped, installable, and not in the table
 
+**Amended by ADR-057:** somebody has now taken a session by hand, and three
+defects were waiting.
+
 Three platforms were on the road since ADR-031 and Windows was "neither
 promised nor refused" (ADR-018). It is now built, locked, documented and
 tested. This records what changed, what it costs, and what beta means, because
@@ -2470,3 +2477,63 @@ multiplexer, or a zellij that renders `KgpOld`. Either one is two table rows.
 **ADR-007** gains: *Amended by ADR-056. The version gate stands and is still
 the right shape; the capability behind it has never worked, because Yazi sends
 a protocol the gate does not describe.*
+
+## ADR-057 — A check that compiles on the other platform and answers wrongly is worse than one that does not compile
+
+**Status:** accepted. Amends ADR-031 and ADR-054.
+
+ADR-031's rule is that a build tag needs the compiler's permission: inject what
+differs, and split only where the code cannot compile elsewhere. The rule has
+held for `TIOCGWINSZ` and `st_dev`. It did not anticipate the opposite case,
+which shipped in every Windows build so far.
+
+`isTerminal` asked whether stdout was a character device and then whether it
+was the null device. Both lines compile on Windows. Measured in a WezTerm tab
+on a Windows 11 machine:
+
+    stdout: mode=Dcrw-rw-rw- charDevice=true
+      os.SameFile(stdout, NUL) = true
+      isTerminal(stdout) as shipped = false
+      GetConsoleMode(stdout) err=<nil> mode=0x7
+
+`os.Stat` on a Windows character device returns a stat with no file identity --
+no path, no volume, no index -- and `os.Stat("NUL")` returns the same. So
+`SameFile` compares zero with zero and says the console is the null device. It
+says the same of a pipe. **Every stream on Windows read as "not a terminal."**
+
+The cost was not subtle once looked for. `bothy` opened a new window on every
+launch, from a tab in a terminal it had correctly identified as WezTerm, so a
+second project meant a second window and the one you typed in was left holding
+the process. And the same predicate gates every question bothy asks, so on
+Windows it asked none: the first run downloaded eight tools without the
+`proceed? [Y/n]` that every other platform gets.
+
+**The fix is a third split, and ADR-031 gains it**: `isterm_windows.go` asks
+`GetConsoleMode`, which answers true in that tab and false over SSH, and is in
+the standard library, so PLAN.md §13's ceiling holds.
+
+**Two more of the same shape were found with it.** `agentPane` compared
+`filepath.Base(command)` against the agent's name, so `claude.exe` never
+matched `claude` and the tower found a session only when a pane happened to be
+titled "agent"; `filepath.Base` is itself host-shaped, returning a Windows path
+whole on Linux, so the comparison could not be tested anywhere but Windows
+until it took the platform as an argument. And the tower attached to a session
+zellij listed and would not answer: measured, `kill-session`, `delete-session`
+and `--force` all refuse such a session as "not found" while `list-sessions`
+still reports it, and `attach` then draws a screen that never returns. That is
+what "the tower opens nothing" was. It is now refused with the reason, which is
+the one thing a hang cannot give.
+
+**What would have caught all three** is the Windows runner opening a session,
+which ADR-054 named as the condition for beta ending and which nothing did. The
+job now runs `bothy tower` with no sessions and fails if it does not answer
+within thirty seconds; it still does not open a workspace, because CI has no
+desktop.
+
+**Verified by running, not by reasoning**, on the Windows box: `bothy` in a
+WezTerm tab stays in that tab; a second terminal adds no window of bothy's; the
+tower draws a mirror per agent; `--window` still opens one and returns the tab
+to its prompt; and the first run asks before downloading.
+
+**ADR-054** gains: *Amended by ADR-057. "Nobody has taken a session by hand" is
+no longer true, and what doing so found is recorded there.*

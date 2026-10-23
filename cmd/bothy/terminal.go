@@ -12,6 +12,11 @@ import (
 	"github.com/bspeelm/bothy/internal/probe"
 )
 
+// stdoutIsTerminal is a seam: the branch below is the one that decided wrongly
+// on Windows for every release so far, and no test could reach it because a
+// test binary's stdout is a pipe.
+var stdoutIsTerminal = func() bool { return platform.IsTerminal(os.Stdout) }
+
 // InTerminalEnv marks a bothy that was started by a terminal bothy spawned.
 // Without it the inner process would open another window, and so on.
 const InTerminalEnv = "BOTHY_IN_TERMINAL"
@@ -54,7 +59,7 @@ func decideLaunch(p platform.Info, term, mode string) launchMode {
 
 	// Launched from a desktop icon or a script: there is no terminal to run
 	// in, so one has to be opened whatever the graphics situation.
-	if !isTerminal(os.Stdout) {
+	if !stdoutIsTerminal() {
 		return launchMode{Spawn: true, Reason: "started without a terminal"}
 	}
 
@@ -62,20 +67,6 @@ func decideLaunch(p platform.Info, term, mode string) launchMode {
 		return launchMode{Spawn: true, Reason: k.Reason}
 	}
 	return launchMode{Reason: "this terminal carries the keys an agent needs; running here"}
-}
-
-// isTerminal reports whether a stream is an interactive terminal. /dev/null is
-// also a character device, so it is excluded explicitly; that covers redirects,
-// cron and systemd units without an ioctl (no x/term — PLAN.md §13).
-func isTerminal(f *os.File) bool {
-	fi, err := f.Stat()
-	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
-		return false
-	}
-	if null, err := os.Stat(os.DevNull); err == nil && os.SameFile(fi, null) {
-		return false
-	}
-	return true
 }
 
 // hasDisplay reports whether there is a session to open a window into. darwin
@@ -203,8 +194,16 @@ func spawnTerminal(p platform.Info, termSlot, dir, profileName string) error {
 
 	cmd := exec.Command(term[0], args...)
 	cmd.Env = append(os.Environ(), InTerminalEnv+"=1")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// The window has its own screen; what it says belongs there. On Windows it
+	// says it in the console it was launched from instead -- measured, a
+	// WezTerm window leaves "WARN window::os::windows::wgl > failed to create
+	// extended OpenGL context" in the shell you typed `bothy --window` in,
+	// after that shell has its prompt back. A GUI terminal that cannot start
+	// at all is reported by Start below, which is the part worth seeing.
+	if p.OS != "windows" {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	}
 
 	// Start, not Run: the shell that typed `bothy` gets its prompt back instead
 	// of blocking on the window the user is now working in.

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/mux"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // The half of `bothy tower` that starts nothing: which pane holds an agent,
@@ -45,15 +47,20 @@ const agentPaneName = "agent"
 // `bothy confine` runs it inside a container, so the pane reports podman and a
 // confined agent was invisible here; the pane is still named agent, which is
 // true of any wrapper rather than of that one.
-func agentPane(panes []mux.PaneRef, agentBin string) (mux.PaneRef, bool) {
-	want := filepath.Base(agentBin)
+func agentPane(panes []mux.PaneRef, agentBin, goos string) (mux.PaneRef, bool) {
+	// Through ExeName, because the two sides are built differently: the slot
+	// names the agent `claude`, and the pane was launched as the full path
+	// `C:\...\claude.exe` that zellij needs on Windows. Without this the
+	// command never matches there and only a pane named "agent" is ever found.
+	// goos is a parameter so a test on any machine can ask the Windows one.
+	want := platform.ExeName(goos, base(agentBin, goos))
 	var titled mux.PaneRef
 	found := false
 	for _, p := range panes {
 		if p.Plugin || p.Exited {
 			continue
 		}
-		if p.Command != "" && filepath.Base(p.Command) == want {
+		if p.Command != "" && platform.ExeName(goos, base(p.Command, goos)) == want {
 			return p, true
 		}
 		if p.Title == agentPaneName {
@@ -61,6 +68,20 @@ func agentPane(panes []mux.PaneRef, agentBin string) (mux.PaneRef, bool) {
 		}
 	}
 	return titled, found
+}
+
+// base is filepath.Base for a named platform rather than for this one. They
+// differ where it matters: a Windows pane command is C:\...\claude.exe, and
+// the host's filepath.Base returns that whole string on Linux, so the
+// comparison above could not be tested anywhere but Windows.
+func base(path, goos string) string {
+	if goos != "windows" {
+		return filepath.Base(path)
+	}
+	if i := strings.LastIndexAny(path, `\/`); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 // label names a row, from the working directory rather than the session name.
@@ -254,7 +275,7 @@ func watchable(panesOf func(string) ([]mux.PaneRef, bool), agent string, live []
 		if !ok {
 			continue
 		}
-		pane, found := agentPane(panes, agent)
+		pane, found := agentPane(panes, agent, runtime.GOOS)
 		if !found {
 			continue
 		}
@@ -295,7 +316,7 @@ func collapsible(expanded []mirror, panesOf func(string) ([]mux.PaneRef, bool), 
 		if !ok {
 			continue
 		}
-		pane, found := agentPane(panes, agent)
+		pane, found := agentPane(panes, agent, runtime.GOOS)
 		if !found || !pane.Fullscreen {
 			continue
 		}

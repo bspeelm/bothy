@@ -106,7 +106,7 @@ func confirmDownloads(p platform.Info, cfg config.Config) (bool, error) {
 	// What would actually be downloaded, which is not every gap: a tool bothy
 	// already supplied at the pinned version costs nothing to keep.
 	wanted := install.PendingFetches(p, decisions)
-	if len(wanted) == 0 || !isTerminal(os.Stdin) {
+	if len(wanted) == 0 || !platform.IsTerminal(os.Stdin) {
 		return true, nil
 	}
 

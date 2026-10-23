@@ -190,7 +190,7 @@ func takeYes(args []string) (rest []string, yes bool) {
 // stake first. Separate from confirmDownloads, which defaults to yes: the cost
 // of refusing there is a download, and here it is a running session or a box.
 func confirmDestructive(yes bool, stake, question string) bool {
-	tty := isTerminal(os.Stdin)
+	tty := platform.IsTerminal(os.Stdin)
 	reply := ""
 	if !yes && tty {
 		fmt.Println(stake)
@@ -260,7 +260,7 @@ func boxCreate(p platform.Info, cfg config.Config, dir string, args []string) er
 	}
 	fmt.Printf("%s now opens in %s\n", dir, name)
 
-	if isTerminal(os.Stdin) {
+	if platform.IsTerminal(os.Stdin) {
 		fmt.Print("install bothy's tools in it now? [Y/n] ")
 		reply, err := bufio.NewReader(os.Stdin).ReadString('\n') // an unreadable reply declines
 		if err == nil && saidYesByDefault(reply) {

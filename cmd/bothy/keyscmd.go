@@ -114,7 +114,7 @@ func keyChord(on any) string {
 // multiplexer is about to take the screen, so anything printed without a pause
 // is gone before it can be read. Skipped when nothing is there to read it.
 func showKeysOnce(p platform.Info) {
-	if !isTerminal(os.Stdin) {
+	if !platform.IsTerminal(os.Stdin) {
 		return
 	}
 	fmt.Print(keysText(p))

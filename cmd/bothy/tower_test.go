@@ -27,7 +27,7 @@ func cockpitPanes() []mux.PaneRef {
 // editor profile puts the agent in a different position, and a plugin pane
 // carries id 1 as well -- ids restart per kind, so the address needs the kind.
 func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
-	got, ok := agentPane(cockpitPanes(), "claude")
+	got, ok := agentPane(cockpitPanes(), "claude", "linux")
 	if !ok {
 		t.Fatal("no agent pane found in a cockpit that has one")
 	}
@@ -41,14 +41,14 @@ func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
 		{ID: 0, Command: "claude"},
 		{ID: 1, Command: "yazi"},
 	}
-	got, ok = agentPane(shuffled, "claude")
+	got, ok = agentPane(shuffled, "claude", "linux")
 	if !ok || got.Addr() != "terminal_0" {
 		t.Errorf("agent pane is %q/%v after reordering, want terminal_0", got.Addr(), ok)
 	}
 
 	// A full path in the slot resolves to the same agent: config may name
 	// ~/.local/bin/claude while zellij reports the basename.
-	if _, ok := agentPane(cockpitPanes(), "/usr/local/bin/claude"); !ok {
+	if _, ok := agentPane(cockpitPanes(), "/usr/local/bin/claude", "linux"); !ok {
 		t.Error("an agent named by absolute path was not matched")
 	}
 }
@@ -58,7 +58,7 @@ func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
 // merely quiet.
 func TestAnExitedAgentPaneIsNotWatched(t *testing.T) {
 	panes := []mux.PaneRef{{ID: 1, Command: "claude", Exited: true}}
-	if _, ok := agentPane(panes, "claude"); ok {
+	if _, ok := agentPane(panes, "claude", "linux"); ok {
 		t.Error("an exited agent pane was offered for watching")
 	}
 }
@@ -455,7 +455,7 @@ func TestTheTowerFindsAWrappedAgent(t *testing.T) {
 		{ID: 1, Command: "podman", Title: agentPaneName},
 		{ID: 2, Command: "/bin/bash", Title: "side"},
 	}
-	got, ok := agentPane(confined, "claude")
+	got, ok := agentPane(confined, "claude", "linux")
 	if !ok {
 		t.Fatal("a confined agent is invisible to the tower")
 	}
@@ -471,7 +471,7 @@ func TestTheRunningAgentBeatsAPaneMerelyNamedAgent(t *testing.T) {
 		{ID: 0, Command: "/bin/bash", Title: agentPaneName},
 		{ID: 1, Command: "claude", Title: "somethingelse"},
 	}
-	got, ok := agentPane(panes, "claude")
+	got, ok := agentPane(panes, "claude", "linux")
 	if !ok || got.Addr() != "terminal_1" {
 		t.Errorf("found %q/%v, want the pane running claude", got.Addr(), ok)
 	}
@@ -786,5 +786,27 @@ func TestASingleMirrorIsNotExpanded(t *testing.T) {
 	two := append(one, mux.PaneRef{ID: 1, Command: "bothy"})
 	if n := terminalPanes(two); n != 2 {
 		t.Errorf("counted %d mirrors, want 2", n)
+	}
+}
+
+// On Windows the pane runs the full path zellij needs, `C:\...\claude.exe`,
+// while the slot names the agent `claude`. Comparing the two without ExeName
+// never matched, so the command arm was dead there and only a pane that
+// happened to be named "agent" was ever found (ADR-057).
+func TestTheAgentPaneIsFoundWhenTheCommandCarriesExe(t *testing.T) {
+	panes := []mux.PaneRef{
+		{ID: 0, Title: "browser", Command: `C:\Users\u\.local\share\bothy\bin\yazi.exe`},
+		{ID: 1, Title: "not named agent", Command: `C:\Users\u\bin\claude.exe`},
+	}
+	got, ok := agentPane(panes, "claude", "windows")
+	if !ok {
+		t.Fatal("no agent pane found; the tower would report no sessions to watch")
+	}
+	if got.ID != 1 {
+		t.Errorf("found pane %d, want the one running claude.exe", got.ID)
+	}
+	// And the suffix is not invented where it does not belong.
+	if _, ok := agentPane(panes, "claude", "linux"); ok {
+		t.Error("a Windows command matched on linux, where no binary is named claude.exe")
 	}
 }

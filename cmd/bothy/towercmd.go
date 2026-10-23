@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -241,7 +242,7 @@ func relay(backend mux.Backend, bin string, env []string, session, agent, line s
 		fmt.Printf("\n%s: cannot read the session's panes; nothing was sent\n", session)
 		return
 	}
-	pane, found := agentPane(panes, agent)
+	pane, found := agentPane(panes, agent, runtime.GOOS)
 	if !found {
 		fmt.Printf("\n%s: no live agent pane; nothing was sent\n", session)
 		return
@@ -257,7 +258,7 @@ func mirrorOnce(backend mux.Backend, bin string, env []string, session, agent st
 	if !ok {
 		return "", fmt.Errorf("gone, or the multiplexer stopped answering")
 	}
-	pane, found := agentPane(panes, agent)
+	pane, found := agentPane(panes, agent, runtime.GOOS)
 	if !found {
 		return "", fmt.Errorf("no %s pane in this session", agent)
 	}
@@ -286,8 +287,14 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	// opened, and Open would attach to that rather than build the layout just
 	// computed. Nothing in a tower is worth keeping, so it is replaced.
 	if slices.Contains(live, towerSession) {
-		_ = backend.Kill(bin, env, towerSession)
+		killErr := backend.Kill(bin, env, towerSession)
 		live = backend.Live(bin, env)
+		// Said rather than swallowed: if the previous tower cannot be ended,
+		// Open deals with what is left, and this is the only place that knows
+		// why the layout below is being built against a name already taken.
+		if killErr != nil && slices.Contains(live, towerSession) {
+			fmt.Printf("the previous tower will not end (%v); replacing its record\n", killErr)
+		}
 	}
 
 	if restore {

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bspeelm/bothy/internal/doctor"
 )
@@ -136,6 +137,27 @@ func TestBothyInstallsOnWindows(t *testing.T) {
 		if r.ID == "agent" && r.Severity != doctor.Fail {
 			t.Errorf("with an agent configured and none installed, agent = %s, want fail", r.Severity)
 		}
+	}
+
+	// The tower blocked forever on a session zellij listed and would not
+	// answer, printing its first line and then nothing (ADR-057). There is no
+	// session here, so the only correct answer is a quick refusal -- and the
+	// thing being guarded is that it answers at all.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		out, code := w.run("tower")
+		if code == 0 {
+			t.Errorf("tower reported success with no session to watch:\n%s", out)
+		}
+		if !strings.Contains(out, "agent") {
+			t.Errorf("the refusal does not say what it was looking for:\n%s", out)
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("bothy tower did not answer in 30s; it is waiting on something that will not come")
 	}
 
 	out, code = w.run("uninstall")
