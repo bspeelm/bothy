@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -72,6 +73,7 @@ func checksumsFor(archive []byte, name string) string {
 // the script will ask for.
 func archiveName(t *testing.T) string {
 	t.Helper()
+	skipOnWindows(t)
 	out, err := exec.Command("sh", "-c",
 		`case "$(uname -s)" in Linux) os=linux;; Darwin) os=darwin;; esac
 		 case "$(uname -m)" in x86_64|amd64) a=amd64;; aarch64|arm64) a=arm64;; esac
@@ -112,6 +114,7 @@ func TestBootstrapInstallsTheBinary(t *testing.T) {
 	defer srv.Close()
 
 	home := t.TempDir()
+	skipOnWindows(t)
 	cmd := exec.Command("sh", "install.sh")
 	cmd.Env = append(os.Environ(), "HOME="+home, "BOTHY_BASE_URL="+srv.URL)
 	out, err := cmd.CombinedOutput()
@@ -421,5 +424,16 @@ func TestBootstrapTakesVerifyThroughAPipe(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "provenance verified") {
 		t.Errorf("--verify did not reach the script through the pipe:\n%s", out)
+	}
+}
+
+// skipOnWindows keeps these tests off a Windows runner. exec.LookPath("sh")
+// finds Git Bash there, uname reports MINGW64_NT-*, and install.sh exits 1 by
+// design because it refuses native Windows -- so the whole file would fail for
+// the one reason that is correct behaviour.
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("install.sh refuses native Windows by design; scoop is that channel")
 	}
 }

@@ -222,6 +222,54 @@ jobs:
             exit 1
           }
 
+  windows:
+    # ADR-012 applied to Windows, and ADR-054's condition for beta becoming
+    # supported: this job green for a while. It installs into a temporary
+    # USERPROFILE on the runner and walks it, sharing its assertions with the
+    # container and macOS jobs through cmd/bothy/harness_test.go.
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+      # Not `make build`: whether GNU make is on this image is not something to
+      # discover at merge time. The flags are the Makefile's, deliberately.
+      - name: build
+        run: go build -trimpath -ldflags "-s -w" -o bothy.exe ./cmd/bothy
+
+      # The unit suite here too, for the macOS job's reason: a test that
+      # assumes a path separator or an execute bit is green on Linux and red
+      # on every Windows machine a contributor runs it on.
+      - name: unit tests
+        run: go test ./...
+
+      - name: install, verify and uninstall
+        shell: bash
+        run: |
+          set -o pipefail
+          go test ./cmd/bothy/ -tags windowsjob -timeout 20m -v \
+            -run TestBothyInstallsOnWindows | tee windows.log
+          grep -q -- "--- PASS: TestBothyInstallsOnWindows" windows.log || {
+            echo "::error::the test did not run — the -run filter or the build tag has drifted"
+            exit 1
+          }
+
+      # Evidence, not a gate. zellij's Windows support is young and its own
+      # tracking issue is open, so a session assertion would make every merge
+      # wait on somebody else's bug. Logging what happens is how the decision
+      # to claim sessions gets made on runs rather than hope.
+      - name: can zellij start here at all
+        continue-on-error: true
+        shell: bash
+        run: |
+          bin="$USERPROFILE/.local/share/bothy/bin"
+          "$bin/zellij.exe" --version || true
+          "$bin/zellij.exe" list-sessions || true
+
   deb:
     # The .deb only exists once a release is published, so without this the
     # first `apt install` of one happens after the tag is irrevocable.

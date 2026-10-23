@@ -1,4 +1,4 @@
-//go:build container || macos
+//go:build container || macos || windowsjob
 
 // Assertions shared by the end-to-end jobs.
 //
@@ -58,7 +58,11 @@ func filesUnder(t *testing.T, root string) []string {
 		if err != nil {
 			return nil
 		}
-		out = append(out, rel)
+		// Slash-separated: every consumer below matches "/"-prefixed paths,
+		// and on Windows Rel returns backslashes -- so bothysOwn would match
+		// nothing, assertNothingUnexplained would wave every file through and
+		// assertGone would pass on an uninstall that removed nothing.
+		out = append(out, filepath.ToSlash(rel))
 		return nil
 	})
 	if err != nil {
