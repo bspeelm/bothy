@@ -16,12 +16,12 @@ func TestAssetArchUsesUnameSpelling(t *testing.T) {
 }
 
 func TestOsReleaseParsesQuotedValues(t *testing.T) {
-	id, like, ver := osRelease()
+	id, like := osRelease()
 	if id == "" {
 		t.Skip("no /etc/os-release on this machine")
 	}
-	if id[0] == '"' || (ver != "" && ver[0] == '"') {
-		t.Errorf("quotes not stripped: ID=%q VERSION_ID=%q", id, ver)
+	if id[0] == '"' {
+		t.Errorf("quotes not stripped: ID=%q", id)
 	}
 	if strings.ContainsAny(like, `" `) {
 		t.Errorf("ID_LIKE should be one bare word, got %q", like)

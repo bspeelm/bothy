@@ -30,15 +30,13 @@ type Info struct {
 	OS   string // "linux", "darwin"
 	Arch string // "x86_64", "aarch64" — release-asset spelling, not Go's
 
-	DistroID      string // os-release ID, e.g. "fedora", "ubuntu", "arch"
-	DistroLike    string // os-release ID_LIKE, e.g. "debian" on Mint and Pop!_OS
-	DistroVersion string // os-release VERSION_ID
-	Immutable     bool   // rpm-ostree/bootc host: never install system packages
+	DistroID   string // os-release ID, e.g. "fedora", "ubuntu", "arch"
+	DistroLike string // os-release ID_LIKE, e.g. "debian" on Mint and Pop!_OS
+	Immutable  bool   // rpm-ostree/bootc host: never install system packages
 
 	Container     ContainerKind
 	ContainerName string // the toolbox/distrobox name, for the `dev` host hop
 	SharedHome    bool   // home is the host's home (Toolbx/Distrobox always)
-	WSL           bool
 
 	Term     string // $TERM
 	Terminal string // best guess at the emulator: "ghostty", "wezterm", …
@@ -163,10 +161,9 @@ func Detect() Info {
 		i.Root = strandedSessionRoot()
 	}
 
-	i.DistroID, i.DistroLike, i.DistroVersion = osRelease()
+	i.DistroID, i.DistroLike = osRelease()
 	i.Container, i.ContainerName = detectContainer()
 	i.SharedHome = i.Container == Toolbx || i.Container == Distrobox
-	i.WSL = detectWSL()
 	i.Immutable = detectImmutable(i.Container)
 
 	return i
@@ -202,10 +199,10 @@ func xdg(env, home string, fallback ...string) string {
 //
 // ID_LIKE matters as much as ID: it is how Mint, Pop!_OS and other derivatives
 // say "treat me as debian".
-func osRelease() (id, like, version string) {
+func osRelease() (id, like string) {
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
-		return "", "", ""
+		return "", ""
 	}
 	defer f.Close()
 
@@ -222,11 +219,9 @@ func osRelease() (id, like, version string) {
 		case "ID_LIKE":
 			// ID_LIKE is a space-separated, most-similar-first list.
 			like, _, _ = strings.Cut(v, " ")
-		case "VERSION_ID":
-			version = v
 		}
 	}
-	return id, like, version
+	return id, like
 }
 
 // detectContainer identifies Toolbx/Distrobox and recovers the container's
@@ -284,14 +279,6 @@ func containerNameIn(root string) string {
 		}
 	}
 	return ""
-}
-
-func detectWSL() bool {
-	if os.Getenv("WSL_DISTRO_NAME") != "" {
-		return true
-	}
-	b, err := os.ReadFile("/proc/sys/kernel/osrelease")
-	return err == nil && strings.Contains(strings.ToLower(string(b)), "microsoft")
 }
 
 // detectImmutable reports whether the *host* is an image-based system where
