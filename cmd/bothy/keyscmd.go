@@ -45,12 +45,12 @@ var muxKeys = []struct{ on, does string }{
 // is a binding that will disagree with itself.
 func keysText(p platform.Info) string {
 	var b strings.Builder
-	b.WriteString("\nThe workspace — these are Zellij's, and bothy leaves them alone.\n\n")
+	b.WriteString("\nThe workspace — these are Zellij's, and bothy does not change them.\n\n")
 	for _, k := range muxKeys {
 		fmt.Fprintf(&b, "  %-28s %s\n", k.on, k.does)
 	}
 	fmt.Fprintf(&b, "  %-28s %s\n", "bothy attach", "come back to a detached one")
-	fmt.Fprintf(&b, "  %-28s %s\n", "bothy ls", "the rooms you have open")
+	fmt.Fprintf(&b, "  %-28s %s\n", "bothy ls", "the sessions you have open")
 
 	if written := browserKeys(p); len(written) > 0 {
 		b.WriteString("\nThe file pane — these are bothy's.\n\n")
@@ -58,7 +58,7 @@ func keysText(p platform.Info) string {
 			fmt.Fprintf(&b, "  %-28s %s\n", k.on, k.does)
 		}
 	}
-	b.WriteString("\nEverything else is the tool's own. bothy adds no bindings beyond these.\n")
+	b.WriteString("\nEverything else belongs to the tool in the pane. bothy adds no other bindings.\n")
 	return b.String()
 }
 
