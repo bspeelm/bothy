@@ -352,6 +352,7 @@ var upgradeAdvice = map[string]string{
 	"dnf":      "dnf upgrade",
 	"apt":      "apt install",
 	"go":       "go install",
+	"scoop":    "scoop update",
 	"source":   "make install-binary",
 }
 

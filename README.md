@@ -61,6 +61,7 @@ Pick the one that fits your machine:
 | **Fedora** | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **Debian, Ubuntu, Mint** | download the `.deb` from [the latest release](https://github.com/bspeelm/bothy/releases/latest), then `sudo apt install ./bothy_*.deb` |
 | **macOS** | `brew install --cask bspeelm/bothy/bothy` |
+| **Windows** | `scoop bucket add bothy https://github.com/bspeelm/scoop-bothy && scoop install bothy` — [in beta](https://github.com/bspeelm/bothy/wiki/Where-it-runs) |
 | **you already have Go** | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 
 Then, from any directory:
@@ -88,7 +89,7 @@ The cost: the script is fetched over HTTPS and run **unsigned**, before bothy
 exists to verify anything. No signature on a later artifact fixes that. It is
 the same trade as any `curl | sh`.
 
-There are six ways in, counting source, and each verifies what it fetched
+There are seven ways in, counting source, and each verifies what it fetched
 differently. [All of them, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing) ·
 [What bothy downloads and what that proves](https://github.com/bspeelm/bothy/wiki/Security)
 

@@ -241,6 +241,20 @@ jobs:
         with:
           version: '~> v2'
           args: release --snapshot --clean --skip=publish
+      # The Windows archive has no Windows runner to be tried on, but its
+      # shape can be checked anywhere: that it exists, that it holds bothy.exe
+      # rather than a bare bothy, and that the checksum file covers it. Without
+      # this the first time anyone looks is after the tag.
+      - name: the windows archive is an archive of bothy.exe
+        run: |
+          set -euo pipefail
+          zip=$(ls dist/bothy_windows_amd64.zip)
+          unzip -l "$zip" | grep -q 'bothy\.exe'
+          grep -q "$(basename "$zip")" dist/checksums.txt
+          # And no arm64: zellij publishes no Windows build for it, so a
+          # bothy there could never fill the mux slot.
+          ! ls dist/bothy_windows_arm64.zip 2>/dev/null
+
       - name: install it, run it, remove it
         run: |
           set -euo pipefail

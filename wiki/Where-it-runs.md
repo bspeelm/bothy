@@ -30,6 +30,35 @@ whole doctor report compared against what it ought to have said. That is the
 whole of what supported means here: not that it ought to work, but that
 something proved it did this morning.
 
+**Windows is in beta.** There is a `bothy_windows_amd64.zip` on every release
+and `scoop install bothy` brings it down. bothy installs there, fetches all
+eight tools and verifies them, generates every config, keeps its own config out
+of `%APPDATA%`, opens the workspace, and the session survives closing the
+window and comes back with its panes where you left them. All of that was done
+on a Windows 11 machine rather than reasoned about.
+
+It is beta and not supported because supported here means the table above, and
+the table is what CI proves — there is a Windows job now, and it has not been
+green for long enough to mean anything yet. Four things are known rather than
+guessed:
+
+- **No image previews.** None, on any Windows terminal. Yazi sends the iTerm2
+  protocol on WezTerm and the multiplexer does not carry it. The doctor says so
+  and Enter still opens the file in whatever Windows opens it with.
+- **No arm64.** Zellij publishes no Windows build for it, and a workspace with
+  no multiplexer is not a workspace.
+- **Two things must be installed first.** The Microsoft C runtime, or Yazi
+  exits the moment it starts with nothing on screen to say why; and Git for
+  Windows, whose `file.exe` is how Yazi works out what a file is. The doctor
+  names both and what to run.
+- **`confine`, `box` and `connect` are Linux and macOS features** — they want
+  podman, toolbox, flatpak-spawn and FUSE. They report themselves unavailable
+  rather than failing oddly.
+
+Use WezTerm; it is what the Windows work was done against. `bothy doctor` is
+the honest answer on that machine, and it is the same answer it gives anywhere
+else nobody has checked for long.
+
 Two things bothy has advice for and does not test. **Silverblue and other
 image-based systems**, where `dnf` means `rpm-ostree` and a reboot: bothy is
 written on one and cannot put one in a container. **Mint, Pop!_OS and the other

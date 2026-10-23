@@ -49,6 +49,7 @@ jobs:
           # which is how 0.8.0 shipped without its cask.
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
       # Everything the release page offers, not just the archives. Attesting
       # the tarballs alone would leave the .deb unsigned and checksums.txt --
       # the file the default install trusts -- swappable by whoever could swap
@@ -59,6 +60,7 @@ jobs:
         with:
           subject-path: |
             dist/bothy_*.tar.gz
+            dist/bothy_*.zip
             dist/bothy-*-source.tar.gz
             dist/*.deb
             dist/checksums.txt

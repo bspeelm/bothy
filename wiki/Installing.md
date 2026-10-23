@@ -42,6 +42,7 @@ the script says so and prints the line to add.
 | **dnf** | Fedora Workstation | `sudo dnf copr enable bspeelman/bothy && sudo dnf install bothy` |
 | **apt** | Debian, Ubuntu, Mint | download the `.deb`, then `sudo apt install ./bothy_*.deb` |
 | **Homebrew** | macOS, or Linux if you already use brew | `brew install --cask bspeelm/bothy/bothy` |
+| **scoop** | Windows | `scoop bucket add bothy https://github.com/bspeelm/scoop-bothy && scoop install bothy` |
 | **Go** | people who already have Go | `go install github.com/bspeelm/bothy/cmd/bothy@latest` |
 | **source** | contributors | `git clone` then `make install-binary` |
 
