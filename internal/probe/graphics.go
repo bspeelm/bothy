@@ -20,30 +20,42 @@ type Graphics struct {
 	Reason    string
 }
 
-// terminalGraphics is what an emulator can draw, and by which protocol. The
-// distinction matters because Zellij passes the *Kitty* protocol through and
-// nothing else, so a terminal drawing images by a protocol of its own works
-// directly and not through Zellij. Treating "draws images" and "speaks Kitty"
-// as one fact told iTerm2 users their terminal could do neither.
+// terminalGraphics names the protocol Yazi uses on an emulator, which is not
+// the same question as what the emulator is capable of. Yazi chooses by
+// terminal rather than by capability, and its choice changes when a
+// multiplexer is in the way -- so both cases are recorded. Treating "draws
+// images" and "speaks Kitty" as one fact told iTerm2 users their terminal
+// could do neither.
 type terminalGraphics struct {
-	// kitty reports the Kitty graphics protocol, which zellij can carry.
-	kitty bool
-	// own names a protocol of the terminal's own, which zellij cannot.
-	own string
+	// direct is the protocol Yazi uses with nothing in the way.
+	direct string
+	// carried is the protocol Yazi uses inside a multiplexer, and which the
+	// multiplexer therefore has to pass through. Empty when a multiplexer
+	// carries nothing Yazi would pick here.
+	carried string
 }
+
+// kgp is the protocol zellij was gated on: see MinGraphics in internal/mux.
+const kgp = "the Kitty graphics protocol"
 
 // graphicsTerminals is what each emulator can do. A terminal that is absent
 // draws no images at all as far as bothy knows, which is not the same as
 // having been tested.
 var graphicsTerminals = map[string]terminalGraphics{
-	"ghostty": {kitty: true},
-	"kitty":   {kitty: true},
-	"wezterm": {kitty: true},
+	"ghostty": {direct: kgp, carried: kgp},
+	"kitty":   {direct: kgp, carried: kgp},
+
+	// WezTerm speaks Kitty, but Yazi does not use it there: its driver table
+	// maps WezTerm to the iTerm2 protocol first and sixel second, and inside a
+	// multiplexer it takes sixel. zellij carries sixel as well as Kitty, so
+	// previews work -- by a different route than ghostty's, and the reason
+	// shown to the user has to say which.
+	"wezterm": {direct: "iTerm2's inline-image protocol", carried: "sixel"},
 
 	// $TERM_PROGRAM, lowercased by platform.detectTerminal. iTerm2 has drawn
 	// inline images since long before the Kitty protocol existed and still
-	// uses its own.
-	"iterm.app": {own: "iTerm2's own inline-image protocol"},
+	// uses its own, which no multiplexer here carries.
+	"iterm.app": {direct: "iTerm2's own inline-image protocol"},
 }
 
 // CheckGraphics decides whether Yazi should draw images.
@@ -63,28 +75,34 @@ func CheckGraphics(terminal string, mux MuxGraphics) Graphics {
 		}
 	}
 
-	// A protocol of the terminal's own works when Yazi is asked directly and
-	// stops at the multiplexer, which carries Kitty graphics and no other.
-	if g.own != "" {
-		if mux.None {
-			return Graphics{Supported: true,
-				Reason: terminal + " draws images with " + g.own + ", and nothing is in the way"}
-		}
+	if mux.None {
+		return Graphics{Supported: true,
+			Reason: terminal + " draws images with " + g.direct + ", and nothing is in the way"}
+	}
+
+	// Drawn by a protocol of the terminal's own: it works when Yazi is asked
+	// directly and stops at the multiplexer.
+	if g.carried == "" {
 		return Graphics{
 			Reason: fmt.Sprintf("%s draws images with %s, which the multiplexer does not "+
-				"carry — it passes the Kitty graphics protocol through and no other",
-				terminal, g.own),
+				"carry — it passes the Kitty graphics protocol and sixel through, and no other",
+				terminal, g.direct),
 		}
 	}
 
-	if mux.None {
-		return Graphics{Supported: true,
-			Reason: terminal + " supports the Kitty graphics protocol, no multiplexer in the way"}
-	}
+	// The gate is the multiplexer's answer about Kitty, which is the protocol
+	// its version mattered for. A sixel terminal is held to the same answer:
+	// zellij has carried sixel for far longer, so this can only ever be
+	// cautious, and bothy supplies a zellij that passes the gate anyway.
 	if !mux.Carries {
 		return Graphics{Reason: mux.Reason}
 	}
-	return Graphics{Supported: true, Reason: mux.Reason + " and " + terminal + " speaks it"}
+	if g.carried == kgp {
+		return Graphics{Supported: true, Reason: mux.Reason + " and " + terminal + " speaks it"}
+	}
+	return Graphics{Supported: true,
+		Reason: fmt.Sprintf("%s, and Yazi draws on %s with %s, which it also carries",
+			mux.Reason, terminal, g.carried)}
 }
 
 // MuxGraphics is the multiplexer's answer about the Kitty protocol, asked by
