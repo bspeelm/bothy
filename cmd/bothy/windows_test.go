@@ -52,9 +52,12 @@ var windowsExpectation = map[string]doctor.Severity{
 	"quarantine":          doctor.Skip, // an Apple flag
 	"config-schema":       doctor.Pass,
 	"config-keys":         doctor.Pass,
-	// The job builds with the Makefile's flags and not its version stamp, so
-	// bothy reports itself a source build and declines the comparison.
-	"config-age":      doctor.Skip,
+	// Pass, not skip: the job's build carries no -X version stamp, but Go
+	// takes one from the checkout's git metadata, so the binary reports a
+	// version rather than "dev" and the comparison against the manifest
+	// happens. Built from a source tarball with no .git, the same binary
+	// reports a source build and this skips.
+	"config-age":      doctor.Pass,
 	"watermark-image": doctor.Skip, // none configured
 	"mux-config":      doctor.Pass,
 	// No infocmp on Windows, so the question cannot be answered. A correct
