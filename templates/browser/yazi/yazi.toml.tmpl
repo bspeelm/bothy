@@ -51,7 +51,13 @@ max_height = 900
 # — `gio mime image/png` there reports "No default applications", so a local
 # xdg-open would be a working binary with nothing behind it. bothy picks the
 # one that fits this machine; see install.opener.
+#
+# %s1 is Yazi's own placeholder for the hovered file, not the shell's "$@":
+# Yazi substitutes it before handing the string to a shell, and passes no
+# positional arguments -- so "$@" expands to nothing and the opener runs with
+# no file. %s1 rather than %s because every opener here takes one path, and
+# Yazi quotes what it substitutes.
 [opener]
 open = [
-    { run = '{{ .Opener }} "$@"', desc = "{{ .OpenerDesc }}", orphan = true },
+    { run = '{{ .Opener }} %s1', desc = "{{ .OpenerDesc }}", orphan = true },
 ]
