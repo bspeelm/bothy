@@ -12,54 +12,59 @@ darwin_aarch64 = 'b67e1836c468e42e411984b56e52fa7abec08c2bd22c867398e7cc134aac5e
 darwin_x86_64 = '7e31028c62c6955877735d0406807aa484c2a5e6f86235a59e26c29c301da590'
 linux_aarch64 = 'c0ee43802e3313a317c5af2f4eabd6ba13eeedd595af9775f05e18a13ac4f52c'
 linux_x86_64 = '761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7'
+windows_x86_64 = 'a227701b8551c35a9931d9f6da75503cf86d88e182d71fb849a70864c5d57cd7'
 
 [[tool]]
 name = 'fzf'
 tag = 'v0.74.5'
 version = '0.74.5'
-verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64', 'windows_x86_64']
 
 [tool.sha256]
 darwin_aarch64 = 'ada808c7401b9949ce8842274ac16a6b6193fd32dcada396884a6a9a89e5985a'
 darwin_x86_64 = 'aca6cab692e6c069e724a43070a448e18586c7c0fdd1139f6d487ec1680599ed'
 linux_aarch64 = 'cf058001da21724a469b714a29cf4aab9cbe860d218a0d6c1b5b661efad7784c'
 linux_x86_64 = 'd47d7f882972c7d674dbbba998ffa4116e68379616ffac7695d0671e9a722c5f'
+windows_x86_64 = '01f854ec8b9b47c99a7d78023638f7d2056cfb0af56b72dabd112032eed3993e'
 
 [[tool]]
 name = 'jq'
 tag = 'jq-1.8.2'
 version = '1.8.2'
-verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64', 'windows_x86_64']
 
 [tool.sha256]
 darwin_aarch64 = '2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e'
 darwin_x86_64 = 'e94b266e3c26690550006abe63152b782280f4e14374accdf04cbde844f00bc0'
 linux_aarch64 = '8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309'
 linux_x86_64 = 'b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f'
+windows_x86_64 = 'a6fc67fedaf9128a3309a1e2ebb8b986aeccf70122ee46d2cb4849e423f0c627'
 
 [[tool]]
 name = 'lazygit'
 tag = 'v0.66.2'
 version = '0.66.2'
-verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64', 'windows_x86_64']
 
 [tool.sha256]
 darwin_aarch64 = 'fadda59ae7665ba556fcbaa704c7eade6e40d016d3f3b25d6327dd1f3f906a0c'
 darwin_x86_64 = 'de5d3771e4befa6fe17590e21445614998adc1ef34a71f4003df6764247517ab'
 linux_aarch64 = '79a3161eeb642f0473e23db6341f7baabd4a5933e921a9c1167c5d5c765c41a4'
 linux_x86_64 = '158efc9ddfa1241fab5fb3526bb442c8dc6c4b1904d73213b9e4e93e03c52034'
+windows_x86_64 = '8b1e2194c2d8ac660f0a132cb4384e9d2fe1405217a144e280df16383c18d45c'
 
 [[tool]]
 name = 'ripgrep'
 tag = '15.2.0'
 version = '15.2.0'
-verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64', 'windows_x86_64']
 
 [tool.sha256]
 darwin_aarch64 = '3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4'
 darwin_x86_64 = 'af7825fcc69a2afc7a7aea55fc9af90e26421d8f20fe59df32e233c0b8a231c1'
 linux_aarch64 = 'a740b91c82eaf9914cfedd353572f2791cbe0162c84101ee0951058f4dcbc90d'
 linux_x86_64 = '33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c'
+windows_x86_64 = '71b2fef860abe467217a538ff31de02f5258807c0129f771846f87bd029aafc5'
 
 [[tool]]
 name = 'yazi'
@@ -71,18 +76,20 @@ darwin_aarch64 = '3921182a21cceb0a505e5dac578e1487d48104caa5f114e9f8adf40b5a7289
 darwin_x86_64 = '36e09036fcc446488d876d139a5e303f2443b82cfb6ac7dfcb43892d6fe6fa20'
 linux_aarch64 = 'dd569daecaae914185f295634109295ccd25c1b42b02eb89a74f651970024f2e'
 linux_x86_64 = '9b9c39decccf8cb0ff53a7d637d38f8a79d93bbd0099f4ea9c619ef6bb392f5d'
+windows_x86_64 = '7c033e5f2de6355fd03d865319053fc97db780275974ed17653c057f5d0f8d21'
 
 [[tool]]
 name = 'zellij'
 tag = 'v0.45.1'
 version = '0.45.1'
-verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64']
+verified = ['linux_x86_64', 'linux_aarch64', 'darwin_x86_64', 'darwin_aarch64', 'windows_x86_64']
 
 [tool.sha256]
 darwin_aarch64 = 'c029ba4fe1927b79ad9f0cdd59155c4dff80777863c85857d4d09b88b56f9891'
 darwin_x86_64 = '8e8bea22737d1652278c51fc5c26c7c22c9855d0ebb9634a84b8873823093114'
 linux_aarch64 = '05f0802afadd53f8db9514e7cae53c9ae8432fed1b35b8294aa816ee3044a16b'
 linux_x86_64 = '40bcc2e03f5d5ae8e054e39f676081fe12ab70871506996ba595834c3718eefc'
+windows_x86_64 = 'e4684687ebabdaf5fba416df3db818f359c05b7121e949b62f9bf04984798919'
 
 [[tool]]
 name = 'zoxide'
@@ -94,3 +101,4 @@ darwin_aarch64 = 'b55ae6f2f5f23d0a6ccb3bd4eeb2af9c7e0a6556e5255c82100e40305129bb
 darwin_x86_64 = '18ab7ae2633ad6e2ab79a4e665cbba1e95b7c872d44523326efb793202451dad'
 linux_aarch64 = 'f1f16c5d6298d63dee467eedea1cdcd8490e43e493bea43acd416dc9033ef641'
 linux_x86_64 = '2d93385b99f3e82cf2701609a1bffcad863fbeb75aa3fe7eb6be4d29be68b1ae'
+windows_x86_64 = 'f465ae548f8754c8e7edbc60b45fbf58c92bfe123db83d790252d6810fa5daf1'
