@@ -46,6 +46,23 @@ This is also how a licensed palette is used. bothy contains no colours except
 its own, so a palette you licensed stays on your machine. A test enforces
 that rather than leaving it to intent.
 
+### The terminal itself
+
+A terminal reads its configuration at startup, so the file bothy writes for
+yours — `ghostty.conf`, `wezterm.lua` — applies to a window bothy opened. When
+you type `bothy` in a terminal that is already running, bothy paints it
+instead: background, foreground, cursor and the sixteen palette entries, sent
+as escape sequences on the way in and undone on the way out.
+
+Undoing it depends on the terminal. Ghostty restores. **WezTerm does not**:
+measured on 20240203, it accepts the colours and ignores every documented way
+of putting them back, including the query that would let bothy read the old
+ones first — so that window keeps bothy's palette until you close it. Detaching
+from a workspace and carrying on in the same shell is where you would notice.
+
+`bothy config set passthrough terminal` turns the painting off along with the
+generated config, which is how to say your terminal's colours are yours.
+
 ## Using your own tool config instead
 
 If you already have a Yazi configuration you want to keep, keep it.

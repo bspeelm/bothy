@@ -37,7 +37,12 @@ func checkThemeReached(env Env) Result {
 	}
 	targets := []target{
 		{"browser", filepath.Join(install.YaziDir(env.Platform), "theme.toml")},
-		{"terminal", install.GhosttyConf(env.Platform)},
+	}
+	// The configured terminal, not ghostty's path: with wezterm in the slot
+	// this read a file that does not exist, skipped it, and reported that the
+	// palette had reached everything without ever looking at the terminal.
+	if conf, err := install.TerminalConf(env.Platform, env.Config.Slots.Terminal); err == nil {
+		targets = append(targets, target{"terminal", conf})
 	}
 	// The mux theme is named after the palette, so it is found not constructed.
 	if dir := muxDir(env); dir != "" {

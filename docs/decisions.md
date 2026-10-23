@@ -2537,3 +2537,47 @@ to its prompt; and the first run asks before downloading.
 
 **ADR-054** gains: *Amended by ADR-057. "Nobody has taken a session by hand" is
 no longer true, and what doing so found is recorded there.*
+
+## ADR-058 — bothy paints the terminal it was typed in, and cannot always put it back
+
+**Status:** accepted. Follows ADR-057.
+
+One palette reaching every tool has always had a hole in it, hidden by a bug.
+bothy generates a configuration file for the terminal -- `ghostty.conf`,
+`wezterm.lua` -- and a terminal reads its configuration once, at startup. So
+that file reaches only a window bothy opened. Until ADR-057, Windows opened one
+every time, which is why it always looked right there; with that fixed, bothy
+runs in the terminal you typed in and the terminal keeps its own colours. The
+same hole has been open on Linux for every user who typed `bothy` inside their
+own Ghostty.
+
+**bothy now paints the terminal with OSC on the way in** -- foreground,
+background, cursor and the sixteen palette entries, in the same mapping the
+providers' templates write, so a spawned window and a painted one agree. Only a
+terminal bothy has written down, only when something is listening, and never
+when the terminal slot is passed through, which is how to say that your
+terminal's colours are yours.
+
+**It cannot always undo this, and that is the cost being accepted.** Measured on
+WezTerm 20240203 on Windows: the paint is honoured; `OSC 111` and `OSC 104`, with
+either terminator, are ignored; and `OSC 11 ; ?` -- the query that would let
+bothy learn the colour to put back -- goes unanswered within 1.5s. So on that
+terminal the workspace's colours outlive the workspace, until the window is
+closed. bothy emits the resets regardless, because a terminal that implements
+them does restore, and documents which does what.
+
+**The alternative was refusing to paint what cannot be undone**, which is the
+more conservative rule and was rejected deliberately: on the terminal bothy
+recommends for Windows it would mean never painting at all, which is the
+behaviour this record exists to fix. The decision is the user's to reverse --
+`bothy config set passthrough terminal` stops it -- and that is named in the
+documentation rather than left to be discovered.
+
+**What would reverse this.** A WezTerm that answers the query or honours the
+reset; then the conservative rule costs nothing and should be taken.
+
+**A bug found while measuring, fixed here:** `checkThemeReached` tested
+`ghostty.conf` whatever terminal was configured, so with wezterm in the slot it
+read a file that does not exist, skipped it, and reported that the palette had
+reached everything without ever looking at the terminal. It now asks the
+configured provider for its path.
