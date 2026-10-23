@@ -18,7 +18,7 @@ carry most of the weight:
 
 - **`make check` before every commit.** Lint, tests, cross-compilation for four
   targets, and the size budgets. The budgets are failing checks: code is capped
-  at 8,500 lines and comments at 28% of it. They bite regularly and that is
+  at 9,000 lines and comments at 30% of it. They bite regularly and that is
   their job.
 - **Comments record intent, never history.** A comment says why the code is
   shaped the way it is, so that changing it badly is harder. Git holds what it
@@ -37,5 +37,6 @@ trip. A suspected security hole goes through
 
 ## If you are evaluating rather than contributing
 
-The whole codebase is under six thousand lines by design, which means it can be
-read in an afternoon. That is the intended way to decide whether to trust it.
+The whole codebase is under nine thousand lines of code by design, which means
+it can be read in an afternoon. That is the intended way to decide whether to
+trust it.

@@ -9,11 +9,13 @@ LDFLAGS  := -s -w -X main.Version=$(VERSION)
 #
 # Two source limits: code is capped outright, and comments are capped as a
 # share of it, so prose has to stay proportionate to what it explains rather
-# than compete with it for room. See ADR-010, ADR-015 and ADR-021, and ADR-047
-# for why the code cap is 8,100 and the ratio 26.
+# than compete with it for room. ADR-010, ADR-015 and ADR-021 are why the
+# limits have these shapes; ADR-055 is why they have these numbers. The
+# numbers are not repeated in prose here -- they go stale, and they are two
+# lines below.
 MAX_BINARY_BYTES  := 10485760
-MAX_CODE_LINES    := 8500
-MAX_COMMENT_RATIO := 28
+MAX_CODE_LINES    := 9000
+MAX_COMMENT_RATIO := 30
 
 # Live prose, capped as a share of code for the same reason comments are: an
 # agent produces prose the way a fire produces smoke, and uncapped the writing
@@ -58,15 +60,15 @@ budgets: build
 	if [ $$size -gt $(MAX_BINARY_BYTES) ]; then echo "over budget"; exit 1; fi
 	@code=$$(cat $(SOURCES) | awk '/^[[:space:]]*\/\*/{b=1} b{if(/\*\//)b=0; next} !/^[[:space:]]*\/\// && NF' | wc -l); \
 	comments=$$(cat $(SOURCES) | awk '/^[[:space:]]*\/\*/{b=1} b{c++; if(/\*\//)b=0; next} /^[[:space:]]*\/\//{c++} END{print c+0}'); \
-	ratio=$$(( comments * 100 / code )); \
+	tenths=$$(( comments * 1000 / code )); \
 	echo "code:     $$code lines (budget $(MAX_CODE_LINES))"; \
-	echo "comments: $$comments lines, $$ratio% of code (budget $(MAX_COMMENT_RATIO)%)"; \
+	echo "comments: $$comments lines, $$(( tenths / 10 )).$$(( tenths % 10 ))% of code (budget $(MAX_COMMENT_RATIO)%)"; \
 	if [ $$code -gt $(MAX_CODE_LINES) ]; then echo "over the code budget"; exit 1; fi; \
-	if [ $$ratio -gt $(MAX_COMMENT_RATIO) ]; then echo "over the comment budget"; exit 1; fi; \
+	if [ $$(( comments * 100 )) -gt $$(( $(MAX_COMMENT_RATIO) * code )) ]; then echo "over the comment budget"; exit 1; fi; \
 	docs=$$(cat $(LIVE_DOCS) | wc -l); \
-	dratio=$$(( docs * 100 / code )); \
-	echo "prose:    $$docs lines, $$dratio% of code (budget $(MAX_DOC_RATIO)%)"; \
-	if [ $$dratio -gt $(MAX_DOC_RATIO) ]; then echo "over the prose budget"; exit 1; fi
+	dtenths=$$(( docs * 1000 / code )); \
+	echo "prose:    $$docs lines, $$(( dtenths / 10 )).$$(( dtenths % 10 ))% of code (budget $(MAX_DOC_RATIO)%)"; \
+	if [ $$(( docs * 100 )) -gt $$(( $(MAX_DOC_RATIO) * code )) ]; then echo "over the prose budget"; exit 1; fi
 
 # The platforms .goreleaser.yaml ships, plus windows -- which bothy does not
 # support and does compile for today, with no build tags anywhere. Keeping it

@@ -71,15 +71,15 @@ manifest of files scattered across your home.
    providers described by data. Adding a provider must not require core changes.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
-6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 8,500 lines, comments ≤ 28% of
-   code — all three asserted in CI, as failing checks in the `Makefile`.
-   Workspace idle RSS ≤ 200 MB excluding the agent is a design target and is
-   **not** measured; saying otherwise claimed a check that does not exist.
-   The code figure began at 5k and has risen four times, deliberately (ADR-026,
-   ADR-041, ADR-045, ADR-047); the comment figure became a ratio when a total proved to be
-   measuring code and prose together (ADR-021), tightened to 22% once the
-   headroom turned out to have been spent on retelling (ADR-029), and returned
-   to 25% when five releases showed 22% had left no headroom at all (ADR-041).
+6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 9,000 lines, comments ≤ 30% of
+   code, live prose ≤ 75% of code — all four asserted in CI, as failing checks
+   in the `Makefile`, and the two ratios compared exactly rather than to the
+   nearest whole percent. Workspace idle RSS ≤ 200 MB excluding the agent is a
+   design target and is **not** measured; saying otherwise claimed a check that
+   does not exist.
+   The code figure began at 5,000 and every raise since carries its own
+   numbered record, the current one ADR-055. The comment figure became a ratio
+   when a total proved to be measuring code and prose together (ADR-021).
 
    The line budget counts code and comments separately, because counting them
    together was measuring the wrong thing: this codebase comments densely on

@@ -2184,6 +2184,7 @@ the quiet threshold move ADR-010 refused.
 ## ADR-053 — The tower may step aside, and two caps rise once for the work that lets it
 
 **Status:** accepted. Reverses part of ADR-048; amends ADR-052 and ADR-021.
+**Amended by ADR-055:** both caps moved again one platform later.
 
 Weeks of daily use found the tower's two edges. A mirror shows about twenty rows
 and no history. And a reply is a line of text, so an agent's selection menu, its
@@ -2337,3 +2338,62 @@ cost stands; the second-renderer cost does not.*
 compiles the other side of a build tag". With a Windows runner it now does, for
 `!unix`, so the shim budget is justified by the cost of divergence rather than
 by the absence of a compiler.
+
+## ADR-055 — The caps rise after a platform, and the ratios stop rounding in their own favour
+
+**Status:** accepted. Amends ADR-053, ADR-021 and ADR-010.
+
+**The case against this is ADR-053's own words**, and they are quoted because
+they were written to be quoted: *"If the transcript work overruns it, that
+overrun gets its own record and this number is not quietly nudged again"*, and
+*"28 is chosen to leave headroom rather than to clear today, because clearing
+today is what 26 did."* One platform falsified both inside a fortnight. Seven
+raises have now each argued that this one was different, which is what a cap
+that moves whenever it binds looks like from the outside.
+
+**What was measured.** Windows took code from 8,251 to 8,500 -- the entire
+remaining allowance, to the line -- and comments from 27.43% to 28.34%. Prose
+went 6,050 to 6,169. Nothing was trimmed to fit, because there was nothing left
+to trim: the fifth consecutive fat audit ADR-026 requires found the same answer
+as the previous four. The largest function in shipping code is 83 lines
+(`EnsureTools`), two are over eighty, and nothing there is reachable only from
+a test.
+
+**Why this raise is not the last four.** Those funded features, and ADR-026's
+standard is that a cap should be argued once rather than twice in a season. This
+one funds a platform, and a platform is not a feature: it is a per-OS answer at
+every seam that already existed -- a name with `.exe`, a mode bit that does not
+exist, a path whose separator escapes, a signal nobody sends, a known folder
+derived from an environment variable. Those are permanent, and the next
+platform costs the same again. 9,000 covers twice what the third one cost, with
+the margin named as margin.
+
+**30, and what it buys.** At the current count 30% is 2,550 lines against 2,409
+used: 141 lines of genuine headroom, where 28 had none. The density is still
+not a virtue. It is that these files carry measurements -- `Zellij(4501)`
+overriding a terminal brand, `%USERPROFILE%` expanding into a cache directory
+that must exist -- and a measurement deleted is a measurement someone has to
+take again on a machine they may not have.
+
+**The measure was rounding in its own favour, and that is fixed here.** Both
+ratio guards truncated before comparing, so a cap of 28 admitted 28.99 and the
+printed figure hid the difference: CI has been reporting 28 while the real
+number was 28.34. The comparison is now exact -- `comments x 100` against
+`ratio x code` -- and the printed figure carries a decimal, so the number in
+the log is the number being compared. Measured consequence, which is the point:
+under the exact comparison the old cap of 28 **fails today**. The raise is a
+raise and not a formality.
+
+The prose guard had the same defect and is fixed the same way. That costs 84
+lines of headroom it only appeared to have -- 6,375 at the current code count
+rather than 6,459 -- and the cap itself does not move. The rule above it
+stands: over budget means retiring a doc.
+
+**What would reverse this.** A raise argued within a release of this one. If
+9,000 binds that soon, the answer is not a larger number: it is that the
+project has taken on work it cannot carry at the size it claims to be, and that
+belongs in `north-star.md` rather than in the Makefile.
+
+**ADR-053** gains: *Amended by ADR-055. The code cap and the comment ratio both
+moved again, one platform later; the promise not to nudge them is the thing
+ADR-055 has to answer.*
