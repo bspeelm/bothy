@@ -810,3 +810,45 @@ func TestRemovingABoxForgetsTheProjectsThatUsedIt(t *testing.T) {
 		t.Errorf("another box's projects were forgotten too: %q", boxes[kept])
 	}
 }
+
+// Yazi's thumbnails were the one thing XDG_CACHE_HOME never reached. An unset
+// preview.cache_dir does not fall back to Yazi's cache directory, which bothy
+// redirects, but to $TMPDIR/yazi-<uid> -- so every preview bothy drew wrote
+// outside the tree, on every platform, and uninstall left it behind.
+//
+// TestInstallWritesNothingOutsideBothysTree cannot catch this: the escape
+// happens when yazi runs, not when bothy writes. So assert the generated
+// config names a path inside the tree.
+func TestYaziThumbnailsAreCachedInsideBothysTree(t *testing.T) {
+	p := sandbox(t)
+	if _, err := Run(p, config.Default(), Options{Offline: true}); err != nil {
+		t.Fatal(err)
+	}
+
+	yaziToml := filepath.Join(p.ConfigRoot(), "yazi", "yazi.toml")
+	b, err := os.ReadFile(yaziToml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(b)
+	if !strings.Contains(body, "cache_dir") {
+		t.Fatalf("the yazi config sets no preview cache_dir, so thumbnails go to $TMPDIR:\n%s", body)
+	}
+
+	var cacheDir string
+	for _, line := range strings.Split(body, "\n") {
+		if after, ok := strings.CutPrefix(strings.TrimSpace(line), "cache_dir"); ok {
+			cacheDir = strings.Trim(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(after), "=")), "'\"")
+			break
+		}
+	}
+	if cacheDir == "" {
+		t.Fatal("cache_dir is present but empty, which is how Yazi spells 'use $TMPDIR'")
+	}
+	if !filepath.IsAbs(cacheDir) {
+		t.Errorf("cache_dir = %q, which Yazi requires to be absolute", cacheDir)
+	}
+	if !strings.HasPrefix(cacheDir, p.BothyDir()) {
+		t.Errorf("cache_dir = %q, outside bothy's tree at %q", cacheDir, p.BothyDir())
+	}
+}

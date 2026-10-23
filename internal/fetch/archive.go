@@ -38,6 +38,12 @@ func archiveExt(name string) string {
 	for _, ext := range []string{
 		".tar.bz2", ".tbz2", ".tar.zst", ".tzst", ".tar.lz", ".tar.lzma",
 		".tar", ".7z", ".rar", ".gz", ".bz2", ".zst", ".xz",
+		// Platform installers, which are not archives bothy can take a binary
+		// out of. zellij publishes an .msi beside its .zip, and a release that
+		// names one would otherwise reach the bare-binary branch below and be
+		// written out as the executable -- with a checksum that matches,
+		// because the installer is exactly what was pinned.
+		".msi", ".dmg", ".pkg", ".deb", ".rpm",
 	} {
 		if strings.HasSuffix(name, ext) {
 			return strings.TrimPrefix(ext, ".")

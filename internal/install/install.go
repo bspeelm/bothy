@@ -40,6 +40,10 @@ type Data struct {
 	Opener     string
 	OpenerDesc string
 
+	// YaziCacheDir is where Yazi writes thumbnails. Named because Yazi's
+	// preview cache does not follow XDG_CACHE_HOME -- see the template.
+	YaziCacheDir string
+
 	// Watermark is the image to sit behind the terminal, already expanded.
 	// WatermarkOpacity is not configurable: tune it in an override, which is
 	// how every other ghostty setting is tuned.
@@ -254,6 +258,7 @@ func buildData(p platform.Info, cfg config.Config, pal theme.Palette) Data {
 		Container:        p.InContainer(),
 		Opener:           opener(p),
 		OpenerDesc:       openerDesc(p),
+		YaziCacheDir:     filepath.Join(p.CacheDir(), "yazi", "previews"),
 		EditorBin:        EditorBinary(cfg.Slots.Editor),
 		AgentBin:         AgentBinary(cfg.Slots.Agent),
 		BrowserBin:       cfg.Slots.Browser,

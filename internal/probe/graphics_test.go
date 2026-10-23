@@ -99,3 +99,29 @@ func TestAnUnknownTerminalIsNotClaimedIncapable(t *testing.T) {
 		t.Errorf("the reason overclaims: %s", g.Reason)
 	}
 }
+
+// bothy recorded wezterm as speaking the Kitty protocol, which is true of the
+// terminal and false of what Yazi does there: Yazi's driver table maps WezTerm
+// to the iTerm2 protocol first and sixel second, and never to Kitty. The
+// verdict was right by accident -- zellij carries sixel too -- while the
+// reason shown to the user named a protocol nothing in the chain was using.
+func TestWezTermDrawsImagesButNotWithKitty(t *testing.T) {
+	through := CheckGraphics("wezterm", MuxGraphics{
+		Carries: true,
+		Reason:  "zellij 0.45.1 implements the Kitty graphics protocol",
+	})
+	if !through.Supported {
+		t.Errorf("wezterm through zellij = unsupported: %s", through.Reason)
+	}
+	if !strings.Contains(through.Reason, "sixel") {
+		t.Errorf("the reason does not name the protocol Yazi actually uses: %s", through.Reason)
+	}
+
+	direct := CheckGraphics("wezterm", MuxGraphics{None: true})
+	if !direct.Supported {
+		t.Errorf("bare wezterm = unsupported: %s", direct.Reason)
+	}
+	if strings.Contains(direct.Reason, "Kitty") {
+		t.Errorf("the reason claims Kitty, which Yazi does not use here: %s", direct.Reason)
+	}
+}

@@ -238,3 +238,27 @@ func TestStagingPutsNothingInPlace(t *testing.T) {
 		t.Errorf("staged in %s, want %s — the rename has to stay on one filesystem", filepath.Dir(tmp), dir)
 	}
 }
+
+// A platform installer is not an archive bothy can take a binary out of, and
+// the bare-binary branch would otherwise accept one: zellij publishes an .msi
+// beside its .zip, so an asset name with that extension would have been
+// written out as `zellij.exe`, mode 0755 -- and the checksum would have
+// matched, because the installer is exactly what was pinned.
+func TestExtractRefusesPlatformInstallers(t *testing.T) {
+	for _, asset := range []string{
+		"zellij-installer.msi",
+		"Ghostty.dmg",
+		"something.pkg",
+		"ripgrep_15.2.0-1_amd64.deb",
+		"ripgrep-15.2.0.rpm",
+	} {
+		_, err := Extract([]byte("INSTALLER"), asset, []string{"zellij"})
+		if err == nil {
+			t.Errorf("%s was accepted; an installer must not become the binary", asset)
+			continue
+		}
+		if !strings.Contains(err.Error(), "cannot unpack") {
+			t.Errorf("%s: error should say it cannot unpack it: %v", asset, err)
+		}
+	}
+}
