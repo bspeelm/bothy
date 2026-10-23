@@ -17,7 +17,7 @@
 Name:           bothy
 Version:        0.13.1
 Release:        1%{?dist}
-Summary:        A turn-key terminal workspace built from tools you already trust
+Summary:        A terminal workspace assembled from tools you already have
 
 License:        MIT
 URL:            https://github.com/bspeelm/bothy
@@ -32,12 +32,12 @@ BuildRequires:  git-core
 # opinion about how the workspace gets its tools. See PLAN.md §4.
 
 %description
-bothy launches a persistent terminal layout — a file browser, an agent and a
-shell — and tells you what is broken and how to fix it. It installs any tool
-you are missing into its own directory, writes its own configs there, and
-leaves your dotfiles alone: its own things live under ~/.local/share/bothy and
-your settings under ~/.config/bothy, and `bothy uninstall` removes the tree and
-the binary, naming what it leaves.
+bothy opens a persistent terminal layout — a file browser, an agent and a
+shell — and reports what is wrong and how to fix it. It installs any missing
+tool into its own directory, writes its own configuration there, and leaves
+your dotfiles untouched: its own files live under ~/.local/share/bothy and your
+settings under ~/.config/bothy. `bothy uninstall` removes the tree and the
+binary, naming what it leaves.
 
 %prep
 %autosetup -n %{name}-%{version}

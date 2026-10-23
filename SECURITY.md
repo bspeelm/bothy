@@ -8,8 +8,8 @@ maintainer works; a public issue is the one route to avoid for a real hole.
 
 [advisory]: https://github.com/bspeelm/bothy/security/advisories/new
 
-No bounty, and no fixed response time. bothy is one person's project and says
-so rather than promising a schedule it cannot keep.
+No bounty, and no fixed response time: bothy is maintained by one person, and
+states that rather than promising a schedule it cannot keep.
 
 ## In scope
 

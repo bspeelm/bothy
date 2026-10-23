@@ -1,11 +1,10 @@
 # Docs
 
-Start with the [README](../README.md). These go deeper.
+Start with the [README](../README.md), then the
+[wiki](https://github.com/bspeelm/bothy/wiki) for how to use it. These files are
+for understanding or changing the project itself.
 
-## If you are using bothy
-
-
-## If you are wondering why it is like this
+## Why it is the way it is
 
 - [**decisions.md**](decisions.md) — every architectural decision, numbered,
   with the reasoning and what was given up. The longest file here and the one
@@ -13,7 +12,7 @@ Start with the [README](../README.md). These go deeper.
 - [**north-star.md**](north-star.md) — what bothy is aiming at, so a change can
   be judged by whether it gets closer.
 
-## If you are changing it
+## Changing it
 
 - [**PLAN.md**](PLAN.md) — the architecture: what each package owns and where
   the seams are.

@@ -1,8 +1,5 @@
 # North star
 
-> *A room you can trust because it wants nothing. The agent, of course, is
-> another matter.*
-
 What bothy is, so that every milestone can be judged by whether it gets closer.
 The reasons things are the way they are are in [`decisions.md`](decisions.md).
 The road as it was planned is [`history/plan-1.0.md`](history/plan-1.0.md), kept

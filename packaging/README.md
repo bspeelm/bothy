@@ -37,7 +37,7 @@ copr-cli create bothy \
     --chroot fedora-44-x86_64 \
     --chroot fedora-43-x86_64 \
     --chroot fedora-44-aarch64 \
-    --description "A turn-key terminal workspace built from tools you already trust" \
+    --description "A terminal workspace assembled from tools you already have" \
     --instructions "dnf copr enable bspeelman/bothy && dnf install bothy"
 ```
 

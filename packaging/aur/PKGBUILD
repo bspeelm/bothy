@@ -2,7 +2,7 @@
 pkgname=bothy
 pkgver=0.9.1
 pkgrel=1
-pkgdesc='A turn-key terminal workspace built from tools you already trust'
+pkgdesc='A terminal workspace assembled from tools you already have'
 arch=('x86_64' 'aarch64')
 url='https://github.com/bspeelm/bothy'
 license=('MIT')

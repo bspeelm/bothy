@@ -1,13 +1,13 @@
-name: Something is broken
+name: Bug report
 description: bothy did the wrong thing, or refused to do the right one
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        `bothy doctor --json` answers most of what would otherwise be a round
-        trip. Please paste it — it is the fastest way to a fix, and it never
-        contains anything but paths and versions.
+        `bothy doctor --json` answers most of what would otherwise need a
+        follow-up question. Please attach it: it contains only paths and
+        versions.
 
   - type: textarea
     id: what

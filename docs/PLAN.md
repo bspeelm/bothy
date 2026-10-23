@@ -284,8 +284,8 @@ itself in [`north-star.md`](north-star.md) §6.
   GUIs. They solve *many agents at once* by shipping a new app, which is the
   weight-gain trajectory this project rejects.
 - **Omakub / Omarchy** — the same taste one level up, at the OS.
-- **devcontainers, DevPod** — project *dependency* setup. Orthogonal; compose,
-  don't compete.
+- **devcontainers, DevPod** — project *dependency* setup. Orthogonal: they
+  compose with bothy rather than competing with it.
 - **Hand-rolled setups** — this layout is widespread folk practice in dotfiles
   and blog posts. That is the demand signal: everyone builds it by hand.
 
