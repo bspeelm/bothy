@@ -8,6 +8,12 @@
 -- WezTerm falls back to its built-in defaults, silently, when a config file
 -- fails to load. bothy checks the file exists before spawning; a Lua error
 -- here would still pass that check and lose the theme without saying so.
+--
+-- Overrides are appended to generated files, which works for every other
+-- format bothy writes because a later statement wins. Lua forbids statements
+-- after a return, so an override appended here is a syntax error -- and one
+-- WezTerm will not report. Use wezterm's own --config flags until bothy has a
+-- merge that does not rely on appending.
 local wezterm = require("wezterm")
 
 return {

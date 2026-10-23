@@ -7,6 +7,7 @@ package install
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -160,6 +161,30 @@ func VimDir(p platform.Info) string  { return filepath.Join(p.ConfigRoot(), "vim
 func VimRC(p platform.Info) string   { return filepath.Join(VimDir(p), "vimrc") }
 func GhosttyConf(p platform.Info) string {
 	return filepath.Join(p.ConfigRoot(), "ghostty.conf")
+}
+
+// fileOne is the file(1) Yazi uses to detect MIME types, when it needs naming.
+// Windows has no file(1) and Yazi has no fallback: without one every entry is
+// "Cannot find `file` to detect the file's MIME type" and nothing previews or
+// opens by type. Git for Windows ships one but puts only git on PATH, so the
+// path is named rather than searched for.
+func fileOne(p platform.Info) string {
+	if p.OS != "windows" {
+		return "" // file(1) is on PATH everywhere else
+	}
+	if found, err := exec.LookPath("file.exe"); err == nil {
+		return found
+	}
+	for _, root := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), `C:\Program Files`} {
+		if root == "" {
+			continue
+		}
+		cand := filepath.Join(root, "Git", "usr", "bin", "file.exe")
+		if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+			return cand
+		}
+	}
+	return ""
 }
 
 // TerminalSpawn is how a terminal provider is opened. The error names the
@@ -469,6 +494,9 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 	}
 	if cfg.Slots.Browser == "yazi" && !cfg.PassesThrough("browser") {
 		env.set("YAZI_CONFIG_HOME", YaziDir(p))
+		if one := fileOne(p); one != "" {
+			env.set("YAZI_FILE_ONE", one)
+		}
 	} else {
 		env.unset("YAZI_CONFIG_HOME")
 	}
