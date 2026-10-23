@@ -1,7 +1,9 @@
 package main
 
 import (
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/config"
@@ -132,6 +134,12 @@ func TestPlanLaunchDecidesWhereTheWorkspaceOpens(t *testing.T) {
 				t.Fatal(err)
 			}
 			got.Reason = "" // the wording is decideLaunch's business
+			// Fixture paths are POSIX-absolute; Windows resolves them onto the
+			// current drive and spells them with backslashes. What is under
+			// test is which directory wins, not how one is written.
+			if samePath(got.Dir, tc.want.Dir) {
+				got.Dir = tc.want.Dir
+			}
 			if got != tc.want {
 				t.Errorf("planLaunch = %+v, want %+v", got, tc.want)
 			}
@@ -174,4 +182,14 @@ func TestPlanLaunchSpawnsOrHopsButSaysBoth(t *testing.T) {
 	if got.Reason == "" {
 		t.Error("no reason given, so a failed spawn would report nothing")
 	}
+}
+
+// samePath compares two paths with the volume and the separator spelling
+// removed, so a table written in one platform's notation can be read in
+// another's.
+func samePath(a, b string) bool {
+	trim := func(p string) string {
+		return filepath.ToSlash(strings.TrimPrefix(p, filepath.VolumeName(p)))
+	}
+	return trim(a) == trim(b)
 }

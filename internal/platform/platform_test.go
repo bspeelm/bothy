@@ -60,8 +60,9 @@ func TestXDGHonoursEnv(t *testing.T) {
 		t.Errorf("xdg() = %q, want /custom/cfg", got)
 	}
 	t.Setenv("XDG_CONFIG_HOME", "")
-	if got := xdg("XDG_CONFIG_HOME", "/home/x", ".config"); got != "/home/x/.config" {
-		t.Errorf("xdg() = %q, want the fallback", got)
+	want := filepath.Join("/home/x", ".config")
+	if got := xdg("XDG_CONFIG_HOME", "/home/x", ".config"); got != want {
+		t.Errorf("xdg() = %q, want the fallback %q", got, want)
 	}
 }
 
@@ -156,8 +157,9 @@ func TestAStrandedSessionFindsItsTree(t *testing.T) {
 	t.Setenv("BOTHY_DIR", "")
 	t.Setenv("XDG_DATA_HOME", "/home/me/.local/share/bothy/share")
 
-	if got := Detect().BothyDir(); got != "/home/me/.local/share/bothy" {
-		t.Errorf("BothyDir = %q, want the tree the session was started from", got)
+	want := filepath.Join("/home/me/.local/share/bothy")
+	if got := Detect().BothyDir(); got != want {
+		t.Errorf("BothyDir = %q, want the tree the session was started from, %q", got, want)
 	}
 }
 
@@ -180,8 +182,9 @@ func TestYourOwnXdgDataHomeIsLeftAlone(t *testing.T) {
 	t.Setenv("BOTHY_DIR", "")
 	t.Setenv("XDG_DATA_HOME", "/home/me/somewhere/share")
 
-	if got := Detect().BothyDir(); got != "/home/me/somewhere/share/bothy" {
-		t.Errorf("BothyDir = %q, want it derived from XDG_DATA_HOME as usual", got)
+	want := filepath.Join("/home/me/somewhere/share", "bothy")
+	if got := Detect().BothyDir(); got != want {
+		t.Errorf("BothyDir = %q, want it derived from XDG_DATA_HOME as usual, %q", got, want)
 	}
 }
 
@@ -192,8 +195,9 @@ func TestAnUnfamiliarShapeIsNotGuessedAt(t *testing.T) {
 	t.Setenv("BOTHY_DIR", "")
 	t.Setenv("XDG_DATA_HOME", "/home/me/.local/share")
 
-	if got := Detect().BothyDir(); got != "/home/me/.local/share/bothy" {
-		t.Errorf("BothyDir = %q, want the ordinary derivation", got)
+	want := filepath.Join("/home/me/.local/share", "bothy")
+	if got := Detect().BothyDir(); got != want {
+		t.Errorf("BothyDir = %q, want the ordinary derivation, %q", got, want)
 	}
 }
 

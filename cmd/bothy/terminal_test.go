@@ -20,6 +20,10 @@ func clearDisplay(t *testing.T) {
 	t.Setenv("DISPLAY", "")
 	t.Setenv("WAYLAND_DISPLAY", "")
 	t.Setenv(InTerminalEnv, "")
+	// On macOS and Windows the question is whether this is a remote shell, so
+	// an ssh session running the tests is ambient input to the thing measured.
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_TTY", "")
 }
 
 func TestForceFlagsWin(t *testing.T) {

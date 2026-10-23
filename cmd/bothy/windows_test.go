@@ -52,9 +52,11 @@ var windowsExpectation = map[string]doctor.Severity{
 	"quarantine":          doctor.Skip, // an Apple flag
 	"config-schema":       doctor.Pass,
 	"config-keys":         doctor.Pass,
-	"config-age":          doctor.Pass,
-	"watermark-image":     doctor.Skip, // none configured
-	"mux-config":          doctor.Pass,
+	// The job builds with the Makefile's flags and not its version stamp, so
+	// bothy reports itself a source build and declines the comparison.
+	"config-age":      doctor.Skip,
+	"watermark-image": doctor.Skip, // none configured
+	"mux-config":      doctor.Pass,
 	// No infocmp on Windows, so the question cannot be answered. A correct
 	// skip rather than a gap: this is the one check whose macOS Pass cannot
 	// hold here.
@@ -133,10 +135,29 @@ func TestBothyInstallsOnWindows(t *testing.T) {
 		}
 	}
 
-	if out, code := w.run("uninstall"); code != 0 {
+	out, code = w.run("uninstall")
+	if code != 0 {
 		t.Fatalf("uninstall exited %d:\n%s", code, out)
 	}
-	assertGone(t, w.snapshot())
+	// Windows holds a running program's image open, so this process cannot
+	// delete its own executable. What uninstall owes the user there is to say
+	// so and name the file, which is what this asserts and what the walk
+	// below therefore leaves out.
+	if !strings.Contains(out, "bothy.exe") {
+		t.Errorf("uninstall did not name the binary it could not remove:\n%s", out)
+	}
+	assertGone(t, without(w.snapshot(), ".local/bin/bothy.exe"))
+}
+
+// without is files with one path dropped.
+func without(files []string, drop string) []string {
+	var out []string
+	for _, f := range files {
+		if f != drop {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // win is bothy installed into a temporary home on this machine.
@@ -157,6 +178,15 @@ func startWindows(t *testing.T) *win {
 	}
 
 	home := t.TempDir()
+	// Windows derives LocalAppData by expanding %USERPROFILE%, and verifies
+	// the result exists. A temporary home without an AppData tree therefore
+	// has no cache directory at all, and yazi and zellij both abort on
+	// startup instead of reading the config this test is here to check.
+	for _, d := range []string{"Local", "Roaming"} {
+		if err := os.MkdirAll(filepath.Join(home, "AppData", d), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
 	bin := filepath.Join(home, ".local", "bin", "bothy.exe")
 	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
 		t.Fatal(err)
@@ -180,9 +210,15 @@ func (w *win) run(args ...string) (string, int) {
 	// runner's git and the shell live there.
 	cmd.Env = []string{
 		"USERPROFILE=" + w.home,
+		"APPDATA=" + filepath.Join(w.home, "AppData", "Roaming"),
+		"LOCALAPPDATA=" + filepath.Join(w.home, "AppData", "Local"),
 		"SystemRoot=" + os.Getenv("SystemRoot"),
 		"PATH=" + os.Getenv("SystemRoot") + `\System32;` + os.Getenv("SystemRoot") +
 			`;C:\Program Files\Git\cmd`,
+		// A Windows console sets no TERM, and without one the terminfo check
+		// answers that instead of the question this table records. WezTerm
+		// sets it, so this is what a Windows user's doctor looks at.
+		"TERM=xterm-256color",
 		"TEMP=" + os.Getenv("TEMP"),
 		"TMP=" + os.Getenv("TMP"),
 	}
@@ -206,4 +242,23 @@ func (w *win) doctor() doctor.Report {
 	return rep
 }
 
-func (w *win) snapshot() []string { return filesUnder(w.t, w.home) }
+// snapshot is everything under the temporary home except AppData, which is
+// Windows' own per-user tree rather than bothy's. zellij and yazi resolve
+// their cache and data directories through it whatever bothy sets -- the
+// escape ADR-054 records -- and it is inside this home only because Windows
+// derives it from USERPROFILE.
+func (w *win) snapshot() []string {
+	var out, windows []string
+	for _, f := range filesUnder(w.t, w.home) {
+		if strings.HasPrefix(f, "AppData/") {
+			windows = append(windows, f)
+			continue
+		}
+		out = append(out, f)
+	}
+	if len(windows) > 0 {
+		w.t.Logf("%d file(s) under AppData, which belongs to Windows:\n  %s",
+			len(windows), strings.Join(windows, "\n  "))
+	}
+	return out
+}

@@ -11,6 +11,11 @@ import (
 // instead -- five bytes shorter -- so FitSocket handed back names too long to
 // bind, and `bothy connect` builds the longest ones.
 func TestTheSocketDirectoryIsTheOneZellijWillUse(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// zellij uses named pipes there, not a socket path under a runtime
+		// directory, so there is no budget to measure and nothing to fit.
+		t.Skip("zellij binds named pipes on Windows, not filesystem sockets")
+	}
 	if got := socketDir("", "/run/user/1000", "/tmp", 1000); got != "/run/user/1000/zellij" {
 		t.Errorf("socketDir = %q; zellij binds under the runtime directory", got)
 	}

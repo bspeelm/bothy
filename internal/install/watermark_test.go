@@ -1,6 +1,7 @@
 package install
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -54,7 +55,8 @@ func TestWatermarkExpandsATilde(t *testing.T) {
 	p := platform.Info{Home: "/home/me", DataDir: "/home/me/.local/share"}
 
 	data := buildData(p, cfg, theme.Palette{})
-	if data.Watermark != "/home/me/pictures/art.png" {
-		t.Errorf("Watermark = %q, want the tilde expanded", data.Watermark)
+	want := filepath.Join("/home/me", "pictures", "art.png")
+	if data.Watermark != want {
+		t.Errorf("Watermark = %q, want the tilde expanded to %q", data.Watermark, want)
 	}
 }

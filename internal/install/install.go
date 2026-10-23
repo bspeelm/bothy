@@ -175,7 +175,7 @@ func fileOne(p platform.Info) string {
 	if found, err := exec.LookPath("file.exe"); err == nil {
 		return found
 	}
-	for _, root := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), `C:\Program Files`} {
+	for _, root := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)")} {
 		if root == "" {
 			continue
 		}

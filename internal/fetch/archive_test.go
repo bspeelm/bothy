@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -231,7 +232,9 @@ func TestStagingPutsNothingInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fi.Mode().Perm() != 0o755 {
+	// Windows carries no permission bits; Go reports 0666 whatever was asked
+	// for, which is why platform.Runnable does not consult them there.
+	if runtime.GOOS != "windows" && fi.Mode().Perm() != 0o755 {
 		t.Errorf("staged mode = %v, want 0755", fi.Mode().Perm())
 	}
 	if filepath.Dir(tmp) != dir {

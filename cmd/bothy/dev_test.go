@@ -242,6 +242,12 @@ func TestUnhookingWaitsForACleanupAlreadyUnderWay(t *testing.T) {
 
 func hangup(t *testing.T) {
 	t.Helper()
+	if runtime.GOOS == "windows" {
+		// os.Process.Signal reports "not supported by windows", and nothing
+		// raises SIGHUP there, so the window closing is not what ends a
+		// session on that platform.
+		t.Skip("Windows has no hangup signal to send")
+	}
 	self, err := os.FindProcess(os.Getpid())
 	if err != nil {
 		t.Fatal(err)

@@ -126,7 +126,8 @@ func TestValidateRejectsAnEmptyProfile(t *testing.T) {
 func TestExpandResolvesTilde(t *testing.T) {
 	for _, tc := range []struct{ in, want string }{
 		{"~", "/home/x"},
-		{"~/p.toml", "/home/x/p.toml"},
+		// Joined, not written out: Expand uses the platform separator.
+		{"~/p.toml", filepath.Join("/home/x", "p.toml")},
 		{"/etc/p.toml", "/etc/p.toml"},
 		{"", ""},
 		// Only a leading "~/" is a home reference. "~foo" is another user's
