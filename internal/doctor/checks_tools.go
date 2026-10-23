@@ -16,6 +16,31 @@ import (
 
 // Checks about the tools: where each came from, and whether bothy can reach it.
 
+// checkMSVCRuntime catches a Windows trap that leaves no message on screen.
+// yazi's release build links the Microsoft C runtime dynamically, and a fresh
+// Windows does not ship it -- so yazi exits immediately with
+// STATUS_DLL_NOT_FOUND and the browser pane is simply empty. zellij's build
+// links it statically and is unaffected, which makes the failure look like a
+// yazi problem rather than a missing system library.
+func checkMSVCRuntime(env Env) Result {
+	if env.Platform.OS != "windows" {
+		return skip("the Microsoft C runtime is a Windows library")
+	}
+	// Named rather than probed by running something: the tools that need it
+	// are not necessarily installed yet when this runs.
+	const dll = "VCRUNTIME140.dll"
+	root := os.Getenv("SystemRoot")
+	if root == "" {
+		root = `C:\Windows`
+	}
+	if _, err := os.Stat(filepath.Join(root, "System32", dll)); err == nil {
+		return pass("the Microsoft C runtime is installed")
+	}
+	return fail(dll+" is missing",
+		"yazi exits the moment it starts and the browser pane stays empty",
+		"winget install Microsoft.VCRedist.2015+.x64")
+}
+
 // checkToolProvenance reports where each tool came from and whether it is
 // still good enough. The failure it catches: a system tool below the minimum
 // with nothing supplied to cover it.

@@ -55,6 +55,7 @@ var macExpectation = map[string]doctor.Severity{
 	"watermark-image":       doctor.Skip, // none configured
 	"mux-config":            doctor.Pass,
 	"terminfo":              doctor.Pass, // infocmp is in /usr/bin, and TERM is set below
+	"msvc-runtime":          doctor.Skip, // a Windows library
 	// The check this job exists to prove. macOS has `open`, not xdg-open, and
 	// until #95 the generated yazi config named the wrong one on every Mac.
 	"opener":              doctor.Pass,

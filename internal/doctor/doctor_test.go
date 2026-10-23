@@ -256,3 +256,34 @@ func TestChecksNameRealCapabilities(t *testing.T) {
 		}
 	}
 }
+
+// yazi's Windows build links the Microsoft C runtime dynamically and a fresh
+// Windows does not ship it, so yazi exits with STATUS_DLL_NOT_FOUND and the
+// browser pane is empty with nothing on screen to say why. Found by running
+// it: zellij links the same runtime statically, so only yazi dies and it looks
+// like a yazi bug rather than a missing system library.
+func TestMSVCRuntimeIsCheckedOnWindowsOnly(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("SystemRoot", root)
+
+	win := Env{Platform: platform.Info{OS: "windows"}}
+	if got := checkMSVCRuntime(win).Severity; got != Fail {
+		t.Errorf("missing runtime = %v, want Fail: the browser pane would be empty", got)
+	}
+
+	if err := os.MkdirAll(filepath.Join(root, "System32"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "System32", "VCRUNTIME140.dll"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := checkMSVCRuntime(win).Severity; got != Pass {
+		t.Errorf("runtime present = %v, want Pass", got)
+	}
+
+	for _, os_ := range []string{"linux", "darwin"} {
+		if got := checkMSVCRuntime(Env{Platform: platform.Info{OS: os_}}).Severity; got != Skip {
+			t.Errorf("%s = %v, want Skip: it is a Windows library", os_, got)
+		}
+	}
+}

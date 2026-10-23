@@ -104,6 +104,7 @@ var onlineExpectation = map[string]doctor.Severity{
 	"watermark-image": doctor.Skip, // none configured
 	"mux-config":      doctor.Pass,
 	"terminfo":        doctor.Pass, // only because prep installed infocmp
+	"msvc-runtime":    doctor.Skip, // a Windows library
 	// Warn: in a container the opener forwards to the host,
 	// and neither base image ships flatpak-spawn to forward with. There is
 	// nothing to open a file with here and nothing bothy can do about it.
