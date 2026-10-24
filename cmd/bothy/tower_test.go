@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bspeelm/bothy/internal/mux"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // A real list-panes reply, from a running cockpit. The agent is terminal_1 here
@@ -856,5 +858,100 @@ func TestAMeasuredPaneReservesTheReplyLineAndAnUnmeasuredOneCannot(t *testing.T)
 	}
 	if strings.Contains(unmeasured.String(), "> ") {
 		t.Error("a prompt was drawn on a pane of unknown height")
+	}
+}
+
+// A backend that records the two ways a take-over can go. Embedding Zellij
+// keeps the rest of the interface real, so a method added to Backend later
+// cannot silently start being answered by a stub.
+type takeStub struct {
+	mux.Zellij
+	ended  []string
+	joined []string
+}
+
+func (s *takeStub) Kill(_ string, _ []string, session string) error {
+	s.ended = append(s.ended, session)
+	return nil
+}
+
+func (s *takeStub) Join(_, session string, _ []string) error {
+	s.joined = append(s.joined, session)
+	return nil
+}
+
+// Measured on Windows 11 with zellij 0.45.1, both nested_session_handling
+// values, and again with two plain sessions and no bothy in the way: the host
+// does not descend into a nested session there. It keeps its own tab bar,
+// status bar and keybindings, so the window draws two of everything and
+// Ctrl+q ends the tower instead of coming back to it. On Linux the same take
+// renders one bar reading "bothy-tower > bothy-proj-a" and Ctrl-o ] returns.
+// So the take-over hands the window over whole there, and nests here.
+func TestTheWindowIsHandedOverWhereTheMultiplexerWillNotDescend(t *testing.T) {
+	// Unset deliberately: with it set, step asks the backend to expand its own
+	// pane and the embedded Zellij shells out for real. The test would then
+	// pass or hang depending on whether it was run from inside a session.
+	t.Setenv("ZELLIJ_PANE_ID", "")
+	win := platform.Info{OS: "windows", Root: t.TempDir()}
+	s := &takeStub{}
+	step(win, s, "zellij", nil, "bothy-api")
+
+	if len(s.joined) != 0 {
+		t.Errorf("joined %v inside the pane; that draws two sets of chrome there", s.joined)
+	}
+	if want := []string{towerSession}; !slices.Equal(s.ended, want) {
+		t.Errorf("ended %v, want %v: the tower's own session is the one that goes", s.ended, want)
+	}
+	if got, ok := takeRequest(win); !ok || got != "bothy-api" {
+		t.Errorf("request = %q,%v; the process that opened the tower has nothing to act on", got, ok)
+	}
+}
+
+// The reference platforms keep the multiplexer's own behaviour, which is
+// better than anything bothy can do by hand: the switch is instant and the
+// tower's panes are never rebuilt. This is the half of the divergence that a
+// change to the Windows arm must not quietly take with it.
+func TestTheReferencePlatformsStillNestInsideThePane(t *testing.T) {
+	// Unset deliberately: with it set, step asks the backend to expand its own
+	// pane and the embedded Zellij shells out for real. The test would then
+	// pass or hang depending on whether it was run from inside a session.
+	t.Setenv("ZELLIJ_PANE_ID", "")
+	for _, goos := range []string{"linux", "darwin"} {
+		if handOver(goos) {
+			t.Errorf("%s hands the window over; it descends, and rebuilding the tower is a cost it does not owe", goos)
+		}
+		dir := platform.Info{OS: goos, Root: t.TempDir()}
+		s := &takeStub{}
+		step(dir, s, "zellij", nil, "bothy-api")
+		if want := []string{"bothy-api"}; !slices.Equal(s.joined, want) {
+			t.Errorf("%s joined %v, want %v", goos, s.joined, want)
+		}
+		if len(s.ended) != 0 {
+			t.Errorf("%s ended %v; nesting keeps the tower where it is", goos, s.ended)
+		}
+		if _, ok := takeRequest(dir); ok {
+			t.Errorf("%s left a request behind; the window was never handed over", goos)
+		}
+	}
+	if !handOver("windows") {
+		t.Error("windows nests, and the measurement says the host does not descend there")
+	}
+}
+
+// Read once, because the window comes back to the tower and the tower closing
+// again is not a second request to leave it.
+func TestAHandOverIsAskedForOnce(t *testing.T) {
+	p := platform.Info{OS: "windows", Root: t.TempDir()}
+	if _, ok := takeRequest(p); ok {
+		t.Fatal("a request with nothing asked for")
+	}
+	if err := requestTake(p, "bothy-api"); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := takeRequest(p); !ok || got != "bothy-api" {
+		t.Fatalf("request = %q,%v", got, ok)
+	}
+	if got, ok := takeRequest(p); ok {
+		t.Errorf("request = %q a second time; the window would never stay with the tower", got)
 	}
 }
