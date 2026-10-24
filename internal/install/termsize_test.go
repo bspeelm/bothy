@@ -100,3 +100,43 @@ func TestAMeasuredSizeWinsOverTheInheritedOne(t *testing.T) {
 		t.Errorf("COLUMNS = %q, want the measured 176", got)
 	}
 }
+
+// The bug that emptied PATH on Windows. The block there spells it Path and
+// compares names without case; bothy looked up PATH, missed, and wrote a
+// second variable holding its own bin and the empty string it had just read.
+// Windows collapsed the pair, keeping bothy's. Every tool it launched then
+// had bothy's bin and nothing else: measured, a tower mirror could not find
+// zellij and its pane exited 1, which is why the tower was blank there.
+func TestTheSessionKeepsTheMachinesPathOnWindows(t *testing.T) {
+	e := newEnv([]string{`Path=C:\WINDOWS\system32;C:\Program Files\Git\cmd`, "USERPROFILE=C:/u"}, true)
+	e.set("PATH", `C:\bothy\bin`+";"+e.get("PATH"))
+
+	var paths []string
+	for _, kv := range e.slice() {
+		if name, value, _ := strings.Cut(kv, "="); strings.EqualFold(name, "PATH") {
+			paths = append(paths, value)
+		}
+	}
+	if len(paths) != 1 {
+		t.Fatalf("the session carries %d PATH variables %q; Windows keeps one of them and "+
+			"the loser is the machine's own", len(paths), paths)
+	}
+	if !strings.Contains(paths[0], `C:\WINDOWS\system32`) {
+		t.Errorf("PATH = %q, which has lost the machine's own directories", paths[0])
+	}
+	if !strings.HasPrefix(paths[0], `C:\bothy\bin`) {
+		t.Errorf("PATH = %q, want bothy's bin first", paths[0])
+	}
+}
+
+// And Unix is untouched: names are case-sensitive there, so two spellings are
+// two variables and folding them would merge things the system keeps apart.
+func TestUnixNamesAreNotFolded(t *testing.T) {
+	e := newEnv([]string{"Path=/one", "PATH=/two"}, false)
+	if got := e.get("PATH"); got != "/two" {
+		t.Errorf("get(PATH) = %q, want /two", got)
+	}
+	if got := e.get("Path"); got != "/one" {
+		t.Errorf("get(Path) = %q, want /one", got)
+	}
+}

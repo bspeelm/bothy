@@ -2630,3 +2630,53 @@ recorded here and in the wiki rather than worked around.
 **ADR-054** gains: *Amended by ADR-059. The tower stacking regardless of window
 width was a consequence of the missing measurement, not a platform limit, and
 is retired.*
+
+## ADR-060 — bothy emptied PATH for everything it launched on Windows, and the way that was found is the point
+
+**Status:** accepted. Follows ADR-057 and ADR-059.
+
+`bothy tower` on Windows showed no prompts and no responses. Three rounds of
+fixes had gone into that command already, each reasoned from the code and a
+Windows screenshot with Linux *assumed*. This one was found in an hour by
+running the same scenario on both platforms and diffing the output, which is
+what should have happened first.
+
+**The reference, captured rather than remembered.** Two workspaces, a stand-in
+agent printing seventy numbered lines and a prompt, a terminal of exactly
+200x50, the tower, and the text of each mirror read back with `dump-screen`.
+Linux: `watching 2 agent(s), stacked`, and each mirror rendering `LINE-65`
+through `PROMPT-READY` with a `>` reply line. Windows, same scenario, `main`:
+the identical "watching 2 agent(s), stacked", and **both mirrors empty**. The
+panes reported `exited=True status=1`.
+
+**The cause is in the session environment, and it is not about the tower.**
+`SessionEnv` builds the child environment in a Go map keyed by name, then puts
+bothy's bin at the front of PATH:
+
+    env.set("PATH", p.BinDir()+string(os.PathListSeparator)+env.get("PATH"))
+
+Windows spells the variable `Path` and compares names without case. `get("PATH")`
+missed, so the new value was bothy's bin and an empty string, written under a
+*second* name; Windows collapsed the pair and kept the one bothy had just
+written. Measured in a pane:
+
+    PATH=C:\Users\bothy\bp\home\.local\share\bothy\bin;
+
+**Every process bothy launched on Windows ran with bothy's bin and nothing
+else on PATH.** The workspace survived only because the layout names each tool
+by absolute path (ADR-054's winget-shim fix). The mirror does not: it runs
+`bothy tower --mirror`, which has to find zellij for itself, fails, and exits
+1 -- a blank pane with no message, because the error went to a pane that was
+already gone.
+
+The environment now folds names on Windows and keeps the machine's spelling,
+so `Path` stays `Path` and carries bothy's bin in front of what was there. The
+same scenario then renders the same eight rows on both platforms.
+
+**What this says about the method.** A platform is not ported by fixing what a
+screenshot shows. Three Windows defects had already been fixed here without
+anyone running the Linux case once; each was real, and none was this one. The
+capture is cheap -- two sessions, a stand-in agent, a fixed terminal size, and
+a text dump -- and it belongs in CI as far as a runner without a desktop can
+take it, so the next difference is found by a job rather than by the person
+using it.
