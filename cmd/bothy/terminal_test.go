@@ -262,7 +262,7 @@ func TestEachTerminalGetsItsOwnArgvShape(t *testing.T) {
 		want []string
 	}{
 		{"ghostty", []string{"--config-file={config}", "-e"}},
-		{"wezterm", []string{"--config-file", "{config}", "-e"}},
+		{"wezterm", []string{"--config-file", "{config}", "start", "--always-new-process", "--"}},
 	} {
 		sp, err := install.TerminalSpawn(tc.term)
 		if err != nil {
@@ -281,6 +281,33 @@ func TestEachTerminalGetsItsOwnArgvShape(t *testing.T) {
 	}
 	if _, err := install.TerminalSpawn("nosuchterm"); err == nil {
 		t.Error("an unknown terminal should be reported, not spawned")
+	}
+}
+
+// A terminal that is already open was serving bothy its own defaults.
+// `wezterm start` asks a running GUI instance to run the command, and that
+// instance keeps the config it was launched with, so --config-file was read
+// and discarded: zellij inside the window was themed, the window around it was
+// not. The flag is the whole fix, so it is pinned by name rather than left to
+// the argv comparison above to notice.
+func TestWezTermIsNotHandedToAWindowThatIsAlreadyOpen(t *testing.T) {
+	sp, err := install.TerminalSpawn("wezterm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(sp.Args, "--always-new-process") {
+		t.Errorf("wezterm args = %v, missing --always-new-process: a window already "+
+			"open will run bothy with its own config and no theme", sp.Args)
+	}
+	cfg := slices.Index(sp.Args, "--config-file")
+	start := slices.Index(sp.Args, "start")
+	if cfg == -1 || start == -1 || cfg > start {
+		t.Errorf("wezterm args = %v: --config-file is a global option and must "+
+			"precede the start subcommand", sp.Args)
+	}
+	if sp.Args[len(sp.Args)-1] != "--" {
+		t.Errorf("wezterm args = %v: the command bothy appends must follow --, or "+
+			"its flags are parsed as wezterm's", sp.Args)
 	}
 }
 
