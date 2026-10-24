@@ -137,7 +137,7 @@ func printDivergences(p platform.Info, cfg config.Config) {
 		items []string
 	}{
 		{"bothy works around", carried},
-		{"it cannot work around", costs},
+		{"cannot work around", costs},
 	} {
 		if len(line.items) > 0 {
 			fmt.Printf("%-21s %s\n", line.label+":", strings.Join(line.items, ", "))
