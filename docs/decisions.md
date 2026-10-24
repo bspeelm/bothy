@@ -2680,3 +2680,86 @@ capture is cheap -- two sessions, a stand-in agent, a fixed terminal size, and
 a text dump -- and it belongs in CI as far as a runner without a desktop can
 take it, so the next difference is found by a job rather than by the person
 using it.
+
+## ADR-061 — The take-over hands the window over where the multiplexer will not descend
+
+**Status:** accepted. Amends ADR-059, whose closing paragraph was wrong.
+
+**What was measured, on both platforms and with the same probe.** A tower
+watching two sessions, `/take` typed into a mirror, and the window rendered
+from its own pty rather than grepped, so the answer is the screen a person
+would be looking at. On Linux the window draws one bar:
+
+    Zellij (bothy-tower ▸ bothy-proj-a)  Tab #1 (FULLSCREEN)
+
+The host has descended into the guest, and `Ctrl-o ]` -- `FocusHostSession`,
+which zellij documents and bothy had never tried -- draws `Zellij
+(bothy-tower)` again. On Windows 11 with the same zellij 0.45.1 the same take
+draws two bars, the host's at row 1 and the guest's at row 3 inside the pane
+frame, with no breadcrumb. The host never descends, so it keeps its
+keybindings: `Ctrl+q` ends the tower and `Ctrl-o ]` does nothing, because the
+client was never in a guest.
+
+**It is not the setting, and not bothy.** `nested_session_handling "descend"`,
+whose documented job is routing input to the nested session, changes nothing
+there. Nor does `"fullscreen"`, which only zooms. Two plain zellij sessions
+with no bothy in the way, nested by hand under bothy's own config, draw the
+same two bars. The host sets `ZELLIJ=0` and `ZELLIJ_PANE_ID` in the pane, so
+the guest knows it is nested; it is the host that does not.
+
+**So the window is handed over whole.** Where the multiplexer will not
+descend, the mirror writes the session's name under the state directory and
+ends the tower; the process that opened the tower -- which has been blocked
+inside the multiplexer all along -- reads the name and attaches to that
+session in its place, then rebuilds the tower when it goes. Ending rather than
+detaching, because `zellij action detach` exits 0 and detaches nobody there,
+from outside the session and from a pane of it alike. A tower holds nothing
+but mirrors of elsewhere, which is why ending it was already permitted.
+
+**What it costs.** The tower is rebuilt rather than resumed, so its mirrors are
+measured again on the way back. That is a cost Linux does not pay and must not
+be made to: there the multiplexer does this instantly and leaves the panes
+alone, which is why the nesting stays. `TestTheReferencePlatformsStillNestInsideThePane`
+is what holds the other half up.
+
+**What would reverse this.** A zellij release whose Windows host descends. The
+register entry `take-over-descend` carries the date it was last measured, and
+retiring it is deleting the entry and the branch together.
+
+**ADR-059** gains: *Amended by ADR-061. "There is no key that returns from a
+take-over" was true of the keys bothy knew and not of the feature; the way
+back now exists, by a different mechanism.*
+
+## ADR-062 — A divergence names its decision, its test and the day it was last true
+
+**Status:** accepted. Amends ADR-031 and ADR-054.
+
+**The strongest argument against is that this is a sixth register.** The
+project already closes the world five times -- `provides`, `platforms`, the
+emulator table, the three expectation tables, and the build-tagged shims --
+and the guard here touches every per-OS branch in the tree. If the real
+problem is that nobody runs the reference case, the cheaper answer is the
+capture harness in CI and no new table.
+
+**The harness cannot run in CI, and that is the whole argument.** No job
+drives a pty, so `platform.TerminalSize` answers false on every runner,
+`paneRows` is 0, and the tower's real path is unreachable there. ADR-059 was
+wrong for two releases because nothing re-read it, and prose cannot fail. The
+register's value is not the list: it is that an entry names the ADR that
+decided it, the test that holds the compensation up, and the date it was last
+measured, and that a claim missing any of the three breaks the build.
+
+**What it checks.** That the reference platforms diverge in nothing, asked for
+every OS and multiplexer from one runner, because the Windows arm is the one
+being worked on and the others are only ever read. That every entry's ADR is
+a heading that exists. That every entry's test is in the suite. That every
+per-OS branch either carries a `// divergence: <id>` marker naming an entry
+that is carried, or is counted in an exempt list with its reason -- the same
+shape ADR-031 uses for the shims, and for the same reason: a new one fails
+until somebody says which it is.
+
+**ADR-031** gains: *Amended by ADR-062. The rule stands; the runtime half of
+it now has a register, where the compile-time half had only the shim list.*
+
+**ADR-054** gains: *Amended by ADR-062. The costs are a register entry each
+rather than a paragraph, so one retired by a later ADR stops being claimed.*

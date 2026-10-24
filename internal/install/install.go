@@ -489,6 +489,7 @@ func slug(name string) string {
 var terminalSize = platform.TerminalSize
 
 func SessionEnv(p platform.Info, cfg config.Config) []string {
+	// divergence: session-env-case
 	env := newEnv(os.Environ(), p.OS == "windows")
 
 	// bothy's own bin first, for this session only.

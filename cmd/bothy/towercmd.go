@@ -267,6 +267,8 @@ func endTower(backend mux.Backend, bin string, env []string) error {
 // handOver is whether a take-over has to replace the window rather than nest
 // inside the pane. Taking the OS rather than reading runtime.GOOS is ADR-031:
 // the arm that only runs on one platform stays reachable from a test on any.
+//
+// divergence: take-over-descend
 func handOver(goos string) bool { return goos == "windows" }
 
 // takeFile is where a mirror leaves the name of the session it wants the

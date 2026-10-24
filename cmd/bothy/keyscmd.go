@@ -36,6 +36,7 @@ var muxKeys = []struct{ on, does string }{
 	{"Alt-h  Alt-j  Alt-k  Alt-l", "move between the panes"},
 	{"Alt-n", "another pane"},
 	{"Ctrl-o d", "detach, leaving everything running"},
+	{"Ctrl-o ]", "leave a take-over and go back to the tower"},
 	{"Ctrl-q", "quit, and the session is gone"},
 	{"Ctrl-s e", "open the scrollback in your editor"},
 }

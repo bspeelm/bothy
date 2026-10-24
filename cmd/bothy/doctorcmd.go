@@ -72,6 +72,7 @@ func runDoctor(p platform.Info, cfg config.Config, asJSON bool) error {
 		fmt.Printf("\n%d passed, %d warning(s), %d failure(s), %d not applicable\n",
 			pass, warn, fail, skip)
 		printCapabilities(rep, cfg)
+		printDivergences(p, cfg)
 	}
 
 	if rep.Failed() {
@@ -110,6 +111,33 @@ func printCapabilities(rep doctor.Report, cfg config.Config) {
 		{"this stack gives you", yes},
 		{"it cannot give you", no},
 		{"nothing verifies", unchecked},
+	} {
+		if len(line.items) > 0 {
+			fmt.Printf("%-21s %s\n", line.label+":", strings.Join(line.items, ", "))
+		}
+	}
+}
+
+// printDivergences names what this platform does differently and what bothy
+// does about it. north-star.md's "the report is part of the product" applied
+// to the platform: a workaround nobody can see is one nobody can report when
+// it stops working, and a cost nobody can see reads as a bug.
+func printDivergences(p platform.Info, cfg config.Config) {
+	muxName := cfg.ProviderFor("mux")
+	var carried, costs []string
+	for _, d := range platform.Active(p, muxName) {
+		if d.Carried != "" {
+			carried = append(carried, d.ID+" ("+d.ADR+")")
+			continue
+		}
+		costs = append(costs, d.ID+" ("+d.ADR+")")
+	}
+	for _, line := range []struct {
+		label string
+		items []string
+	}{
+		{"bothy works around", carried},
+		{"it cannot work around", costs},
 	} {
 		if len(line.items) > 0 {
 			fmt.Printf("%-21s %s\n", line.label+":", strings.Join(line.items, ", "))

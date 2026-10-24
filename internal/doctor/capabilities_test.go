@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/bspeelm/bothy/internal/config"
+	"github.com/bspeelm/bothy/internal/platform"
 	"github.com/bspeelm/bothy/internal/slots"
 )
 
@@ -54,5 +55,22 @@ func TestAStackWithNothingBehindACapabilitySaysSo(t *testing.T) {
 	}
 	if !supplied[Isolation] {
 		t.Error("isolation is bothy's own doing and should survive any stack")
+	}
+}
+
+// The register names capabilities as plain strings, because doctor imports
+// platform and not the other way round. This is the check that would
+// otherwise be a comment: a register entry claiming a capability that is not
+// one of the five would print a word the rest of the report never uses.
+func TestEveryDivergenceNamesACapabilityOrNone(t *testing.T) {
+	known := map[string]bool{}
+	for _, c := range Capabilities {
+		known[string(c)] = true
+	}
+	for _, d := range platform.Divergences() {
+		if d.Capability != "" && !known[d.Capability] {
+			t.Errorf("divergence %s claims capability %q, which is not one of %v",
+				d.ID, d.Capability, Capabilities)
+		}
 	}
 }
