@@ -94,7 +94,7 @@ homebrew_casks:
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/bothy"]
           end
     homepage: https://github.com/bspeelm/bothy
-    description: A turn-key terminal workspace built from tools you already trust
+    description: A terminal workspace assembled from tools you already have
     # No dependencies declared: bothy fetches what it needs into its own tree,
     # and installing zellij or yazi system-wide is the opposite of ADR-009.
     #
@@ -119,7 +119,7 @@ scoops:
       email: bot@goreleaser.com
     commit_msg_template: "scoop: bothy {{ .Tag }}"
     homepage: https://github.com/bspeelm/bothy
-    description: A turn-key terminal workspace built from tools you already trust
+    description: A terminal workspace assembled from tools you already have
     license: MIT
     # No `directory`: scoop bucket list reports zero manifests when they are
     # not in the repository root. No `shortcuts` either -- this is a CLI, and
@@ -133,7 +133,7 @@ aur_sources:
   - name: bothy
     ids: [bothy]
     homepage: https://github.com/bspeelm/bothy
-    description: A turn-key terminal workspace built from tools you already trust
+    description: A terminal workspace assembled from tools you already have
     license: MIT
     maintainers: ['Bryan Speelman <bryspeelm@pm.me>']
     # Not published yet: AUR registration is paused, so no account exists to
@@ -185,12 +185,12 @@ nfpms:
     section: utils
     priority: optional
     description: |-
-      A turn-key terminal workspace built from tools you already trust
+      A terminal workspace assembled from tools you already have
 
-      bothy launches a persistent terminal layout -- a file browser, an agent
-      and a shell -- and tells you what is broken and how to fix it. It
-      installs any tool you are missing into its own directory, writes its own
-      configs there, and leaves your dotfiles alone: its own things live under
+      bothy opens a persistent terminal layout -- a file browser, an agent
+      and a shell -- and reports what is wrong and how to fix it. It installs
+      any missing tool into its own directory, writes its own configuration
+      there, and leaves your dotfiles untouched: its own files live under
       ~/.local/share/bothy and your settings under ~/.config/bothy, and
       'bothy uninstall' removes the tree and the binary, naming what it leaves.
 
@@ -283,6 +283,6 @@ release:
     anything -- the same trade as any `curl | sh`.
     [All seven ways in, and what checks what](https://github.com/bspeelm/bothy/wiki/Installing).
 
-    bothy keeps its own things in `~/.local/share/bothy` and your settings in
+    bothy keeps its own files in `~/.local/share/bothy` and your settings in
     `~/.config/bothy`. Your dotfiles are neither read nor written, and
     `bothy uninstall` removes the tree and the binary, naming what it leaves.

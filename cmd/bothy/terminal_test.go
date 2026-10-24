@@ -5,6 +5,7 @@ import (
 	"github.com/bspeelm/bothy/internal/install"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -261,7 +262,7 @@ func TestEachTerminalGetsItsOwnArgvShape(t *testing.T) {
 		want []string
 	}{
 		{"ghostty", []string{"--config-file={config}", "-e"}},
-		{"wezterm", []string{"--config-file", "{config}", "-e"}},
+		{"wezterm", []string{"--config-file", "{config}", "start", "--always-new-process", "--"}},
 	} {
 		sp, err := install.TerminalSpawn(tc.term)
 		if err != nil {
@@ -280,5 +281,76 @@ func TestEachTerminalGetsItsOwnArgvShape(t *testing.T) {
 	}
 	if _, err := install.TerminalSpawn("nosuchterm"); err == nil {
 		t.Error("an unknown terminal should be reported, not spawned")
+	}
+}
+
+// A terminal that is already open was serving bothy its own defaults.
+// `wezterm start` asks a running GUI instance to run the command, and that
+// instance keeps the config it was launched with, so --config-file was read
+// and discarded: zellij inside the window was themed, the window around it was
+// not. The flag is the whole fix, so it is pinned by name rather than left to
+// the argv comparison above to notice.
+func TestWezTermIsNotHandedToAWindowThatIsAlreadyOpen(t *testing.T) {
+	sp, err := install.TerminalSpawn("wezterm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(sp.Args, "--always-new-process") {
+		t.Errorf("wezterm args = %v, missing --always-new-process: a window already "+
+			"open will run bothy with its own config and no theme", sp.Args)
+	}
+	cfg := slices.Index(sp.Args, "--config-file")
+	start := slices.Index(sp.Args, "start")
+	if cfg == -1 || start == -1 || cfg > start {
+		t.Errorf("wezterm args = %v: --config-file is a global option and must "+
+			"precede the start subcommand", sp.Args)
+	}
+	if sp.Args[len(sp.Args)-1] != "--" {
+		t.Errorf("wezterm args = %v: the command bothy appends must follow --, or "+
+			"its flags are parsed as wezterm's", sp.Args)
+	}
+}
+
+// The branch that broke Windows. `bothy` in a WezTerm tab opened a new window
+// every time, because isTerminal asked whether stdout was the null device and
+// os.SameFile says yes to every console handle there (ADR-057). No test could
+// see it: every other case in this file short-circuits at hasDisplay, and a
+// test binary's own stdout is a pipe, so the answer was false for an
+// uninteresting reason.
+func TestATerminalThatCarriesTheKeysIsRunInRatherThanSpawnedFrom(t *testing.T) {
+	clearDisplay(t)
+	t.Setenv("DISPLAY", ":0")
+
+	// A terminal to spawn has to exist, or the decision stops one branch short.
+	dir := t.TempDir()
+	spawnable := filepath.Join(dir, platform.ExeName(runtime.GOOS, "ghostty"))
+	if err := os.WriteFile(spawnable, []byte(""), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	restore := stdoutIsTerminal
+	t.Cleanup(func() { stdoutIsTerminal = restore })
+	stdoutIsTerminal = func() bool { return true }
+
+	for _, tc := range []struct {
+		terminal  string
+		wantSpawn bool
+	}{
+		{"wezterm", false},
+		{"ghostty", false},
+		{"gnome-terminal", true},
+	} {
+		m := decideLaunch(platform.Info{OS: runtime.GOOS, Terminal: tc.terminal}, "ghostty", "")
+		if m.Spawn != tc.wantSpawn {
+			t.Errorf("in %s: Spawn = %v, want %v (%s)", tc.terminal, m.Spawn, tc.wantSpawn, m.Reason)
+		}
+	}
+
+	// And with no terminal on the other end, a window is the only way to show
+	// anything -- which is what the branch is for.
+	stdoutIsTerminal = func() bool { return false }
+	if m := decideLaunch(platform.Info{OS: runtime.GOOS, Terminal: "wezterm"}, "ghostty", ""); !m.Spawn {
+		t.Error("started without a terminal and bothy ran in place anyway")
 	}
 }

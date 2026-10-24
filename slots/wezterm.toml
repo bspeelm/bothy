@@ -16,10 +16,13 @@ provides  = ["theme"]
 [spawn]
 binary = "wezterm"
 config = "wezterm.lua"
-# Global options bind to the top-level command, so they precede the
-# subcommand. -e is an alias for a hidden blocking start, which always opens a
-# new process rather than handing the command to an instance already running.
-args   = ["--config-file", "{config}", "-e"]
+# Global options bind to the top-level command, so --config-file precedes the
+# subcommand. --always-new-process belongs to `start` and is what makes the
+# file count: without it wezterm hands the command to a GUI instance already
+# running, and that instance keeps the config it was started with, so bothy's
+# theme is dropped with no error. `--` ends the options, so an agent's own
+# flags are never read as wezterm's.
+args   = ["--config-file", "{config}", "start", "--always-new-process", "--"]
 
 [advise.install]
 windows = "winget install wez.wezterm"

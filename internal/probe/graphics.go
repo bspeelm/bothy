@@ -20,42 +20,58 @@ type Graphics struct {
 	Reason    string
 }
 
-// terminalGraphics names the protocol Yazi uses on an emulator, which is not
-// the same question as what the emulator is capable of. Yazi chooses by
-// terminal rather than by capability, and its choice changes when a
-// multiplexer is in the way -- so both cases are recorded. Treating "draws
-// images" and "speaks Kitty" as one fact told iTerm2 users their terminal
-// could do neither.
-type terminalGraphics struct {
+// emulator is what bothy knows about a terminal: which image protocol Yazi
+// uses there, and whether the terminal answers the keyboard protocol zellij
+// asks for. Yazi chooses its protocol by terminal rather than by capability,
+// and its choice changes when a multiplexer is in the way -- so both cases are
+// recorded. Treating "draws images" and "speaks Kitty" as one fact told iTerm2
+// users their terminal could do neither.
+type emulator struct {
 	// direct is the protocol Yazi uses with nothing in the way.
 	direct string
 	// carried is the protocol Yazi uses inside a multiplexer, and which the
 	// multiplexer therefore has to pass through. Empty when a multiplexer
 	// carries nothing Yazi would pick here.
 	carried string
+	// keyboard is whether the terminal answers the Kitty keyboard protocol.
+	// zellij asks for it on startup whatever TERM says -- measured: it writes
+	// CSI > 1 u under xterm-ghostty and xterm-256color alike -- so the
+	// terminal's answer is the whole question. Without it Shift+Enter and
+	// Ctrl+Enter arrive as plain Enter, which is what an agent pane needs most.
+	keyboard bool
 }
 
 // kgp is the protocol zellij was gated on: see MinGraphics in internal/mux.
 const kgp = "the Kitty graphics protocol"
 
+// kgpOld is the variant Yazi picks when something answers the version query in
+// its own name. Measured with `ya env` in a live session on ghostty 1.3.1,
+// zellij 0.45.1, yazi 26.9.1: zellij replies to XTVERSION as Zellij(4501),
+// Yazi overrides its env-derived brand with Zellij, and the driver it then
+// selects is KgpOld. zellij renders that as garbage, and the mangled reply
+// comes back as the phantom keypress ADR-007 describes.
+const kgpOld = "an older Kitty graphics variant"
+
 // graphicsTerminals is what each emulator can do. A terminal that is absent
 // draws no images at all as far as bothy knows, which is not the same as
 // having been tested.
-var graphicsTerminals = map[string]terminalGraphics{
-	"ghostty": {direct: kgp, carried: kgp},
-	"kitty":   {direct: kgp, carried: kgp},
+var knownEmulators = map[string]emulator{
+	// carried is not kgp: Yazi only sends plain Kitty graphics with nothing in
+	// the way. Inside a multiplexer it sends kgpOld, which nothing renders.
+	"ghostty": {direct: kgp, carried: kgpOld, keyboard: true},
+	"kitty":   {direct: kgp, carried: kgpOld, keyboard: true},
 
 	// WezTerm speaks Kitty, but Yazi does not use it there. Measured with
 	// `ya env` inside a real session: brand WezTerm, kgp false, sixel false,
 	// mux None, and the chosen driver is the iTerm2 protocol -- which zellij
 	// does not carry. So previews work with nothing in the way and not through
 	// a multiplexer, which is the same shape as iTerm2 itself.
-	"wezterm": {direct: "iTerm2's inline-image protocol"},
+	"wezterm": {direct: "iTerm2's inline-image protocol", keyboard: true},
 
 	// $TERM_PROGRAM, lowercased by platform.detectTerminal. iTerm2 has drawn
 	// inline images since long before the Kitty protocol existed and still
 	// uses its own, which no multiplexer here carries.
-	"iterm.app": {direct: "iTerm2's own inline-image protocol"},
+	"iterm.app": {direct: "iTerm2's own inline-image protocol", keyboard: true},
 }
 
 // CheckGraphics decides whether Yazi should draw images.
@@ -63,7 +79,7 @@ var graphicsTerminals = map[string]terminalGraphics{
 // muxBin is the multiplexer binary to interrogate (usually "zellij"); terminal
 // is the detected emulator. An empty muxBin means no multiplexer is involved.
 func CheckGraphics(terminal string, mux MuxGraphics) Graphics {
-	g, known := graphicsTerminals[terminal]
+	g, known := knownEmulators[terminal]
 	if !known {
 		what := terminal
 		if what == "" {
@@ -90,6 +106,13 @@ func CheckGraphics(terminal string, mux MuxGraphics) Graphics {
 		}
 	}
 
+	if g.carried == kgpOld {
+		return Graphics{
+			Reason: fmt.Sprintf("%s draws images with %s, but inside a multiplexer Yazi "+
+				"sends %s instead, which nothing bothy runs renders", terminal, g.direct, kgpOld),
+		}
+	}
+
 	// The gate is the multiplexer's answer about Kitty, which is the protocol
 	// its version mattered for. A sixel terminal is held to the same answer:
 	// zellij has carried sixel for far longer, so this can only ever be
@@ -103,6 +126,24 @@ func CheckGraphics(terminal string, mux MuxGraphics) Graphics {
 	return Graphics{Supported: true,
 		Reason: fmt.Sprintf("%s, and Yazi draws on %s with %s, which it also carries",
 			mux.Reason, terminal, g.carried)}
+}
+
+// Keyboard reports whether a terminal answers the Kitty keyboard protocol, and
+// why it matters when it does not. This is what opening a window buys: images
+// are not it, because Yazi's dialect does not survive a multiplexer on any
+// terminal here.
+func Keyboard(terminal string) Graphics {
+	e, known := knownEmulators[terminal]
+	what := terminal
+	if what == "" {
+		what = "this terminal"
+	}
+	if !known || !e.keyboard {
+		return Graphics{Reason: fmt.Sprintf("%s is not known to carry the Kitty keyboard "+
+			"protocol, so Shift+Enter and Ctrl+Enter reach an agent as plain Enter", what)}
+	}
+	return Graphics{Supported: true,
+		Reason: terminal + " carries the Kitty keyboard protocol zellij asks for"}
 }
 
 // MuxGraphics is the multiplexer's answer about the Kitty protocol, asked by

@@ -489,7 +489,8 @@ func slug(name string) string {
 var terminalSize = platform.TerminalSize
 
 func SessionEnv(p platform.Info, cfg config.Config) []string {
-	env := newEnv(os.Environ())
+	// divergence: session-env-case
+	env := newEnv(os.Environ(), p.OS == "windows")
 
 	// bothy's own bin first, for this session only.
 	env.set("PATH", p.BinDir()+string(os.PathListSeparator)+env.get("PATH"))
@@ -563,12 +564,28 @@ func SessionEnv(p platform.Info, cfg config.Config) []string {
 // depends on the libc and on whether anything deduplicated it on the way
 // through, and the original stays first -- so bothy's tools are not found.
 type env struct {
+	// keys holds each name as the machine spelled it, in order; values is
+	// keyed by the folded name. Windows spells it Path and compares names
+	// without case, so a lookup for PATH missed, bothy wrote a second
+	// variable, and the two collapsed into the one bothy had just written --
+	// leaving every tool it launched with bothy's bin and nothing else on
+	// PATH. Measured: a tower mirror could not find zellij (ADR-060).
 	keys   []string
 	values map[string]string
+	fold   bool
 }
 
-func newEnv(existing []string) *env {
-	e := &env{values: map[string]string{}}
+// name is the key to look a variable up by: itself on Unix, and case-folded
+// on Windows, where Path and PATH are the same variable.
+func (e *env) name(k string) string {
+	if e.fold {
+		return strings.ToLower(k)
+	}
+	return k
+}
+
+func newEnv(existing []string, fold bool) *env {
+	e := &env{values: map[string]string{}, fold: fold}
 	for _, kv := range existing {
 		if k, v, ok := strings.Cut(kv, "="); ok {
 			e.set(k, v)
@@ -578,23 +595,23 @@ func newEnv(existing []string) *env {
 }
 
 func (e *env) set(k, v string) {
-	if _, seen := e.values[k]; !seen {
+	if _, seen := e.values[e.name(k)]; !seen {
 		e.keys = append(e.keys, k)
 	}
-	e.values[k] = v
+	e.values[e.name(k)] = v
 }
 
 // unset removes a key entirely, so the child does not inherit it.
 // get reads the copy being assembled, not the process environment.
-func (e *env) get(k string) string { return e.values[k] }
+func (e *env) get(k string) string { return e.values[e.name(k)] }
 
 func (e *env) unset(k string) {
-	if _, seen := e.values[k]; !seen {
+	if _, seen := e.values[e.name(k)]; !seen {
 		return
 	}
-	delete(e.values, k)
+	delete(e.values, e.name(k))
 	for i, key := range e.keys {
-		if key == k {
+		if e.name(key) == e.name(k) {
 			e.keys = append(e.keys[:i], e.keys[i+1:]...)
 			return
 		}
@@ -604,7 +621,7 @@ func (e *env) unset(k string) {
 func (e *env) slice() []string {
 	out := make([]string, 0, len(e.keys))
 	for _, k := range e.keys {
-		out = append(out, k+"="+e.values[k])
+		out = append(out, k+"="+e.values[e.name(k)])
 	}
 	return out
 }

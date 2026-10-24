@@ -163,10 +163,10 @@ func checkEditor(env Env) Result {
 	}
 	bin := install.EditorBinary(slot)
 	if _, err := env.lookPath(bin); err != nil {
-		fix := "install it, or point the slot elsewhere: bothy config set slots.editor vim"
+		fix := "install it, or point the slot at an editor you have: bothy config set slots.editor <name>"
 		if a, err := advice.Get(slot); err == nil {
 			fix = a.Command(env.Platform) +
-				"\n         or choose another: bothy config set slots.editor vim"
+				"\n         or point the slot at an editor you have: bothy config set slots.editor <name>"
 		}
 		return fail(bin+" is not on PATH",
 			"the editor pane would open empty, and EDITOR points at a command that does not exist",

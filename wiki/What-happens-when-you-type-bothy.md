@@ -1,7 +1,7 @@
 # What happens when you type `bothy`
 
-In order, with the reason for the order. This is the page to read when the
-question is "why did it do that"; `docs/PLAN.md` is the architecture,
+In order, with the reason for the order. This page explains the behaviour;
+`docs/PLAN.md` is the architecture,
 [`decisions.md`](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md) is why the architecture is that, and
 [`adding-a-provider.md`](https://github.com/bspeelm/bothy/blob/main/docs/adding-a-provider.md) is how to extend it.
 
@@ -19,9 +19,9 @@ rather than failing.
 
 Then `~/.config/bothy/config.toml` is read, if it exists. A key bothy does not
 recognise is a warning and never a refusal, and so is a key whose value is the
-wrong type — a config written by a newer bothy does not brick an older one.
+wrong type, so a config written by a newer bothy still loads in an older one.
 
-## 2. It refuses to nest
+## 2. It refuses to nest inside itself
 
 If this shell is already inside an agent session, bothy stops. The layout starts
 its own agent, so continuing would put a second one in a pane of the first.
@@ -38,10 +38,11 @@ one. `~` is expanded.
 **Which profile.** `--profile`, then `profile` in the config. A profile is a
 short TOML file describing rows and panes.
 
-**Whether this terminal will do.** Inline image previews need the Kitty
-graphics protocol. If this terminal cannot draw them and Ghostty is available,
-bothy opens a window that can — before any container hop, so the window opens
-once and on the host. `workspace.launch` settles this standing; `--window` and
+**Whether this terminal will do.** zellij asks every terminal for the Kitty
+keyboard protocol, and a terminal that does not answer delivers Shift+Enter to
+an agent as plain Enter. If this one does not and Ghostty is available, bothy
+opens a window that does — before any container hop, so the window opens once
+and on the host. `workspace.launch` settles this standing; `--window` and
 `--in-place` settle it for one run.
 
 **Which toolbox.** A short list of rules decides, and
@@ -106,7 +107,7 @@ failures that are otherwise silent — a config a tool discarded without saying
 so, a theme that did not arrive, a plugin the config references and does not
 have — and for each one, what to type.
 
-It ends with what the stack can and cannot give you: panes, sessions, images,
+It ends with what the stack can and cannot provide: panes, sessions, images,
 theme, isolation.
 
 ## And when you remove it

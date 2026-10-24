@@ -5,7 +5,7 @@
 name      = "helix"
 what      = "the editor in the editor profile"
 slot      = "editor"
-platforms = ["linux", "darwin"]
+platforms = ["linux", "darwin", "windows"]
 
 [advise]
 binary      = "hx"
@@ -17,3 +17,4 @@ ubuntu         = "sudo snap install --classic helix"
 debian         = "see https://docs.helix-editor.com/install.html — Debian has no official package"
 arch           = "sudo pacman -S helix"
 darwin         = "brew install helix"
+windows        = "winget install Helix.Helix"

@@ -206,7 +206,7 @@ func sshfsCommand(p platform.Info) string {
 
 // askLine reads one answer, or "" when there is nobody to ask.
 func askLine(prompt string) string {
-	if !isTerminal(os.Stdin) {
+	if !platform.IsTerminal(os.Stdin) {
 		return ""
 	}
 	fmt.Print(prompt)

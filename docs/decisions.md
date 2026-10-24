@@ -78,6 +78,9 @@ your machine, and the way in for it is the same route every other theme uses.
 
 ## ADR-007 — Version-gated workarounds, not permanent ones
 
+**Amended by ADR-056:** the gate is the right shape and the capability behind
+it has never worked.
+
 The origin cheat sheet disables Yazi image previews inside Zellij, because
 Zellij 0.42 could not pass the Kitty graphics protocol and its mangled query
 replies were parsed as keystrokes (a phantom "Find next" on every preview).
@@ -947,6 +950,10 @@ is simply not selected; `.desktop` entries compile on macOS and are merely
 meaningless, which is why ADR-018's guard is a runtime check. Neither is a build
 tag. An `ioctl` naming `TIOCGWINSZ` is, because no runtime branch saves a file
 the compiler has already refused.
+
+**Amended by ADR-057:** a third split, `isterm_{unix,windows}.go`, for the one
+case this rule did not anticipate -- a Unix answer that compiles on Windows and
+is wrong there.
 
 **When forced, the tagged file is a shim.** `termsize_unix.go` is twelve lines
 of syscall with no branching; the decision that uses it lives behind
@@ -2184,6 +2191,7 @@ the quiet threshold move ADR-010 refused.
 ## ADR-053 — The tower may step aside, and two caps rise once for the work that lets it
 
 **Status:** accepted. Reverses part of ADR-048; amends ADR-052 and ADR-021.
+**Amended by ADR-055:** both caps moved again one platform later.
 
 Weeks of daily use found the tower's two edges. A mirror shows about twenty rows
 and no history. And a reply is a line of text, so an agent's selection menu, its
@@ -2283,6 +2291,9 @@ work: it would fail on the next comment anywhere in the codebase.
 
 ## ADR-054 — Windows is beta: shipped, installable, and not in the table
 
+**Amended by ADR-057:** somebody has now taken a session by hand, and three
+defects were waiting.
+
 Three platforms were on the road since ADR-031 and Windows was "neither
 promised nor refused" (ADR-018). It is now built, locked, documented and
 tested. This records what changed, what it costs, and what beta means, because
@@ -2337,3 +2348,418 @@ cost stands; the second-renderer cost does not.*
 compiles the other side of a build tag". With a Windows runner it now does, for
 `!unix`, so the shim budget is justified by the cost of divergence rather than
 by the absence of a compiler.
+
+## ADR-055 — The caps rise after a platform, and the ratios stop rounding in their own favour
+
+**Status:** accepted. Amends ADR-053, ADR-021 and ADR-010.
+
+**The case against this is ADR-053's own words**, and they are quoted because
+they were written to be quoted: *"If the transcript work overruns it, that
+overrun gets its own record and this number is not quietly nudged again"*, and
+*"28 is chosen to leave headroom rather than to clear today, because clearing
+today is what 26 did."* One platform falsified both inside a fortnight. Seven
+raises have now each argued that this one was different, which is what a cap
+that moves whenever it binds looks like from the outside.
+
+**What was measured.** Windows took code from 8,251 to 8,500 -- the entire
+remaining allowance, to the line -- and comments from 27.43% to 28.34%. Prose
+went 6,050 to 6,169. Nothing was trimmed to fit, because there was nothing left
+to trim: the fifth consecutive fat audit ADR-026 requires found the same answer
+as the previous four. The largest function in shipping code is 83 lines
+(`EnsureTools`), two are over eighty, and nothing there is reachable only from
+a test.
+
+**Why this raise is not the last four.** Those funded features, and ADR-026's
+standard is that a cap should be argued once rather than twice in a season. This
+one funds a platform, and a platform is not a feature: it is a per-OS answer at
+every seam that already existed -- a name with `.exe`, a mode bit that does not
+exist, a path whose separator escapes, a signal nobody sends, a known folder
+derived from an environment variable. Those are permanent, and the next
+platform costs the same again. 9,000 covers twice what the third one cost, with
+the margin named as margin.
+
+**30, and what it buys.** At the current count 30% is 2,550 lines against 2,409
+used: 141 lines of genuine headroom, where 28 had none. The density is still
+not a virtue. It is that these files carry measurements -- `Zellij(4501)`
+overriding a terminal brand, `%USERPROFILE%` expanding into a cache directory
+that must exist -- and a measurement deleted is a measurement someone has to
+take again on a machine they may not have.
+
+**The measure was rounding in its own favour, and that is fixed here.** Both
+ratio guards truncated before comparing, so a cap of 28 admitted 28.99 and the
+printed figure hid the difference: CI has been reporting 28 while the real
+number was 28.34. The comparison is now exact -- `comments x 100` against
+`ratio x code` -- and the printed figure carries a decimal, so the number in
+the log is the number being compared. Measured consequence, which is the point:
+under the exact comparison the old cap of 28 **fails today**. The raise is a
+raise and not a formality.
+
+The prose guard had the same defect and is fixed the same way. That costs 84
+lines of headroom it only appeared to have -- 6,375 at the current code count
+rather than 6,459 -- and the cap itself does not move. The rule above it
+stands: over budget means retiring a doc.
+
+**What would reverse this.** A raise argued within a release of this one. If
+9,000 binds that soon, the answer is not a larger number: it is that the
+project has taken on work it cannot carry at the size it claims to be, and that
+belongs in `north-star.md` rather than in the Makefile.
+
+**ADR-053** gains: *Amended by ADR-055. The code cap and the comment ratio both
+moved again, one platform later; the promise not to nudge them is the thing
+ADR-055 has to answer.*
+
+## ADR-056 — Images do not survive the multiplexer, so bothy stops claiming them, and the window is for the keys
+
+**Status:** accepted. Amends ADR-007, and gives the window behaviour the
+record it never had.
+
+**The strongest argument against this is that it withdraws the headline
+capability** -- the one the README led on, the one `enter-hint` apologises for,
+and the stated reason bothy opens a window at all. ADR-007 built a version gate
+precisely so that previews could be turned *on* when zellij was fixed, and
+zellij was fixed: 0.45.1 passes the Kitty graphics protocol, which is why
+`bothy.lock` pins it. Turning previews off now reads as giving up on a solved
+problem.
+
+It is not solved. Measured with `ya env` in live sessions on Linux and Windows:
+
+    Brand.from_env  : Some(Ghostty)
+    Emulator.probe  : brand: Zellij, version: "Zellij(4501)", kgp: true, mux: None
+    Drivers.matches : KgpOld
+
+Yazi derives `Ghostty` from `TERM`, then probes the terminal. zellij answers the
+version query in its own name, Yazi overrides the brand it had just derived, and
+the driver it selects for `Brand::Zellij` is `KgpOld` -- a variant zellij renders
+as garbage, whose mangled reply comes back as the phantom keypress ADR-007
+describes. The protocol zellij carries is not the protocol Yazi sends. Through
+zellij today: ghostty and kitty get `KgpOld` and see garbage; WezTerm and iTerm2
+get `Iip`, which zellij does not carry at all. **No terminal gets working image
+previews through this multiplexer**, so the gate was reporting a capability the
+stack has never once delivered. On this machine, before and after:
+
+    image previews: true -- zellij 0.45.1 implements the Kitty graphics protocol and ghostty speaks it
+    image previews: false -- ghostty draws images with the Kitty graphics protocol, but inside a
+                             multiplexer Yazi sends an older Kitty graphics variant instead
+
+**The fix is data, not a new mechanism.** `carried` already means "the protocol
+Yazi uses inside a multiplexer", and for ghostty and kitty it said `kgp`, which
+is false. It now says `kgpOld`, which nothing bothy runs renders -- the same
+shape WezTerm and iTerm2 have had since ADR-049. The version gate is untouched
+and keeps its meaning: if Yazi stops overriding the brand, those two rows go
+back to `kgp` and previews return without an argument.
+
+**Nothing was lost that was working.** Pressing Enter on a file has always
+opened it in the platform's own viewer, independent of previews -- `xdg-open`,
+`flatpak-spawn --host xdg-open` in a container, `open`, `start ""` -- and
+`enter-hint` now installs everywhere, so every platform gets the hint that says
+so instead of garbage. What changes is that bothy no longer promises the
+picture.
+
+**The window needed a new reason, and has one.** It also needed a record:
+`decideLaunch` has opened a window since before ADR-012 and no ADR describes
+it, while the code cited ADR-011 -- which is about detecting Toolbx. bothy
+opened a window when the terminal could not draw images; with previews off
+everywhere that bought nothing. Measured under a pty: zellij writes `CSI > 1 u` -- the Kitty
+*keyboard* protocol -- on startup under `xterm-ghostty` and `xterm-256color`
+alike, so it asks every terminal and the terminal's answer is the whole
+question. Without it Shift+Enter and Ctrl+Enter arrive at an agent as plain
+Enter. So the window is for the keys, and `decideLaunch` asks
+`probe.Keyboard` rather than `probe.CheckGraphics`.
+
+No terminal's behaviour changed, because the two sets coincide: the four
+emulators bothy has written down draw images *and* carry the keyboard protocol.
+`TestTheTwoCapabilitiesStillCoincide` fails the day one is added to a column and
+not the other, which is the day a user would otherwise find out by surprise.
+
+**What would reverse this.** A Yazi that respects its env-derived brand inside a
+multiplexer, or a zellij that renders `KgpOld`. Either one is two table rows.
+
+**ADR-007** gains: *Amended by ADR-056. The version gate stands and is still
+the right shape; the capability behind it has never worked, because Yazi sends
+a protocol the gate does not describe.*
+
+## ADR-057 — A check that compiles on the other platform and answers wrongly is worse than one that does not compile
+
+**Status:** accepted. Amends ADR-031 and ADR-054.
+
+ADR-031's rule is that a build tag needs the compiler's permission: inject what
+differs, and split only where the code cannot compile elsewhere. The rule has
+held for `TIOCGWINSZ` and `st_dev`. It did not anticipate the opposite case,
+which shipped in every Windows build so far.
+
+`isTerminal` asked whether stdout was a character device and then whether it
+was the null device. Both lines compile on Windows. Measured in a WezTerm tab
+on a Windows 11 machine:
+
+    stdout: mode=Dcrw-rw-rw- charDevice=true
+      os.SameFile(stdout, NUL) = true
+      isTerminal(stdout) as shipped = false
+      GetConsoleMode(stdout) err=<nil> mode=0x7
+
+`os.Stat` on a Windows character device returns a stat with no file identity --
+no path, no volume, no index -- and `os.Stat("NUL")` returns the same. So
+`SameFile` compares zero with zero and says the console is the null device. It
+says the same of a pipe. **Every stream on Windows read as "not a terminal."**
+
+The cost was not subtle once looked for. `bothy` opened a new window on every
+launch, from a tab in a terminal it had correctly identified as WezTerm, so a
+second project meant a second window and the one you typed in was left holding
+the process. And the same predicate gates every question bothy asks, so on
+Windows it asked none: the first run downloaded eight tools without the
+`proceed? [Y/n]` that every other platform gets.
+
+**The fix is a third split, and ADR-031 gains it**: `isterm_windows.go` asks
+`GetConsoleMode`, which answers true in that tab and false over SSH, and is in
+the standard library, so PLAN.md §13's ceiling holds.
+
+**Two more of the same shape were found with it.** `agentPane` compared
+`filepath.Base(command)` against the agent's name, so `claude.exe` never
+matched `claude` and the tower found a session only when a pane happened to be
+titled "agent"; `filepath.Base` is itself host-shaped, returning a Windows path
+whole on Linux, so the comparison could not be tested anywhere but Windows
+until it took the platform as an argument. And the tower attached to a session
+zellij listed and would not answer: measured, `kill-session`, `delete-session`
+and `--force` all refuse such a session as "not found" while `list-sessions`
+still reports it, and `attach` then draws a screen that never returns. That is
+what "the tower opens nothing" was. It is now refused with the reason, which is
+the one thing a hang cannot give.
+
+**What would have caught all three** is the Windows runner opening a session,
+which ADR-054 named as the condition for beta ending and which nothing did. The
+job now runs `bothy tower` with no sessions and fails if it does not answer
+within thirty seconds; it still does not open a workspace, because CI has no
+desktop.
+
+**Verified by running, not by reasoning**, on the Windows box: `bothy` in a
+WezTerm tab stays in that tab; a second terminal adds no window of bothy's; the
+tower draws a mirror per agent; `--window` still opens one and returns the tab
+to its prompt; and the first run asks before downloading.
+
+**ADR-054** gains: *Amended by ADR-057. "Nobody has taken a session by hand" is
+no longer true, and what doing so found is recorded there.*
+
+## ADR-058 — bothy paints the terminal it was typed in, and cannot always put it back
+
+**Status:** accepted. Follows ADR-057.
+
+One palette reaching every tool has always had a hole in it, hidden by a bug.
+bothy generates a configuration file for the terminal -- `ghostty.conf`,
+`wezterm.lua` -- and a terminal reads its configuration once, at startup. So
+that file reaches only a window bothy opened. Until ADR-057, Windows opened one
+every time, which is why it always looked right there; with that fixed, bothy
+runs in the terminal you typed in and the terminal keeps its own colours. The
+same hole has been open on Linux for every user who typed `bothy` inside their
+own Ghostty.
+
+**bothy now paints the terminal with OSC on the way in** -- foreground,
+background, cursor and the sixteen palette entries, in the same mapping the
+providers' templates write, so a spawned window and a painted one agree. Only a
+terminal bothy has written down, only when something is listening, and never
+when the terminal slot is passed through, which is how to say that your
+terminal's colours are yours.
+
+**It cannot always undo this, and that is the cost being accepted.** Measured on
+WezTerm 20240203 on Windows: the paint is honoured; `OSC 111` and `OSC 104`, with
+either terminator, are ignored; and `OSC 11 ; ?` -- the query that would let
+bothy learn the colour to put back -- goes unanswered within 1.5s. So on that
+terminal the workspace's colours outlive the workspace, until the window is
+closed. bothy emits the resets regardless, because a terminal that implements
+them does restore, and documents which does what.
+
+**The alternative was refusing to paint what cannot be undone**, which is the
+more conservative rule and was rejected deliberately: on the terminal bothy
+recommends for Windows it would mean never painting at all, which is the
+behaviour this record exists to fix. The decision is the user's to reverse --
+`bothy config set passthrough terminal` stops it -- and that is named in the
+documentation rather than left to be discovered.
+
+**What would reverse this.** A WezTerm that answers the query or honours the
+reset; then the conservative rule costs nothing and should be taken.
+
+**A bug found while measuring, fixed here:** `checkThemeReached` tested
+`ghostty.conf` whatever terminal was configured, so with wezterm in the slot it
+read a file that does not exist, skipped it, and reported that the palette had
+reached everything without ever looking at the terminal. It now asks the
+configured provider for its path.
+
+## ADR-059 — Nothing on Windows could measure a pane, and a mirror that wraps scrolls its own reply away
+
+**Status:** accepted. Follows ADR-057; retires one of ADR-054's costs.
+
+The tower on Windows had no reply line, and every `/take` paused a full second.
+Both came from one gap: **nothing there could answer how tall a pane is.**
+`paneRows` shelled out to `stty size`, which Windows does not have, and
+`TerminalSize` was a `!unix` stub returning nothing. So `paneRows` returned 0
+forever, and every consumer of it quietly took its degraded branch —
+`replyPrompt` returns without drawing for any pane it believes is two rows or
+shorter; `paint` reserved nothing and painted the whole dump; and
+`ownFullscreen`, which waits for the pane to finish resizing by watching the
+number change, compared 0 with 0 forty times at 25ms and then gave up. The
+take-over still worked, on a blind one-second sleep rather than the read-back
+it was written to be.
+
+`internal/platform/termsize_windows.go` answers it with
+`GetConsoleScreenBufferInfo`, reading the window rectangle rather than the
+scroll buffer. The stdlib exports `GetConsoleMode` and no console geometry, so
+the call goes through `syscall.NewLazyDLL("kernel32.dll")` — still the standard
+library, so PLAN.md §13 holds, and kernel32 is loaded in every process already.
+`paneRows` then asks the platform instead of forking a process, which it was
+doing forty times per take-over on Linux too. Measured in a mirror pane on
+Windows 11: `rows=9` where it had been 0, and `waited 0x25ms` where the wait had
+always been the full second.
+
+**That exposed a second defect, and it is not Windows-only.** With the rows
+known, the reply line was still missing. `paint` wrote each line of the watched
+pane's dump verbatim, and a line wider than the mirror **wraps**, costing a
+second row; enough of them and the paint scrolls the pane, carrying the
+reserved rows and the prompt off the bottom. The design assumed a mirror is as
+wide as the pane it watches, which holds only when the mirrors sit abreast —
+and on Windows they never did, because the width was also 0. Painting now turns
+autowrap off and back on around the frame, so an over-long line is clipped at
+the edge instead. One escape pair, and no parsing of the ANSI dump.
+
+**What is not fixed, because bothy does not own it.** During a take-over on
+Windows the *outer* session receives zellij's keybindings: measured, Ctrl+q
+quits the tower and leaves the taken-over session running, and `Ctrl-o d`
+detaches the tower rather than the session. So there is no key that returns
+from a take-over to mirroring there; the way back is to reopen the tower. On
+Linux the inner session has the keys, which is what makes `Ctrl-o d` the
+documented exit. This is zellij's nested-input behaviour under ConPTY and is
+recorded here and in the wiki rather than worked around.
+
+**ADR-054** gains: *Amended by ADR-059. The tower stacking regardless of window
+width was a consequence of the missing measurement, not a platform limit, and
+is retired.*
+
+## ADR-060 — bothy emptied PATH for everything it launched on Windows, and the way that was found is the point
+
+**Status:** accepted. Follows ADR-057 and ADR-059.
+
+`bothy tower` on Windows showed no prompts and no responses. Three rounds of
+fixes had gone into that command already, each reasoned from the code and a
+Windows screenshot with Linux *assumed*. This one was found in an hour by
+running the same scenario on both platforms and diffing the output, which is
+what should have happened first.
+
+**The reference, captured rather than remembered.** Two workspaces, a stand-in
+agent printing seventy numbered lines and a prompt, a terminal of exactly
+200x50, the tower, and the text of each mirror read back with `dump-screen`.
+Linux: `watching 2 agent(s), stacked`, and each mirror rendering `LINE-65`
+through `PROMPT-READY` with a `>` reply line. Windows, same scenario, `main`:
+the identical "watching 2 agent(s), stacked", and **both mirrors empty**. The
+panes reported `exited=True status=1`.
+
+**The cause is in the session environment, and it is not about the tower.**
+`SessionEnv` builds the child environment in a Go map keyed by name, then puts
+bothy's bin at the front of PATH:
+
+    env.set("PATH", p.BinDir()+string(os.PathListSeparator)+env.get("PATH"))
+
+Windows spells the variable `Path` and compares names without case. `get("PATH")`
+missed, so the new value was bothy's bin and an empty string, written under a
+*second* name; Windows collapsed the pair and kept the one bothy had just
+written. Measured in a pane:
+
+    PATH=C:\Users\bothy\bp\home\.local\share\bothy\bin;
+
+**Every process bothy launched on Windows ran with bothy's bin and nothing
+else on PATH.** The workspace survived only because the layout names each tool
+by absolute path (ADR-054's winget-shim fix). The mirror does not: it runs
+`bothy tower --mirror`, which has to find zellij for itself, fails, and exits
+1 -- a blank pane with no message, because the error went to a pane that was
+already gone.
+
+The environment now folds names on Windows and keeps the machine's spelling,
+so `Path` stays `Path` and carries bothy's bin in front of what was there. The
+same scenario then renders the same eight rows on both platforms.
+
+**What this says about the method.** A platform is not ported by fixing what a
+screenshot shows. Three Windows defects had already been fixed here without
+anyone running the Linux case once; each was real, and none was this one. The
+capture is cheap -- two sessions, a stand-in agent, a fixed terminal size, and
+a text dump -- and it belongs in CI as far as a runner without a desktop can
+take it, so the next difference is found by a job rather than by the person
+using it.
+
+## ADR-061 — The take-over hands the window over where the multiplexer will not descend
+
+**Status:** accepted. Amends ADR-059, whose closing paragraph was wrong.
+
+**What was measured, on both platforms and with the same probe.** A tower
+watching two sessions, `/take` typed into a mirror, and the window rendered
+from its own pty rather than grepped, so the answer is the screen a person
+would be looking at. On Linux the window draws one bar:
+
+    Zellij (bothy-tower ▸ bothy-proj-a)  Tab #1 (FULLSCREEN)
+
+The host has descended into the guest, and `Ctrl-o ]` -- `FocusHostSession`,
+which zellij documents and bothy had never tried -- draws `Zellij
+(bothy-tower)` again. On Windows 11 with the same zellij 0.45.1 the same take
+draws two bars, the host's at row 1 and the guest's at row 3 inside the pane
+frame, with no breadcrumb. The host never descends, so it keeps its
+keybindings: `Ctrl+q` ends the tower and `Ctrl-o ]` does nothing, because the
+client was never in a guest.
+
+**It is not the setting, and not bothy.** `nested_session_handling "descend"`,
+whose documented job is routing input to the nested session, changes nothing
+there. Nor does `"fullscreen"`, which only zooms. Two plain zellij sessions
+with no bothy in the way, nested by hand under bothy's own config, draw the
+same two bars. The host sets `ZELLIJ=0` and `ZELLIJ_PANE_ID` in the pane, so
+the guest knows it is nested; it is the host that does not.
+
+**So the window is handed over whole.** Where the multiplexer will not
+descend, the mirror writes the session's name under the state directory and
+ends the tower; the process that opened the tower -- which has been blocked
+inside the multiplexer all along -- reads the name and attaches to that
+session in its place, then rebuilds the tower when it goes. Ending rather than
+detaching, because `zellij action detach` exits 0 and detaches nobody there,
+from outside the session and from a pane of it alike. A tower holds nothing
+but mirrors of elsewhere, which is why ending it was already permitted.
+
+**What it costs.** The tower is rebuilt rather than resumed, so its mirrors are
+measured again on the way back. That is a cost Linux does not pay and must not
+be made to: there the multiplexer does this instantly and leaves the panes
+alone, which is why the nesting stays. `TestTheReferencePlatformsStillNestInsideThePane`
+is what holds the other half up.
+
+**What would reverse this.** A zellij release whose Windows host descends. The
+register entry `take-over-descend` carries the date it was last measured, and
+retiring it is deleting the entry and the branch together.
+
+**ADR-059** gains: *Amended by ADR-061. "There is no key that returns from a
+take-over" was true of the keys bothy knew and not of the feature; the way
+back now exists, by a different mechanism.*
+
+## ADR-062 — A divergence names its decision, its test and the day it was last true
+
+**Status:** accepted. Amends ADR-031 and ADR-054.
+
+**The strongest argument against is that this is a sixth register.** The
+project already closes the world five times -- `provides`, `platforms`, the
+emulator table, the three expectation tables, and the build-tagged shims --
+and the guard here touches every per-OS branch in the tree. If the real
+problem is that nobody runs the reference case, the cheaper answer is the
+capture harness in CI and no new table.
+
+**The harness cannot run in CI, and that is the whole argument.** No job
+drives a pty, so `platform.TerminalSize` answers false on every runner,
+`paneRows` is 0, and the tower's real path is unreachable there. ADR-059 was
+wrong for two releases because nothing re-read it, and prose cannot fail. The
+register's value is not the list: it is that an entry names the ADR that
+decided it, the test that holds the compensation up, and the date it was last
+measured, and that a claim missing any of the three breaks the build.
+
+**What it checks.** That the reference platforms diverge in nothing, asked for
+every OS and multiplexer from one runner, because the Windows arm is the one
+being worked on and the others are only ever read. That every entry's ADR is
+a heading that exists. That every entry's test is in the suite. That every
+per-OS branch either carries a `// divergence: <id>` marker naming an entry
+that is carried, or is counted in an exempt list with its reason -- the same
+shape ADR-031 uses for the shims, and for the same reason: a new one fails
+until somebody says which it is.
+
+**ADR-031** gains: *Amended by ADR-062. The rule stands; the runtime half of
+it now has a register, where the compile-time half had only the shim list.*
+
+**ADR-054** gains: *Amended by ADR-062. The costs are a register entry each
+rather than a paragraph, so one retired by a later ADR stops being claimed.*

@@ -34,7 +34,7 @@ func version() string {
 	return Version
 }
 
-const usage = `bothy — a small, unlocked terminal workspace
+const usage = `bothy — a terminal workspace assembled from tools you already have
 
 Usage:
   bothy                         launch the workspace
@@ -43,14 +43,14 @@ Usage:
   bothy kill [session]          end a session without attaching to it
   bothy box     [ls|use|stop|create|rm]  the toolbox this project uses, and the rest
   bothy connect [edit] <host>   open the workspace against another machine
-  bothy keys                    the bindings worth knowing
-  bothy confine                 run the agent walled off from the rest of $HOME
+  bothy keys                    the key bindings in a session
+  bothy confine                 run the agent in a container, without the rest of $HOME
   bothy install [--dry-run]     write the configs, then check them
-  bothy doctor  [--json]        report what is broken and how to fix it
+  bothy doctor  [--json]        report what is wrong and how to fix it
   bothy config  [get|set|edit|path]
   bothy layout  [--profile P]   print the layout that would be launched
   bothy theme   example         print a blank palette file to fill in
-  bothy tools                   show which tools are used and where they came from
+  bothy tools                   which tools are in use, and where each came from
   bothy tower                   watch every running agent in one window
   bothy completion <bash|zsh>   the completion script (--install to write it)
   bothy desktop-entry           print a .desktop launcher (--install to write it)

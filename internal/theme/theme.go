@@ -5,6 +5,7 @@ package theme
 
 import (
 	"fmt"
+	"strings"
 )
 
 // paletteTokens is every colour a palette must define, and the canonical order
@@ -111,4 +112,34 @@ func Resolve(provider, palettePath string) (Palette, error) {
 	return Palette{}, fmt.Errorf("theme: unknown provider %q\n"+
 		"      built in: dracula\n"+
 		"      for anything else, write a palette file and set theme.palette", provider)
+}
+
+// Paint is the escape sequences that colour a terminal that is already
+// running. A terminal reads its configuration file once, at startup, so the
+// file bothy generates reaches only a window bothy opened. Running in the
+// terminal you typed in -- which is the normal case -- leaves it in its own
+// colours unless it is told, and OSC is how a terminal is told.
+//
+// The sixteen palette entries are the same mapping the terminal providers'
+// own templates write, so a spawned window and a painted one agree.
+func (p Palette) Paint() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\033]10;%s\a", p.Fg)
+	fmt.Fprintf(&b, "\033]11;%s\a", p.Bg)
+	fmt.Fprintf(&b, "\033]12;%s\a", p.Comment)
+	for i, c := range p.ansi() {
+		fmt.Fprintf(&b, "\033]4;%d;%s\a", i, c)
+	}
+	return b.String()
+}
+
+// Unpaint puts back what the terminal had: 104 the palette, then foreground,
+// background and cursor. Written on the way out, so a workspace that is
+// detached from rather than closed does not leave someone's terminal recoloured.
+func Unpaint() string { return "\033]104\a\033]110\a\033]111\a\033]112\a" }
+
+// ansi is the sixteen colours in their ANSI order, normal then bright.
+func (p Palette) ansi() []string {
+	normal := []string{p.Bg, p.Red, p.Green, p.Yellow, p.Purple, p.Pink, p.Cyan, p.Fg}
+	return append(normal, p.Comment, p.Red, p.Green, p.Yellow, p.Purple, p.Pink, p.Cyan, p.Fg)
 }

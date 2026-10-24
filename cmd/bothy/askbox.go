@@ -36,7 +36,7 @@ func shouldAsk(p platform.Info, cfg config.Config, boxes state.Boxes, dir string
 // askWhichBox asks once per project and records the answer.
 func askWhichBox(p platform.Info, cfg config.Config, plan *launchPlan) error {
 	ask := func(choices int) bool {
-		return shouldAsk(p, cfg, install.ProjectBoxes(p), plan.Dir, choices, isTerminal(os.Stdin))
+		return shouldAsk(p, cfg, install.ProjectBoxes(p), plan.Dir, choices, platform.IsTerminal(os.Stdin))
 	}
 	// Twice, because listing boxes costs a podman call and after the first
 	// launch the answer is already on disk: the rules needing no listing

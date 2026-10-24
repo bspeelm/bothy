@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/bspeelm/bothy/internal/install"
 	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/state"
 )
 
 // `bothy tower` -- the effects half: ask the multiplexer what is running, and
@@ -42,15 +44,15 @@ func cmdTower(args []string) error {
 	env := install.SessionEnv(p, cfg)
 
 	if *one != "" {
-		return runMirror(backend, bin, env, cfg, *one, *every)
+		return runMirror(p, backend, bin, env, cfg, *one, *every)
 	}
 	return openTower(p, cfg, backend, bin, env, !*flat, *restore)
 }
 
 // runMirror prints one session's agent pane until the window closes. The pane
 // is looked up every pass, not once: an agent restarted lands in a new pane.
-func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
-	session string, every time.Duration) error {
+func runMirror(p platform.Info, backend mux.Backend, bin string, env []string,
+	cfg config.Config, session string, every time.Duration) error {
 
 	agent := install.AgentBinary(cfg.Slots.Agent)
 	typed := make(chan string, 1)
@@ -62,6 +64,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	rows := paneRows()
+	note("%s: mirror starts with rows=%d", session, rows)
 	replyPrompt(os.Stdout, rows)
 	last := ""
 	for {
@@ -73,7 +76,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			closed = nil
 		case line := <-typed:
 			if take, text := command(line); take {
-				step(backend, bin, env, session)
+				step(p, backend, bin, env, session)
 			} else {
 				relay(backend, bin, env, session, agent, text)
 			}
@@ -86,6 +89,7 @@ func runMirror(backend mux.Backend, bin string, env []string, cfg config.Config,
 			// taller, and a height read at startup leaves the rest of it dead
 			// with the reply line stranded where the bottom used to be.
 			if r := paneRows(); r != rows {
+				note("%s: rows %d -> %d", session, rows, r)
 				rows, last = r, ""
 				replyPrompt(os.Stdout, rows)
 			}
@@ -216,7 +220,7 @@ func ownFullscreen(backend mux.Backend, bin string, env []string, self string, w
 // terminal; nothing has to be torn down first. zellij routes keys to the inner
 // session itself -- measured: Ctrl-o d detaches it and leaves the tower alone --
 // so there is no mode to set and nothing to restore beyond the next frame.
-func step(backend mux.Backend, bin string, env []string, session string) {
+func step(p platform.Info, backend mux.Backend, bin string, env []string, session string) {
 	// The pane has to be its full size before the client arrives, and has to be
 	// put back afterwards -- only if this expanded it, and verified both ways.
 	if self := os.Getenv("ZELLIJ_PANE_ID"); self != "" {
@@ -225,9 +229,76 @@ func step(backend mux.Backend, bin string, env []string, session string) {
 		}
 	}
 	note("joining %s with rows(stty)=%d", session, paneRows())
+	// divergence: take-over-descend (ADR-061). Where the multiplexer descends
+	// into a nested session, joining inside this pane is the whole take-over:
+	// one set of chrome, and its own key for coming back. Where it does not,
+	// the host keeps its chrome and its keybindings, so the window shows two
+	// of everything and the key that should return ends the tower instead.
+	// There the window is handed over whole: ask for it, then leave, and the
+	// process that opened the tower attaches to the session in its place.
+	if handOver(p.OS) {
+		if err := requestTake(p, session); err != nil {
+			fmt.Printf("\n%s: %v\n", session, err)
+			return
+		}
+		// Ending the tower rather than detaching its client: measured on
+		// Windows, `action detach` exits 0 and detaches nobody, from outside
+		// the session and from a pane of it alike. Ending it needs no such
+		// message to arrive -- the client goes because its session has -- and
+		// a tower holds nothing but mirrors of elsewhere, so there is nothing
+		// in it to lose. It is rebuilt when the window comes back.
+		if err := endTower(backend, bin, env); err != nil {
+			fmt.Printf("\n%s: %v\n", session, err)
+		}
+		return
+	}
 	if err := backend.Join(bin, session, env); err != nil {
 		fmt.Printf("\n%s: %v\n", session, err)
 	}
+}
+
+// endTower ends the tower's own session: the one place in the tower that ends
+// anything. An agent's session is never the tower's to end, and keeping this
+// to a single call site is what lets a test say so.
+func endTower(backend mux.Backend, bin string, env []string) error {
+	return backend.Kill(bin, env, towerSession)
+}
+
+// handOver is whether a take-over has to replace the window rather than nest
+// inside the pane. Taking the OS rather than reading runtime.GOOS is ADR-031:
+// the arm that only runs on one platform stays reachable from a test on any.
+//
+// divergence: take-over-descend
+func handOver(goos string) bool { return goos == "windows" }
+
+// takeFile is where a mirror leaves the name of the session it wants the
+// window given to. A file and not a pipe: the two sides are the process that
+// opened the tower and a pane of it, and the first is blocked inside the
+// multiplexer until the client it started goes away.
+func takeFile(p platform.Info) string { return filepath.Join(p.StateDir(), "take") }
+
+// requestTake asks for the window. Written before the client leaves, so the
+// request is already there when the other side wakes up.
+func requestTake(p platform.Info, session string) error {
+	if err := os.MkdirAll(p.StateDir(), 0o755); err != nil {
+		return err
+	}
+	return state.WriteFile(takeFile(p), []byte(session), 0o644)
+}
+
+// takeRequest reads a request and clears it. Clearing is the point: a window
+// handed over once must not be handed over again every time the tower closes.
+func takeRequest(p platform.Info) (string, bool) {
+	body, err := os.ReadFile(takeFile(p))
+	if err != nil {
+		return "", false
+	}
+	// Ignored deliberately: the request has been read, and a file that will
+	// not delete is better than refusing the take-over it is asking for. The
+	// next read finds the same name and hands over the same window.
+	_ = os.Remove(takeFile(p))
+	session := strings.TrimSpace(string(body))
+	return session, session != ""
 }
 
 // relay hands a typed line to the agent this pane mirrors. It arrives from the
@@ -241,7 +312,7 @@ func relay(backend mux.Backend, bin string, env []string, session, agent, line s
 		fmt.Printf("\n%s: cannot read the session's panes; nothing was sent\n", session)
 		return
 	}
-	pane, found := agentPane(panes, agent)
+	pane, found := agentPane(panes, agent, runtime.GOOS)
 	if !found {
 		fmt.Printf("\n%s: no live agent pane; nothing was sent\n", session)
 		return
@@ -257,15 +328,43 @@ func mirrorOnce(backend mux.Backend, bin string, env []string, session, agent st
 	if !ok {
 		return "", fmt.Errorf("gone, or the multiplexer stopped answering")
 	}
-	pane, found := agentPane(panes, agent)
+	pane, found := agentPane(panes, agent, runtime.GOOS)
 	if !found {
 		return "", fmt.Errorf("no %s pane in this session", agent)
 	}
 	return backend.Screen(bin, session, pane.Addr(), env)
 }
 
-// openTower builds the window and launches it.
+// openTower runs the window until nobody wants it back.
+//
+// One pass is the whole of it where the multiplexer descends into a nested
+// session: build, launch, and return when the client goes. Where it does not,
+// a mirror hands the window over by asking and leaving (see step), and this
+// loop is what the window comes back to -- the tower is rebuilt rather than
+// resumed, because its mirrors were built against sessions that have since
+// been typed into.
 func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin string,
+	env []string, expand, restore bool) error {
+	for {
+		if err := openTowerOnce(p, cfg, backend, bin, env, expand, restore); err != nil {
+			return err
+		}
+		session, wanted := takeRequest(p)
+		if !wanted {
+			return nil
+		}
+		fmt.Printf("handing the window to %s; it comes back to the tower\n", session)
+		if err := backend.Join(bin, session, env); err != nil {
+			// Reported and not returned: the tower is the thing to come back
+			// to, and a session that would not take the window is a reason to
+			// rebuild it rather than to end here with nothing on screen.
+			fmt.Printf("%s: %v\n", session, err)
+		}
+	}
+}
+
+// openTowerOnce builds the window and launches it.
+func openTowerOnce(p platform.Info, cfg config.Config, backend mux.Backend, bin string,
 	env []string, expand, restore bool) error {
 	self, err := os.Executable()
 	if err != nil {
@@ -286,8 +385,14 @@ func openTower(p platform.Info, cfg config.Config, backend mux.Backend, bin stri
 	// opened, and Open would attach to that rather than build the layout just
 	// computed. Nothing in a tower is worth keeping, so it is replaced.
 	if slices.Contains(live, towerSession) {
-		_ = backend.Kill(bin, env, towerSession)
+		killErr := endTower(backend, bin, env)
 		live = backend.Live(bin, env)
+		// Said rather than swallowed: if the previous tower cannot be ended,
+		// Open deals with what is left, and this is the only place that knows
+		// why the layout below is being built against a name already taken.
+		if killErr != nil && slices.Contains(live, towerSession) {
+			fmt.Printf("the previous tower will not end (%v); replacing its record\n", killErr)
+		}
 	}
 
 	if restore {
@@ -356,20 +461,14 @@ func envInt(env []string, key string) int {
 
 // paneRows is how tall this pane is, 0 when it cannot be found out.
 //
-// stty rather than an ioctl, which would need unsafe and a constant that differs
-// between Linux and macOS; stty is in coreutils and present even in a minimal
-// build root. A pane that will not say its size is painted whole.
+// The platform is asked rather than stty, which does not exist on Windows --
+// so every mirror there reported 0, drew no reply line, and spun the whole
+// take-over wait (ADR-059). It is also called forty times in that wait, which
+// was forty processes. A pane that will not say its size is painted whole.
 func paneRows() int {
-	cmd := exec.Command("stty", "size")
-	cmd.Stdin = os.Stdin
-	out, err := cmd.Output()
-	if err != nil {
+	_, rows, ok := platform.TerminalSize()
+	if !ok {
 		return 0
 	}
-	f := strings.Fields(string(out))
-	if len(f) != 2 {
-		return 0
-	}
-	n, _ := strconv.Atoi(f[0])
-	return n
+	return rows
 }

@@ -8,9 +8,8 @@ $ bothy tower
 watching 3 agent(s), side by side; 2 pane(s) expanded to be worth reading
 ```
 
-Three things you can do from there, in order of how much they ask of you: read
-what each agent is doing, type a reply to one, or take a session over and work
-in it directly.
+Three things are possible from there: read what each agent is doing, type a
+reply to one, or take a session over and work in it directly.
 
 ## Reading the mirrors
 
@@ -30,9 +29,9 @@ Type into a mirror and press Enter, and the line goes to the agent that mirror
 is watching, as if you had typed it in that agent's own window. Move between
 mirrors with `Alt+h/j/k/l` first, so the reply goes where you are looking.
 
-The bottom two rows of a mirror are yours. Nothing the mirror draws reaches
-them, so a reply stays on screen while the agent above it keeps working — you
-can type at an agent mid-thought, which is when you most often want to.
+The bottom two rows of a mirror are reserved for your reply. Nothing the mirror
+draws reaches them, so a reply stays on screen while the agent above continues
+working, and a reply can be composed while the agent is mid-task.
 
 **A message can span lines.** End a line with a backslash and the next line
 joins it; the message goes when a line does not end in one:
@@ -47,27 +46,27 @@ A multi-line message arrives as one message rather than one per line, so the
 agent sees it whole. To send a message that really ends in a backslash, type
 two.
 
-Shift+Enter does not do this, and cannot. The tower reads your typing the way a
-shell prompt does, where the terminal ends the line when you press Enter — so
-there is no key that means "newline, but keep going". The backslash is the
-shell's answer to the same problem.
+Shift+Enter cannot do this. The tower reads input the way a shell prompt does,
+where the terminal ends the line on Enter, so no key means "insert a newline and
+keep reading". The backslash is the convention a shell uses for the same
+problem.
 
 If a reply cannot be delivered — the session went away, or its agent pane did —
 the mirror says so where you typed it, rather than letting the line vanish.
 
 ## Taking over a session
 
-A mirror is a picture, and a picture cannot answer a menu. When an agent asks
-for something a sentence cannot give it — a numbered choice, a y/n, anything you
-would answer with the arrow keys — take the session over:
+A mirror shows a pane's contents and can relay a line of text, which is not
+enough for a prompt that needs a keystroke. When an agent asks for a numbered
+choice, a y/n, or anything answered with the arrow keys, take the session over:
 
 ```
 > /take
 ```
 
-The pane stops mirroring and **becomes** that session. Not a better picture of
-it: the session itself, with your keyboard on it. Arrows, Esc, Tab, Ctrl-C, the
-agent's own bindings, its scrollback, all of it, because you are in it rather
+The pane stops mirroring and becomes a client of that session: the session
+itself, with your keyboard attached. Arrows, Esc, Tab, Ctrl-C, the agent's own
+bindings and its scrollback all work, because you are in it rather
 than looking at it. The other mirrors carry on behind you.
 
 `Ctrl-o d` — the way you leave any session — puts the pane back to mirroring.
@@ -82,6 +81,12 @@ than looking at it. The other mirrors carry on behind you.
 own window. While you are taken over the keys are the session's, so bothy cannot
 catch that one for you. `Ctrl-o d` is the way out.
 
+**On Windows the window is handed over whole.** Zellij there will not descend
+into a session running inside a pane, so a take-over that nested would draw
+two tab bars and `Ctrl-q` would end the tower. Instead the tower closes and
+the session takes the window; leaving that session brings the tower back,
+rebuilt ([ADR-061](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-061--the-take-over-hands-the-window-over-where-the-multiplexer-will-not-descend)).
+
 ### What it does to the windows
 
 The pane is made full size before the session arrives and put back when you
@@ -94,12 +99,12 @@ for as long as you stay, and grow back when you leave. That is the cost of being
 in one session from two places, and the reason the tower mirrors rather than
 attaching the rest of the time.
 
-## What it will not do
+## What it does not do
 
-**bothy relays; it does not speak.** Everything that reaches an agent came from
-your keyboard. bothy composes nothing, answers nothing on your behalf, and
-sends nothing on a timer. During a take-over it is not even relaying: the
-session has your keyboard directly, and bothy is not in between.
+**bothy relays; it does not compose.** Everything that reaches an agent came
+from your keyboard. bothy writes no message, answers nothing on your behalf and
+sends nothing on a timer. During a take-over it is not relaying at all: the
+session has your keyboard directly.
 
 Beyond the line you type, the tower reads panes and writes nothing to them. It
 starts and stops nothing, and creates no session but its own, so an agent cannot
@@ -109,10 +114,10 @@ be disturbed by being watched. It attaches to nothing unless you ask it to with
 A relayed reply is text, and only text — not arrows, not tab, not Ctrl-C. A
 question that has to be answered by moving a selection is what `/take` is for.
 
-**It cannot bring a session's window to the front.** Selecting a row shows you
-which session wants attention; switching to it is yours to do. No Wayland
-compositor lets one application raise another's window, and bothy will not
-install a shell extension to get around that.
+**It cannot bring a session's window to the front.** Selecting a row shows
+which session needs attention; switching to it is a manual step. No Wayland
+compositor allows one application to raise another's window, and bothy does not
+install a shell extension to work around that.
 
 ## Why it expands the panes it watches
 

@@ -1,8 +1,8 @@
 # Troubleshooting
 
-**Run `bothy doctor` first.** Every check carries the command
-that fixes it — a test fails if any check reports a failure without one. This
-page is the handful people actually hit, by symptom.
+**Run `bothy doctor` first.** Every failing check carries the command that
+fixes it; a test fails if any check reports a failure without one. This page
+covers the common failures, by symptom.
 
 ## `bothy: command not found`
 
@@ -16,20 +16,24 @@ export PATH="$HOME/.local/bin:$PATH"
 Put it in your shell's startup file. bothy will not do that for you — it does
 not edit your dotfiles.
 
-## Previews are block art, not pictures
+## There are no image previews
 
-Your terminal cannot draw inline images. That is a fact about the terminal, not
-a misconfiguration, which is why the doctor reports it as a capability you do
-not have rather than as a failure.
+There are none on any terminal, and the doctor says so rather than reporting a
+failure. The file pane shows `(press Enter to preview)` on an image, and Enter
+opens it in whatever your system opens images with.
 
-Ghostty, Kitty and WezTerm can. In anything else bothy falls back to an
-approximation made of characters. If you have Ghostty installed, bothy opens a
-new window in it by default; `--in-place` overrules that.
+The cause is upstream and measurable: Yazi picks its image protocol from what
+the terminal says it is, zellij answers that question in its own name, and the
+protocol Yazi then sends is one zellij renders as garbage. Ghostty and Kitty
+draw images perfectly with nothing in the way; through a multiplexer nothing
+does. If Yazi or zellij changes that, bothy turns previews back on by itself —
+it asks on every launch.
 
 ## The agent pane is empty
 
-Nothing to run. bothy launches `claude` unless told otherwise and never
-installs an agent — your AI tools and their credentials are your business
+There is nothing to run. bothy launches `claude` unless configured otherwise
+and never installs an agent, because AI tools and their credentials are yours
+to manage
 ([ADR-014](https://github.com/bspeelm/bothy/blob/main/docs/decisions.md#adr-014--bothy-installs-no-editor-and-helix-could-not-be-installed-anyway)).
 
 ```sh
@@ -110,13 +114,6 @@ file's MIME type", install [Git for Windows](https://git-scm.com/download/win):
 Yazi works out what a file is by shelling out to the `file.exe` it ships, and
 has no fallback. `bothy doctor` names both before you hit either.
 
-## Windows: previews are never pictures
-
-They will not be, on any Windows terminal. Yazi sends the iTerm2 protocol
-there and the multiplexer does not carry it, so there is nothing to tune.
-Enter still opens the file in whatever Windows opens it with, which is the
-same thing the preview would have shown you.
-
 ## macOS refuses to run it
 
 Gatekeeper, because bothy is unsigned. `xattr -dr com.apple.quarantine "$(which
@@ -125,7 +122,7 @@ bothy)"` clears it, and the doctor prints that with your path filled in. See
 
 ## Something else
 
-`bothy doctor --json` is the thing to paste into an issue — it is what the bug
-template asks for, and it carries every check, its severity and its fix.
+`bothy doctor --json` is what to attach to an issue: the bug template asks for
+it, and it carries every check with its severity and its fix.
 Report at [github.com/bspeelm/bothy/issues](https://github.com/bspeelm/bothy/issues);
-for anything security-shaped, [SECURITY.md](https://github.com/bspeelm/bothy/blob/main/SECURITY.md) instead.
+for a suspected vulnerability, [SECURITY.md](https://github.com/bspeelm/bothy/blob/main/SECURITY.md) instead.

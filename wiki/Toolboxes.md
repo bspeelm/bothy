@@ -35,23 +35,23 @@ $ bothy box
   because   this project is recorded for it
 ```
 
-Rule 4 is a poor answer to the question, and it is last for that reason. It
-knows where bothy installed its own tools, which is not the same as where a
-project belongs. It is still better than nothing: your home directory is shared
-between the host and its boxes, but `PATH` is not, so a bothy installed inside
-a box has tools the host cannot see.
+Rule 4 is last because it is the weakest: it knows where bothy installed its
+own tools, which is not the same as where a project belongs. It is still worth
+having, because the home directory is shared between the host and its boxes
+while `PATH` is not, so a bothy installed inside a box has tools the host
+cannot see.
 
-Rule 1 applies to every project at once, so it is a blunt instrument for a
-single one — but when it is set, it wins, and rules 2 to 4 never run. Clear it
-with `bothy config set workspace.container ""`.
+Rule 1 applies to every project at once, so it is a coarse answer for a single
+one — but when it is set it wins, and rules 2 to 4 do not run. Clear it with
+`bothy config set workspace.container ""`.
 
-Rule 2 beats the project's own record on purpose. If you have already entered a
-box and then run `bothy`, you chose that box, and bothy does not second-guess
-you. The trade-off is that a project opened this way is never asked which box
-it belongs in, and nothing is recorded for it. `bothy box` will tell you when a
-record exists but a rule above it is answering.
+Rule 2 beats the project's own record deliberately: entering a box and then
+running `bothy` is a choice, and bothy follows it. The trade-off is that a
+project opened this way is never asked which box it belongs in, and nothing is
+recorded for it. `bothy box` reports when a record exists but a higher rule is
+answering.
 
-## Being asked, once
+## The question it asks once
 
 The first time you open a project on a machine with more than one box, bothy
 asks:
@@ -66,11 +66,9 @@ choose [dev]:
 ```
 
 The default is what bothy would have done anyway, so Enter changes nothing.
-"The host" is a real answer and is remembered as firmly as a box name — you are
-not asked again for having chosen it.
+"The host" is a valid answer and is recorded as firmly as a box name.
 
-It stays quiet when there is nothing worth asking: bothy is already inside a
-box, `workspace.container` is set, you have answered for this project before,
+bothy does not ask when there is nothing to ask: it is already inside a box, `workspace.container` is set, you have answered for this project before,
 there is no terminal to answer on, or you have fewer than two boxes. In all of
 those cases nothing is recorded either.
 
@@ -89,13 +87,12 @@ The star marks this project's box. The sessions listed are where they actually
 are: bothy looks at the running processes rather than trusting its own record,
 so if a session ended up somewhere unexpected, you will see it there.
 
-A running box says how much is in it rather than only that it is running, which
-is nearly no information: a toolbox is running from the moment anything touched
-it and stays that way long after. `22 busy` is twenty-two processes; `idle` is
-none. The count comes from the container's own cgroup, and leaves out the
-process toolbox keeps in every box for its own housekeeping. A box that will not
-answer says `running`, as before — "could not ask" and "nothing in it" are not
-the same thing.
+A running box reports how much is in it rather than only that it is running,
+because a toolbox is running from the moment anything touches it and stays that
+way long after. `22 busy` is twenty-two processes; `idle` is none. The count
+comes from the container's own cgroup and excludes the process toolbox keeps in
+every box for its own housekeeping. A box that cannot be queried reports
+`running`, which is not the same as reporting that it is empty.
 
 `bothy box stop` says the same count before it stops anything, so what is about
 to end is visible while there is still time to reconsider.
@@ -167,8 +164,9 @@ two steps that come after: this project now uses the new box, and you can
 install bothy's tools there straight away instead of finding out they are
 missing when the first workspace fails.
 
-`create` and `rm` are the two box commands that need toolbox installed. bothy
-manages boxes; it does not make or unmake them itself.
+`create` and `rm` are the two box commands that require toolbox to be
+installed: bothy tracks and manages boxes, and toolbox creates and deletes
+them.
 
 ## Removing a box
 
@@ -184,14 +182,13 @@ removed scratch
 using the box is told where it opens now, so nothing is left pointing at a box
 that no longer exists.
 
-`rm` is stricter than `stop`, because you cannot undo it. A box that is merely
-running is refused rather than stopped for you, and bothy never passes
-`--force` to toolbox, so you cannot delete a box with work in it by accident.
-Stop it first, then remove it.
+`rm` is stricter than `stop`, because deletion cannot be undone: a running box
+is refused rather than stopped for you, and bothy never passes `--force` to
+toolbox, so a box with work in it cannot be deleted by accident. Stop it first.
 
 You can remove any box, not just ones bothy created.
 
-## Why bothy talks to podman
+## Why bothy calls podman directly
 
 Entering a box stays `toolbox`'s job. The `podman exec` command toolbox builds
 carries about twenty environment variables, a user, a working directory and a
@@ -225,13 +222,13 @@ host and in some boxes but not others, so a pane that needs it can die with
 run and names the container in the fix. If you move a project to a box that has
 never had `bothy install` run in it, run the doctor there first.
 
-## A box is not the agent's wall
+## A box is not a security boundary
 
-`bothy confine` uses a container too, but for a different purpose. It is a
-plain podman container built from bothy's own Containerfile, and it mounts your
-project and nothing else from `$HOME`. It carries no toolbox label and is
-deleted when it exits, so it never shows up in `bothy box ls` and no box
-command can touch it. See [Walling off the agent](Walling-off-the-agent).
+`bothy confine` also uses a container, for a different purpose: a plain podman
+container built from bothy's own Containerfile, mounting the project and
+nothing else from `$HOME`. It carries no toolbox label and is deleted when it
+exits, so it does not appear in `bothy box ls` and no box command can reach
+it. See [Walling off the agent](Walling-off-the-agent).
 
 A confined agent does open in this project's box, because `bothy confine`
 launches the same way `bothy` does.

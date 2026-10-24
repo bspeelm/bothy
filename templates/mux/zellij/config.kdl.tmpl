@@ -11,6 +11,15 @@ default_mode "normal"
 // never sourced the profile.
 scrollback_editor "{{ .EditorBin }}"
 
+// Zellij greets a new session with a floating "About Zellij" pane -- release
+// notes on a new version, a numbered tip otherwise. It covers the layout bothy
+// has just built, and it takes the keyboard: measured in a fresh tower, the
+// tip pane is the focused one, so the first thing typed at a mirror goes to it
+// and is swallowed. bothy builds a fixed layout and owns what is in it, so
+// both are off here rather than left to zellij's default.
+show_startup_tips false
+show_release_notes false
+
 // `bothy tower` hands a mirror to a real client of the session it watches, which
 // runs that session inside a pane of the tower's own. Left at the default
 // ("ask") zellij puts a modal in the way; measured, the nested session otherwise

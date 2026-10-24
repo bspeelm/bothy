@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bspeelm/bothy/internal/mux"
+	"github.com/bspeelm/bothy/internal/platform"
 )
 
 // A real list-panes reply, from a running cockpit. The agent is terminal_1 here
@@ -27,7 +31,7 @@ func cockpitPanes() []mux.PaneRef {
 // editor profile puts the agent in a different position, and a plugin pane
 // carries id 1 as well -- ids restart per kind, so the address needs the kind.
 func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
-	got, ok := agentPane(cockpitPanes(), "claude")
+	got, ok := agentPane(cockpitPanes(), "claude", "linux")
 	if !ok {
 		t.Fatal("no agent pane found in a cockpit that has one")
 	}
@@ -41,14 +45,14 @@ func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
 		{ID: 0, Command: "claude"},
 		{ID: 1, Command: "yazi"},
 	}
-	got, ok = agentPane(shuffled, "claude")
+	got, ok = agentPane(shuffled, "claude", "linux")
 	if !ok || got.Addr() != "terminal_0" {
 		t.Errorf("agent pane is %q/%v after reordering, want terminal_0", got.Addr(), ok)
 	}
 
 	// A full path in the slot resolves to the same agent: config may name
 	// ~/.local/bin/claude while zellij reports the basename.
-	if _, ok := agentPane(cockpitPanes(), "/usr/local/bin/claude"); !ok {
+	if _, ok := agentPane(cockpitPanes(), "/usr/local/bin/claude", "linux"); !ok {
 		t.Error("an agent named by absolute path was not matched")
 	}
 }
@@ -58,7 +62,7 @@ func TestTheAgentPaneIsFoundByCommandNotByPosition(t *testing.T) {
 // merely quiet.
 func TestAnExitedAgentPaneIsNotWatched(t *testing.T) {
 	panes := []mux.PaneRef{{ID: 1, Command: "claude", Exited: true}}
-	if _, ok := agentPane(panes, "claude"); ok {
+	if _, ok := agentPane(panes, "claude", "linux"); ok {
 		t.Error("an exited agent pane was offered for watching")
 	}
 }
@@ -305,8 +309,13 @@ func TestPaintNeverReachesTheReplyLine(t *testing.T) {
 	if strings.Contains(out, "\033[J") {
 		t.Error("the frame clears to the end of the screen, which wipes the reply line")
 	}
-	if !strings.HasPrefix(out, "\0337") || !strings.HasSuffix(out, "\0338") {
-		t.Error("the frame does not save and restore the cursor, so typing resumes in the wrong place")
+	if !strings.HasPrefix(out, "\033[?7l\0337") {
+		t.Error("the frame does not turn wrapping off and save the cursor before it draws; " +
+			"a line wider than the pane then scrolls the reply line away")
+	}
+	if !strings.HasSuffix(out, "\0338\033[?7h") {
+		t.Error("the frame does not restore the cursor and wrapping, so typing resumes in the " +
+			"wrong place and the pane stops wrapping for whatever draws next")
 	}
 	// Six rows, two reserved: four painted, and they are the last four, because
 	// the bottom is where an agent says what it is waiting for.
@@ -455,7 +464,7 @@ func TestTheTowerFindsAWrappedAgent(t *testing.T) {
 		{ID: 1, Command: "podman", Title: agentPaneName},
 		{ID: 2, Command: "/bin/bash", Title: "side"},
 	}
-	got, ok := agentPane(confined, "claude")
+	got, ok := agentPane(confined, "claude", "linux")
 	if !ok {
 		t.Fatal("a confined agent is invisible to the tower")
 	}
@@ -471,7 +480,7 @@ func TestTheRunningAgentBeatsAPaneMerelyNamedAgent(t *testing.T) {
 		{ID: 0, Command: "/bin/bash", Title: agentPaneName},
 		{ID: 1, Command: "claude", Title: "somethingelse"},
 	}
-	got, ok := agentPane(panes, "claude")
+	got, ok := agentPane(panes, "claude", "linux")
 	if !ok || got.Addr() != "terminal_1" {
 		t.Errorf("found %q/%v, want the pane running claude", got.Addr(), ok)
 	}
@@ -786,5 +795,163 @@ func TestASingleMirrorIsNotExpanded(t *testing.T) {
 	two := append(one, mux.PaneRef{ID: 1, Command: "bothy"})
 	if n := terminalPanes(two); n != 2 {
 		t.Errorf("counted %d mirrors, want 2", n)
+	}
+}
+
+// On Windows the pane runs the full path zellij needs, `C:\...\claude.exe`,
+// while the slot names the agent `claude`. Comparing the two without ExeName
+// never matched, so the command arm was dead there and only a pane that
+// happened to be named "agent" was ever found (ADR-057).
+func TestTheAgentPaneIsFoundWhenTheCommandCarriesExe(t *testing.T) {
+	panes := []mux.PaneRef{
+		{ID: 0, Title: "browser", Command: `C:\Users\u\.local\share\bothy\bin\yazi.exe`},
+		{ID: 1, Title: "not named agent", Command: `C:\Users\u\bin\claude.exe`},
+	}
+	got, ok := agentPane(panes, "claude", "windows")
+	if !ok {
+		t.Fatal("no agent pane found; the tower would report no sessions to watch")
+	}
+	if got.ID != 1 {
+		t.Errorf("found pane %d, want the one running claude.exe", got.ID)
+	}
+	// And the suffix is not invented where it does not belong.
+	if _, ok := agentPane(panes, "claude", "linux"); ok {
+		t.Error("a Windows command matched on linux, where no binary is named claude.exe")
+	}
+}
+
+// The Windows shape of the painting bug. Nothing there could measure a pane --
+// paneRows shelled out to stty -- so rows arrived as 0, the mirror painted
+// every line of a dump taller than the pane, and the reply line was never
+// reserved or drawn. What the user saw was their typing appearing in the
+// middle of the agent's output and vanishing on the next frame (ADR-059).
+func TestAMeasuredPaneReservesTheReplyLineAndAnUnmeasuredOneCannot(t *testing.T) {
+	var tall []string
+	for i := 0; i < 40; i++ {
+		tall = append(tall, fmt.Sprintf("line %d", i))
+	}
+	screen := strings.Join(tall, "\n")
+
+	// Measured: the last rows-2 lines, and a prompt parked on the last row.
+	var measured bytes.Buffer
+	paint(&measured, screen, 10)
+	replyPrompt(&measured, 10)
+	if got := strings.Count(measured.String(), "\r\n") + 1; got != 8 {
+		t.Errorf("a 10-row pane was painted with %d lines, want 8 -- two are the reply's", got)
+	}
+	if !strings.Contains(measured.String(), "\033[10;1H\033[K> ") {
+		t.Error("no reply prompt on the last row of a pane whose height is known")
+	}
+	if strings.Contains(measured.String(), "line 0") {
+		t.Error("the top of a 40-line dump was painted into a 10-row pane")
+	}
+
+	// Unmeasured: everything is painted and there is no prompt. This is what
+	// Windows did on every frame, and it is still the right answer when a
+	// pane genuinely will not say -- but it must not be reachable merely
+	// because the platform has no stty.
+	var unmeasured bytes.Buffer
+	paint(&unmeasured, screen, 0)
+	replyPrompt(&unmeasured, 0)
+	if !strings.Contains(unmeasured.String(), "line 0") {
+		t.Error("an unmeasured pane should be painted whole")
+	}
+	if strings.Contains(unmeasured.String(), "> ") {
+		t.Error("a prompt was drawn on a pane of unknown height")
+	}
+}
+
+// A backend that records the two ways a take-over can go. Embedding Zellij
+// keeps the rest of the interface real, so a method added to Backend later
+// cannot silently start being answered by a stub.
+type takeStub struct {
+	mux.Zellij
+	ended  []string
+	joined []string
+}
+
+func (s *takeStub) Kill(_ string, _ []string, session string) error {
+	s.ended = append(s.ended, session)
+	return nil
+}
+
+func (s *takeStub) Join(_, session string, _ []string) error {
+	s.joined = append(s.joined, session)
+	return nil
+}
+
+// Measured on Windows 11 with zellij 0.45.1, both nested_session_handling
+// values, and again with two plain sessions and no bothy in the way: the host
+// does not descend into a nested session there. It keeps its own tab bar,
+// status bar and keybindings, so the window draws two of everything and
+// Ctrl+q ends the tower instead of coming back to it. On Linux the same take
+// renders one bar reading "bothy-tower > bothy-proj-a" and Ctrl-o ] returns.
+// So the take-over hands the window over whole there, and nests here.
+func TestTheWindowIsHandedOverWhereTheMultiplexerWillNotDescend(t *testing.T) {
+	// Unset deliberately: with it set, step asks the backend to expand its own
+	// pane and the embedded Zellij shells out for real. The test would then
+	// pass or hang depending on whether it was run from inside a session.
+	t.Setenv("ZELLIJ_PANE_ID", "")
+	win := platform.Info{OS: "windows", Root: t.TempDir()}
+	s := &takeStub{}
+	step(win, s, "zellij", nil, "bothy-api")
+
+	if len(s.joined) != 0 {
+		t.Errorf("joined %v inside the pane; that draws two sets of chrome there", s.joined)
+	}
+	if want := []string{towerSession}; !slices.Equal(s.ended, want) {
+		t.Errorf("ended %v, want %v: the tower's own session is the one that goes", s.ended, want)
+	}
+	if got, ok := takeRequest(win); !ok || got != "bothy-api" {
+		t.Errorf("request = %q,%v; the process that opened the tower has nothing to act on", got, ok)
+	}
+}
+
+// The reference platforms keep the multiplexer's own behaviour, which is
+// better than anything bothy can do by hand: the switch is instant and the
+// tower's panes are never rebuilt. This is the half of the divergence that a
+// change to the Windows arm must not quietly take with it.
+func TestTheReferencePlatformsStillNestInsideThePane(t *testing.T) {
+	// Unset deliberately: with it set, step asks the backend to expand its own
+	// pane and the embedded Zellij shells out for real. The test would then
+	// pass or hang depending on whether it was run from inside a session.
+	t.Setenv("ZELLIJ_PANE_ID", "")
+	for _, goos := range []string{"linux", "darwin"} {
+		if handOver(goos) {
+			t.Errorf("%s hands the window over; it descends, and rebuilding the tower is a cost it does not owe", goos)
+		}
+		dir := platform.Info{OS: goos, Root: t.TempDir()}
+		s := &takeStub{}
+		step(dir, s, "zellij", nil, "bothy-api")
+		if want := []string{"bothy-api"}; !slices.Equal(s.joined, want) {
+			t.Errorf("%s joined %v, want %v", goos, s.joined, want)
+		}
+		if len(s.ended) != 0 {
+			t.Errorf("%s ended %v; nesting keeps the tower where it is", goos, s.ended)
+		}
+		if _, ok := takeRequest(dir); ok {
+			t.Errorf("%s left a request behind; the window was never handed over", goos)
+		}
+	}
+	if !handOver("windows") {
+		t.Error("windows nests, and the measurement says the host does not descend there")
+	}
+}
+
+// Read once, because the window comes back to the tower and the tower closing
+// again is not a second request to leave it.
+func TestAHandOverIsAskedForOnce(t *testing.T) {
+	p := platform.Info{OS: "windows", Root: t.TempDir()}
+	if _, ok := takeRequest(p); ok {
+		t.Fatal("a request with nothing asked for")
+	}
+	if err := requestTake(p, "bothy-api"); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := takeRequest(p); !ok || got != "bothy-api" {
+		t.Fatalf("request = %q,%v", got, ok)
+	}
+	if got, ok := takeRequest(p); ok {
+		t.Errorf("request = %q a second time; the window would never stay with the tower", got)
 	}
 }

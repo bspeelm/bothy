@@ -1,8 +1,7 @@
 # What you can depend on
 
-These are the parts bothy will not change out from under you within a major
-version. Rename or remove any of them and that is a breaking change, announced
-as one.
+These are the parts bothy does not change within a major version. Renaming or
+removing any of them is a breaking change, and is announced as one.
 
 - **The keys in `config.toml`.** Existing keys are not renamed or removed. When
   one has to change, the old name keeps working and `bothy doctor` names the
@@ -22,9 +21,8 @@ it exists so a newer bothy can recognise an older file deliberately rather than
 by absence. A config from a *newer* bothy still loads: `doctor` warns, and the
 keys this version understands still work.
 
-What is not covered: anything printed for a human to read, the layout of
-`bothy doctor`'s normal output, and the internal Go packages. Those change when
-there is a reason.
+Not covered: anything printed for a human to read, the layout of
+`bothy doctor`'s normal output, and the internal Go packages.
 
 ---
 

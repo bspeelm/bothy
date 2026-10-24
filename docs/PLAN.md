@@ -71,15 +71,15 @@ manifest of files scattered across your home.
    providers described by data. Adding a provider must not require core changes.
 5. **Every bug becomes a doctor check.** When a setup failure is fixed, the fix
    ships with a check that detects it. The doctor is the moat.
-6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 8,500 lines, comments ≤ 28% of
-   code — all three asserted in CI, as failing checks in the `Makefile`.
-   Workspace idle RSS ≤ 200 MB excluding the agent is a design target and is
-   **not** measured; saying otherwise claimed a check that does not exist.
-   The code figure began at 5k and has risen four times, deliberately (ADR-026,
-   ADR-041, ADR-045, ADR-047); the comment figure became a ratio when a total proved to be
-   measuring code and prose together (ADR-021), tightened to 22% once the
-   headroom turned out to have been spent on retelling (ADR-029), and returned
-   to 25% when five releases showed 22% had left no headroom at all (ADR-041).
+6. **Budgets are real.** Binary ≤ 10 MB, code ≤ 9,000 lines, comments ≤ 30% of
+   code, live prose ≤ 75% of code — all four asserted in CI, as failing checks
+   in the `Makefile`, and the two ratios compared exactly rather than to the
+   nearest whole percent. Workspace idle RSS ≤ 200 MB excluding the agent is a
+   design target and is **not** measured; saying otherwise claimed a check that
+   does not exist.
+   The code figure began at 5,000 and every raise since carries its own
+   numbered record, the current one ADR-055. The comment figure became a ratio
+   when a total proved to be measuring code and prose together (ADR-021).
 
    The line budget counts code and comments separately, because counting them
    together was measuring the wrong thing: this codebase comments densely on
@@ -116,9 +116,8 @@ not change what `zellij` means in your shell.
 Worked example, from the machine bothy was built on: Fedora's COPR ships zellij
 **0.42.2**, which cannot pass the Kitty graphics protocol — the cause of
 block-art previews and the phantom "Find next" keypress. Upstream **0.45.1**
-fixes it. The minimum is therefore 0.45.1, bothy fetches it, image previews
-work, and dnf is never involved. On a machine with a current zellij, bothy
-downloads nothing.
+fixes it. The minimum is therefore 0.45.1, bothy fetches it, and dnf is never
+involved. On a machine with a current zellij, bothy downloads nothing.
 
 Full download cost if *every* tool has to be filled in — measured, not
 estimated:
@@ -179,8 +178,8 @@ Same gap-filling rule, applied to where bothy runs:
   → **spawn Ghostty** with `--config-file=<bothy's>`, falling back to running in
   place with a doctor warning if Ghostty is not installed.
 
-The reason is not aesthetics: image previews need a terminal that can draw them,
-and degrading silently to block art is the exact class of failure bothy exists
+The reason is not aesthetics: a capability that silently degrades, as image
+previews did for every terminal, is the exact class of failure bothy exists
 to catch. Ghostty is never installed by bothy — it is a GUI application that
 belongs to the host, and on an immutable distro it needs `rpm-ostree` and a
 reboot. bothy advises; the doctor checks.
@@ -236,10 +235,10 @@ apply inside bothy unless you pass Yazi through. That is the price of isolation
 and it cuts both ways
 ([ADR-009](decisions.md#adr-009--bothy-is-isolated-it-brings-its-own-config-tree)).
 
-**Spawning a window is a behaviour to keep correct.** On a terminal that cannot
-draw images bothy opens Ghostty instead; on a headless box there is nothing to
-spawn. The run-in-place path is not an afterthought, and a doctor check covers
-which one this machine gets.
+**Spawning a window is a behaviour to keep correct.** On a terminal that does
+not carry the Kitty keyboard protocol bothy opens Ghostty instead; on a
+headless box there is nothing to spawn. The run-in-place path is not an
+afterthought, and a doctor check covers which one this machine gets.
 
 **Every supported platform is a job forever.** ADR-012 is what makes
 "supported" mean anything and it is also the bill: each one is a CI job that can
@@ -285,8 +284,8 @@ itself in [`north-star.md`](north-star.md) §6.
   GUIs. They solve *many agents at once* by shipping a new app, which is the
   weight-gain trajectory this project rejects.
 - **Omakub / Omarchy** — the same taste one level up, at the OS.
-- **devcontainers, DevPod** — project *dependency* setup. Orthogonal; compose,
-  don't compete.
+- **devcontainers, DevPod** — project *dependency* setup. Orthogonal: they
+  compose with bothy rather than competing with it.
 - **Hand-rolled setups** — this layout is widespread folk practice in dotfiles
   and blog posts. That is the demand signal: everyone builds it by hand.
 

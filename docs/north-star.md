@@ -1,8 +1,5 @@
 # North star
 
-> *A room you can trust because it wants nothing. The agent, of course, is
-> another matter.*
-
 What bothy is, so that every milestone can be judged by whether it gets closer.
 The reasons things are the way they are are in [`decisions.md`](decisions.md).
 The road as it was planned is [`history/plan-1.0.md`](history/plan-1.0.md), kept
@@ -59,7 +56,7 @@ supplies:
 |---|---|---|
 | **panes** | the three-pane arrangement itself | the multiplexer, or a terminal that splits |
 | **sessions** | `bothy attach` after you close the window | a multiplexer with detach |
-| **images** | real image previews in the file pane | terminal *and* multiplexer must both pass a graphics protocol |
+| **images** | inline image previews in the file pane | no stack delivers this: Yazi sends a protocol the multiplexer does not render (ADR-056) |
 | **theme** | every pane in the same palette | each tool, where its config can be pointed at bothy's tree |
 | **isolation** | nothing of yours written to | every tool that accepts a config path or environment variable |
 
@@ -169,13 +166,12 @@ little or nothing.
 
 | | terminal | mux | browser | capabilities |
 |---|---|---|---|---|
-| ideal | Ghostty | Zellij | Yazi | panes, sessions, images, theme, isolation |
-| common | the one you have | Zellij | Yazi | panes, sessions, isolation; theme and images depend on the terminal |
+| ideal | Ghostty | Zellij | Yazi | panes, sessions, theme, isolation |
+| common | the one you have | Zellij | Yazi | panes, sessions, isolation; theme depends on the terminal |
 
-Already the ideal. The common stack is a terminal bothy neither spawns nor
-themes: Konsole draws images by sixel, GNOME Terminal's VTE ships no graphics
-protocol at all and gets text previews, said out loud rather than substituted
-in silence.
+Already the ideal — images excepted, which no stack reaches through a
+multiplexer (ADR-056). The common stack is a terminal bothy neither spawns nor
+themes, and says so out loud rather than substituting in silence.
 
 ### macOS
 
@@ -188,7 +184,8 @@ iTerm2 draws inline images by its own protocol rather than Kitty's, and whether
 Zellij passes that through is exactly what a runtime probe is for — so it is
 reported unverified until one answers.
 
-Terminal.app is *reported*, not supported: it cannot split, cannot draw images,
+Terminal.app is *reported*, not supported: it cannot split, cannot draw images
+directly,
 and cannot be pointed at a config. It gives panes through the multiplexer and
 nothing else. The plan says so.
 

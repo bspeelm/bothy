@@ -17,16 +17,17 @@ import (
 
 // Checks about the terminal, the multiplexer, and getting a file opened.
 
-// checkTerminalCapability reports where bothy will run. A terminal that cannot
-// draw images is not an error; it is the reason previews will be off.
+// checkTerminalCapability reports where bothy will run, and why. The question
+// is the keyboard protocol rather than graphics: images do not survive the
+// multiplexer on any terminal, so a window opened for them would buy nothing.
 func checkTerminalCapability(env Env) Result {
 	term := env.Platform.Terminal
 	if term == "" {
 		term = "an unrecognised terminal"
 	}
-	g := probe.CheckGraphics(env.Platform.Terminal, probe.MuxGraphics{None: true})
+	g := probe.Keyboard(env.Platform.Terminal)
 	if g.Supported {
-		return pass("running in " + term + ", which can draw images")
+		return pass("running in " + term + ", which carries the keys an agent needs")
 	}
 	// Not a failure: bothy opens a window in the configured terminal instead
 	// -- unless that terminal is not there. Named from the config rather than
@@ -37,17 +38,17 @@ func checkTerminalCapability(env Env) Result {
 		want = "ghostty"
 	}
 	if _, err := exec.LookPath(env.Platform.ExeName(want)); err != nil {
-		fix := "install a terminal that can draw images, or accept block-art previews"
+		fix := "install a terminal that carries the Kitty keyboard protocol"
 		if a, err := advice.Get(want); err == nil {
 			fix = a.Command(env.Platform)
 			if w := a.Warnings(env.Platform); w != "" {
 				fix += "\n         " + w
 			}
 		}
-		return warn("this terminal cannot draw inline images, and "+want+" is not installed",
+		return warn("this terminal drops keys an agent needs, and "+want+" is not installed",
 			g.Reason, fix)
 	}
-	return pass("this terminal cannot draw images, so bothy will open a " + want + " window — " + g.Reason)
+	return pass("bothy will open a " + want + " window — " + g.Reason)
 }
 
 func checkMuxConfig(env Env) Result {
@@ -152,6 +153,11 @@ func checkOpener(env Env) Result {
 			return warn(want+" is not on PATH",
 				"this container has no desktop to open files with, and no host to forward to",
 				"")
+		}
+		if env.Platform.OS == "windows" {
+			return warn(want+" is not on PATH",
+				"Windows opens files with it, and it is part of the system",
+				"check that %SystemRoot%\\System32 is on PATH")
 		}
 		return warn(want+" is not on PATH", "", "install xdg-utils")
 	}

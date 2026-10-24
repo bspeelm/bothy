@@ -12,7 +12,9 @@ import (
 	"github.com/bspeelm/bothy/internal/layout"
 	"github.com/bspeelm/bothy/internal/mux"
 	"github.com/bspeelm/bothy/internal/platform"
+	"github.com/bspeelm/bothy/internal/probe"
 	"github.com/bspeelm/bothy/internal/slots"
+	"github.com/bspeelm/bothy/internal/theme"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -84,11 +86,38 @@ func cmdDev(args []string) error {
 	// After the spawn: the bothy that opens a window and exits is not the one
 	// watching the session, the one living in the window is.
 	defer watching(p, cfg, sessionNameFor(p, cfg, plan.Dir))()
+	defer paintTerminal(p, cfg)()
 
 	if plan.Container != "" {
 		return hopIntoContainer(plan.Container, plan.Dir, plan.Profile)
 	}
 	return launch(p, cfg, plan.Dir, plan.Profile, "", remoteOpts{})
+}
+
+// paintTerminal gives the terminal bothy is about to run in the palette it
+// would have been started with, and returns the call that puts it back.
+//
+// A window bothy opens is handed a generated config file; a terminal already
+// running cannot be, because it read its configuration at startup. Without
+// this, one palette reaching every tool stopped at the one surface the user
+// looks at most -- and stopped silently, since nothing failed.
+//
+// Only a terminal bothy has written down, because an OSC a terminal does not
+// understand is not always ignored quietly; only when something is listening,
+// since a redirected stdout would otherwise carry escape codes into a file;
+// and never when the terminal is passed through, which is the way to say that
+// your terminal's colours are yours.
+func paintTerminal(p platform.Info, cfg config.Config) func() {
+	if cfg.PassesThrough("terminal") || !platform.IsTerminal(os.Stdout) ||
+		!probe.Keyboard(p.Terminal).Supported || os.Getenv(InTerminalEnv) != "" {
+		return func() {}
+	}
+	pal, err := cfg.Palette(p)
+	if err != nil {
+		return func() {} // the theme checks report this; a launch does not fail for it
+	}
+	fmt.Print(pal.Paint())
+	return func() { fmt.Print(theme.Unpaint()) }
 }
 
 // refuseIfInUse stops a launch into a session that already has a client. A
@@ -409,7 +438,7 @@ type launchPlan struct {
 	Container string
 }
 
-// decide is a seam: the real one asks the terminal and the host (ADR-011).
+// decide is a seam: the real one asks the terminal and the host (ADR-056).
 var decide = decideLaunch
 
 // planLaunch decides, touching no disk, so the tree can be tested rather than

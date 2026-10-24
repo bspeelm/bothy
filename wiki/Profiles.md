@@ -21,10 +21,10 @@ opening anything.
 └─────────────────────────────┴────────────────────┘
 ```
 
-Supervising an agent working on a repository. The browser is the top half
-because you are reading what changed; the agent is focused because you are
-talking to it. The editor is reached through `$EDITOR` from Yazi, git or the
-agent rather than sitting in a pane of its own.
+For supervising an agent working on a repository. The browser takes the top
+half, for reading what changed, and the agent starts focused. The editor is
+reached through `$EDITOR` from Yazi, git or the agent rather than occupying a
+pane.
 
 ## `editor` — three columns
 
@@ -34,9 +34,9 @@ agent rather than sitting in a pane of its own.
 └──────────────┴──────────────┴──────────────┘
 ```
 
-For driving the editor yourself with an agent beside it. The editor slot is the
-main seat here, and it starts focused. No file browser — the editor's own is
-closer to hand.
+For working in the editor with an agent beside it. The editor slot takes the
+largest pane and starts focused. There is no file browser pane, since the
+editor has its own.
 
 ## `minimal` — agent and a shell
 
@@ -47,8 +47,8 @@ closer to hand.
 ```
 
 For small screens and SSH sessions, where a file browser costs more rows than
-it earns. The tab bar is off for the same reason; the status bar stays, because
-it is the only on-screen reminder of Zellij's modal keys.
+it is worth. The tab bar is off for the same reason; the status bar stays, as
+the only on-screen reminder of Zellij's modal keys.
 
 ## Writing your own
 

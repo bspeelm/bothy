@@ -1,13 +1,12 @@
 # The doctor
 
-`bothy doctor` runs 32 checks against the workspace and says what is
-wrong and what to type. It is the command the project is built around: every
-setup failure that has ever been fixed here ships with a check that detects it,
-so the doctor is where the project's accumulated experience lives.
+`bothy doctor` runs 32 checks against the workspace and reports what is wrong
+and what to type. Every setup failure fixed in this project ships with a check
+that detects it, so the doctor is where that experience is recorded.
 
 ```sh
-bothy doctor          # for you
-bothy doctor --json   # for something that parses it
+bothy doctor          # human-readable
+bothy doctor --json   # machine-readable
 ```
 
 ## Reading the output
@@ -17,8 +16,8 @@ Each line is a check. A failing one carries a reason and a fix:
 ```
 ✓ yazi 26.8.15
 ! image previews are enabled but this machine cannot show them properly
-    this terminal is not known to draw inline images; previews would fall
-    back to block art
+    ghostty draws images with the Kitty graphics protocol, but inside a
+    multiplexer Yazi sends an older Kitty graphics variant instead
     fix: run 'bothy install' to regenerate yazi.toml with the placeholder previewer
 ```
 
@@ -27,14 +26,15 @@ Each line is a check. A failing one carries a reason and a fix:
 | `✓` | pass | working |
 | `!` | warn | works, but not as intended |
 | `✗` | fail | the workspace is broken — the command exits non-zero |
-| | skip | not applicable to this machine, and not counted against you |
+| | skip | not applicable to this machine, and not counted as a problem |
 
 **Only a failure makes the command exit non-zero.** Warnings do not, which is
-why the example above ends in exit 0: image previews are degraded, not broken.
+why the example above ends in exit 0: a config that promises previews this
+stack cannot draw is worth knowing about and is not a broken workspace.
 
 ## The summary, and capabilities
 
-The last two lines are the point:
+The last two lines summarise the stack:
 
 ```
 20 passed, 2 warning(s), 0 failure(s), 6 not applicable
@@ -44,10 +44,9 @@ it cannot give you:   images
 ```
 
 Checks are grouped into five capabilities, and a capability is reported as
-available only when everything it depends on passes. This is deliberately
-honest about the machine you are on rather than about bothy: a terminal that
-cannot draw images cannot be given image previews by any amount of
-configuration, so bothy says so once, plainly, instead of failing repeatedly.
+available only when every check behind it passes. The report describes the
+machine rather than bothy: no amount of configuration adds image previews
+through a multiplexer, so bothy states that once instead of failing repeatedly.
 
 | capability | what it means | checks behind it |
 |---|---|---|
@@ -55,7 +54,7 @@ configuration, so bothy says so once, plainly, instead of failing repeatedly.
 | **sessions** | you can detach and reattach | `session-named` |
 | **theme** | one palette reaches every tool | `theme-palette`, `theme-reached` |
 | **isolation** | bothy's config is used, and yours is untouched | `yazi-config-discarded`, `passthrough`, `isolation`, `confine`, `tool-data`, `mux-config` |
-| **images** | real image previews, not block art | `image-previews`, `terminal-capability` |
+| **images** | inline image previews, which no stack currently delivers | `image-previews`, `terminal-capability` |
 
 The remaining checks are not tied to a capability and always run: tool versions
 and reachability, config schema and key names, the terminfo entry, the file
